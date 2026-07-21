@@ -281,6 +281,10 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .langtoggle{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .langbtn{font-family:var(--px);font-size:8px;line-height:1.3;padding:8px 9px;border:2px solid var(--edge);border-radius:8px;background:var(--lane2);color:var(--dim);white-space:nowrap}
 .langbtn.on{border-color:var(--bus);color:var(--bus);box-shadow:0 0 0 1px var(--bus) inset}
+/* toggle langue mis en évidence sur l'accueil */
+.langrow{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:0 0 16px}
+.langrow .langbtn{font-size:9px;padding:11px 13px;background:var(--lane);box-shadow:0 3px 0 #00000055}
+.langrow .langbtn.on{background:#3A2F00;box-shadow:0 3px 0 #00000055,0 0 0 1px var(--bus) inset}
 .backrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .backbtn{font-family:var(--px);font-size:10px;color:var(--dim);padding:8px 10px;border:2px solid var(--edge);border-radius:8px;background:var(--lane)}
 .scrtitle{font-family:var(--px);font-size:12px;color:var(--retro);letter-spacing:1px;text-transform:uppercase}
@@ -1050,6 +1054,10 @@ function scrHome(){
   }
   return '<h1 class="logo">ROUTE 440</h1>'
    +'<div class="logo-sub">NJ Permit Quest · '+t('Opération Bayonne','Operation Bayonne')+'</div>'
+   +'<div class="langrow">'
+   +'<button class="langbtn'+(S.lang!=='en'?' on':'')+'" onclick="G.setLang(\'fr\')">🇫🇷 Français · mètres</button>'
+   +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 English · feet</button>'
+   +'</div>'
    +djLine
    +'<div class="menu">'
    +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>'+t('Campagne','Campaign')+'<span class="sub">'+t('8 zones, 8 boss — la carte du New Jersey','8 zones, 8 bosses — the map of New Jersey')+'</span></span></button>'
