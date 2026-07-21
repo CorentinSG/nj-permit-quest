@@ -278,6 +278,9 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px dashed var(--edge)}
 .setrow:last-child{border-bottom:none}
 .setrow label{font-size:14.5px}
+.langtoggle{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.langbtn{font-family:var(--px);font-size:8px;line-height:1.3;padding:8px 9px;border:2px solid var(--edge);border-radius:8px;background:var(--lane2);color:var(--dim);white-space:nowrap}
+.langbtn.on{border-color:var(--bus);color:var(--bus);box-shadow:0 0 0 1px var(--bus) inset}
 .backrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .backbtn{font-family:var(--px);font-size:10px;color:var(--dim);padding:8px 10px;border:2px solid var(--edge);border-radius:8px;background:var(--lane)}
 .scrtitle{font-family:var(--px);font-size:12px;color:var(--retro);letter-spacing:1px;text-transform:uppercase}
@@ -312,14 +315,14 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
    ============================================================ */
 
 const WORLDS=[
- {id:'signs',n:'Le Monde des Panneaux',icon:'🚦',d:'Formes, couleurs, feux — le langage secret de la route',boss:"L'Inspecteur des Panneaux",bossIc:'🕵️'},
- {id:'speed',n:'La Vallée des Vitesses',icon:'⚡',d:'25, 35, 50, 65… et la météo qui change tout',boss:'Le Radar Vivant',bossIc:'📡'},
- {id:'dist',n:'Le Donjon des Distances',icon:'📏',d:'Pieds, pouces, car lengths — les chiffres qui tombent',boss:'Le Métreur Fou',bossIc:'🧙'},
- {id:'booze',n:'Le Bar Maudit',icon:'🍺',d:'BAC, implied consent, mythes du café',boss:'Le Videur du Bar Maudit',bossIc:'🧟'},
- {id:'points',n:'Le Tribunal des Points',icon:'⚖️',d:'Points, amendes, suspensions — le tarif des bêtises',boss:'Le Juge aux 12 Points',bossIc:'👨‍⚖️'},
- {id:'share',n:'La Route Partagée',icon:'🚸',d:'Priorités, piétons, camions, vélos, bus',boss:'Le Chauffard Fantôme',bossIc:'👻'},
- {id:'surv',n:'Zone de Survie',icon:'🌪️',d:'Dérapages, freins morts, trains, verglas',boss:'La Tempête Noire',bossIc:'⛈️'},
- {id:'gdl',n:'Le Labyrinthe GDL',icon:'🎓',d:'Permis, GDL, sièges enfants, paperasse MVC',boss:'Le Fonctionnaire Final',bossIc:'🧌'}
+ {id:'signs',n:'Le Monde des Panneaux',ne:'The World of Signs',icon:'🚦',d:'Formes, couleurs, feux — le langage secret de la route',de:'Shapes, colors, lights — the road\'s secret language',boss:"L'Inspecteur des Panneaux",bosse:'The Sign Inspector',bossIc:'🕵️'},
+ {id:'speed',n:'La Vallée des Vitesses',ne:'The Valley of Speeds',icon:'⚡',d:'25, 35, 50, 65… et la météo qui change tout',de:'25, 35, 50, 65… and the weather that changes everything',boss:'Le Radar Vivant',bosse:'The Living Radar',bossIc:'📡'},
+ {id:'dist',n:'Le Donjon des Distances',ne:'The Dungeon of Distances',icon:'📏',d:'Pieds, pouces, car lengths — les chiffres qui tombent',de:'Feet, inches, car lengths — the numbers that show up',boss:'Le Métreur Fou',bosse:'The Mad Surveyor',bossIc:'🧙'},
+ {id:'booze',n:'Le Bar Maudit',ne:'The Cursed Bar',icon:'🍺',d:'BAC, implied consent, mythes du café',de:'BAC, implied consent, coffee myths',boss:'Le Videur du Bar Maudit',bosse:'The Cursed Bar Bouncer',bossIc:'🧟'},
+ {id:'points',n:'Le Tribunal des Points',ne:'The Court of Points',icon:'⚖️',d:'Points, amendes, suspensions — le tarif des bêtises',de:'Points, fines, suspensions — the price of mistakes',boss:'Le Juge aux 12 Points',bosse:'The 12-Point Judge',bossIc:'👨‍⚖️'},
+ {id:'share',n:'La Route Partagée',ne:'The Shared Road',icon:'🚸',d:'Priorités, piétons, camions, vélos, bus',de:'Right-of-way, pedestrians, trucks, bikes, buses',boss:'Le Chauffard Fantôme',bosse:'The Phantom Road-Hog',bossIc:'👻'},
+ {id:'surv',n:'Zone de Survie',ne:'Survival Zone',icon:'🌪️',d:'Dérapages, freins morts, trains, verglas',de:'Skids, dead brakes, trains, black ice',boss:'La Tempête Noire',bosse:'The Black Storm',bossIc:'⛈️'},
+ {id:'gdl',n:'Le Labyrinthe GDL',ne:'The GDL Labyrinth',icon:'🎓',d:'Permis, GDL, sièges enfants, paperasse MVC',de:'Licenses, GDL, child seats, MVC paperwork',boss:'Le Fonctionnaire Final',bosse:'The Final Clerk',bossIc:'🧌'}
 ];
 
 const Q=[
@@ -471,107 +474,107 @@ const Q=[
 
 /* ---------------- BLITZ : les Petites Règles™ (55) ---------------- */
 const DRILLS=[
-{p:"Stationnement : à ___ minimum d'une <b>borne incendie</b>",a:"10 ft",o:["25 ft","50 ft","20 ft"]},
-{p:"Stationnement : à ___ d'un <b>crosswalk</b> (intersection)",a:"25 ft",o:["10 ft","50 ft","15 ft"]},
-{p:"Stationnement : à ___ d'un panneau <b>STOP</b>",a:"50 ft",o:["25 ft","10 ft","100 ft"]},
-{p:"Stationnement : à ___ d'un <b>passage à niveau</b>",a:"50 ft",o:["25 ft","100 ft","10 ft"]},
-{p:"Stationnement : à ___ de l'entrée d'une <b>caserne de pompiers</b> (même côté)",a:"20 ft",o:["75 ft","50 ft","10 ft"]},
-{p:"Stationnement : à ___ d'une caserne, côté <b>opposé</b> de la rue",a:"75 ft",o:["20 ft","50 ft","100 ft"]},
-{p:"<b>Clignotant</b> : au moins ___ avant de tourner",a:"100 ft",o:["50 ft","200 ft","25 ft"]},
-{p:"Passer en <b>codes</b> quand un véhicule arrive en face à ___",a:"500 ft",o:["200 ft","300 ft","1000 ft"]},
-{p:"<b>Phares obligatoires</b> quand la visibilité est sous ___",a:"500 ft",o:["1000 ft","300 ft","200 ft"]},
-{p:"<b>STOP</b> derrière un bus scolaire (feux rouges) : à ___ minimum",a:"25 ft",o:["50 ft","10 ft","100 ft"]},
-{p:"Bus scolaire arrêté <b>devant une école</b> : passer à ___ max",a:"10 mph",o:["25 mph","15 mph","5 mph"]},
-{p:"Bus scolaire de l'autre côté d'une route <b>à terre-plein</b> : ___ max",a:"10 mph",o:["25 mph","STOP complet","15 mph"]},
-{p:"Arrêt obligatoire à un passage à niveau : entre ___ des rails",a:"15–50 ft",o:["5–15 ft","50–100 ft","10–25 ft"]},
-{p:"Distance de suivi : ___ par tranche de 10 mph",a:"1 longueur de voiture",o:["2 longueurs","3 longueurs","½ longueur"]},
-{p:"<b>Dépassement interdit</b> à moins de ___ d'une intersection",a:"100 ft",o:["50 ft","200 ft","500 ft"]},
-{p:"Créneau : roues à ___ max du trottoir",a:"6 in",o:["12 in","18 in","24 in"]},
-{p:"Doubler un <b>vélo</b> : écart minimum de ___",a:"4 ft",o:["3 ft","2 ft","6 ft"]},
-{p:"Vitesse en <b>zone scolaire</b>",a:"25 mph",o:["15 mph","20 mph","35 mph"]},
-{p:"Vitesse en <b>quartier résidentiel</b> / business district",a:"25 mph",o:["30 mph","35 mph","20 mph"]},
-{p:"Vitesse en zone <b>suburbaine</b>",a:"35 mph",o:["25 mph","45 mph","40 mph"]},
-{p:"Vitesse sur route <b>rurale non signalée</b>",a:"50 mph",o:["55 mph","45 mph","40 mph"]},
-{p:"Vitesse max sur certaines <b>interstates</b> du NJ",a:"65 mph",o:["70 mph","75 mph","55 mph"]},
-{p:"L'<b>aquaplaning</b> peut commencer dès ___",a:"35 mph",o:["55 mph","45 mph","25 mph"]},
-{p:"Route <b>mouillée</b> : réduire sa vitesse de ___",a:"5–10 mph",o:["15–20 mph","2–3 mph","25 mph"]},
-{p:"<b>Neige tassée</b> : vitesse ___",a:"divisée par 2",o:["−10 mph","−5 mph","au pas"]},
-{p:"<b>BAC</b> limite à 21 ans et +",a:"0.08%",o:["0.05%","0.10%","0.15%"]},
-{p:"<b>BAC</b> limite avant 21 ans",a:"0.01%",o:["0.00%","0.05%","0.08%"]},
-{p:"<b>BAC</b> limite conducteurs pro (CDL)",a:"0.04%",o:["0.08%","0.02%","0.06%"]},
-{p:"Le corps élimine environ <b>1 verre</b> par ___",a:"1 heure",o:["30 min","2 heures","15 min"]},
-{p:"12 oz de bière = ___ de <b>vin</b>",a:"5 oz",o:["12 oz","8 oz","2 oz"]},
-{p:"12 oz de bière = ___ de <b>spiritueux</b> (shot)",a:"1.5 oz",o:["3 oz","0.5 oz","5 oz"]},
-{p:"<b>Suspension</b> du permis à ___",a:"12 points",o:["6 points","10 points","15 points"]},
-{p:"<b>Surtaxe</b> assurance : ___ en 3 ans",a:"6 points",o:["12 points","3 points","9 points"]},
-{p:"1 an <b>sans infraction</b> = ___",a:"−3 points",o:["−1 point","−5 points","−2 points"]},
-{p:"Stage <b>defensive driving</b> = ___ (1×/5 ans)",a:"−2 points",o:["−3 points","−5 points","−1 point"]},
-{p:"Excès de vitesse <b>1–14 mph</b>",a:"2 points",o:["4 points","5 points","1 point"]},
-{p:"Excès de vitesse <b>15–29 mph</b>",a:"4 points",o:["2 points","5 points","3 points"]},
-{p:"Excès de vitesse <b>30+ mph</b>",a:"5 points",o:["4 points","8 points","6 points"]},
-{p:"<b>Tailgating</b> (coller)",a:"5 points",o:["2 points","3 points","4 points"]},
-{p:"Griller un <b>bus scolaire</b>",a:"5 points",o:["8 points","3 points","2 points"]},
-{p:"<b>Délit de fuite</b> avec blessé",a:"8 points",o:["5 points","12 points","4 points"]},
-{p:"<b>Piéton</b> non respecté dans un crosswalk",a:"$200 + 2 pts",o:["$100 + 1 pt","$500 + 5 pts","$50 + 0 pt"]},
-{p:"<b>Téléphone</b> en main, 1re offense",a:"$200–400",o:["$100–200","$400–600","$50–100"]},
-{p:"L'examen : ___ questions, ___ pour réussir",a:"50 Q · 80%",o:["40 Q · 75%","100 Q · 90%","50 Q · 50%"]},
-{p:"<b>Vision</b> minimale requise",a:"20/50",o:["20/20","20/100","20/40"]},
-{p:"<b>Accompagnateur</b> GDL : âge et ancienneté",a:"21 ans · 3 ans de permis",o:["18 ans · 1 an","25 ans · 5 ans","21 ans · 1 an"]},
-{p:"Pratique supervisée si tu as <b>21 ans ou +</b>",a:"20 jours",o:["3 mois","6 mois","1 an"]},
-{p:"<b>Couvre-feu</b> GDL (moins de 21 ans)",a:"23h01 – 5h00",o:["minuit – 6h","22h – 7h","21h – 5h"]},
-{p:"Prévenir le MVC d'un changement d'<b>adresse</b> sous ___",a:"1 semaine",o:["30 jours","60 jours","2 semaines"]},
-{p:"Prévenir le MVC d'un changement de <b>nom</b> sous ___",a:"2 semaines",o:["1 semaine","1 mois","90 jours"]},
-{p:"<b>Nouveau résident</b> NJ : transférer son permis sous ___",a:"60 jours",o:["30 jours","90 jours","14 jours"]},
-{p:"Siège <b>dos à la route</b> jusqu'à ___",a:"2 ans & 30 lb",o:["1 an & 20 lb","3 ans & 40 lb","4 ans & 30 lb"]},
-{p:"<b>Booster</b> obligatoire jusqu'à ___",a:"8 ans ou 57 in",o:["6 ans ou 50 in","10 ans ou 60 in","5 ans ou 45 in"]},
-{p:"<b>Pneus cloutés</b> autorisés du ___",a:"15 nov au 1er avril",o:["1 déc au 1er mars","1 oct au 1er mai","jamais"]},
-{p:"Rapport de police obligatoire si dégâts > ___",a:"$500",o:["$1,000","$250","$2,500"]}
+{p:"Stationnement : à ___ minimum d'une <b>borne incendie</b>",pe:"Parking: at least ___ from a <b>fire hydrant</b>",a:"10 ft",o:["25 ft","50 ft","20 ft"]},
+{p:"Stationnement : à ___ d'un <b>crosswalk</b> (intersection)",pe:"Parking: ___ from a <b>crosswalk</b> (intersection)",a:"25 ft",o:["10 ft","50 ft","15 ft"]},
+{p:"Stationnement : à ___ d'un panneau <b>STOP</b>",pe:"Parking: ___ from a <b>STOP</b> sign",a:"50 ft",o:["25 ft","10 ft","100 ft"]},
+{p:"Stationnement : à ___ d'un <b>passage à niveau</b>",pe:"Parking: ___ from a <b>railroad crossing</b>",a:"50 ft",o:["25 ft","100 ft","10 ft"]},
+{p:"Stationnement : à ___ de l'entrée d'une <b>caserne de pompiers</b> (même côté)",pe:"Parking: ___ from a <b>fire station</b> driveway (same side)",a:"20 ft",o:["75 ft","50 ft","10 ft"]},
+{p:"Stationnement : à ___ d'une caserne, côté <b>opposé</b> de la rue",pe:"Parking: ___ from a fire station, <b>opposite</b> side of the street",a:"75 ft",o:["20 ft","50 ft","100 ft"]},
+{p:"<b>Clignotant</b> : au moins ___ avant de tourner",pe:"<b>Turn signal</b>: at least ___ before turning",a:"100 ft",o:["50 ft","200 ft","25 ft"]},
+{p:"Passer en <b>codes</b> quand un véhicule arrive en face à ___",pe:"Dim to <b>low beams</b> when an oncoming vehicle is within ___",a:"500 ft",o:["200 ft","300 ft","1000 ft"]},
+{p:"<b>Phares obligatoires</b> quand la visibilité est sous ___",pe:"<b>Headlights required</b> when visibility is under ___",a:"500 ft",o:["1000 ft","300 ft","200 ft"]},
+{p:"<b>STOP</b> derrière un bus scolaire (feux rouges) : à ___ minimum",pe:"<b>STOP</b> behind a school bus (red lights): at least ___",a:"25 ft",o:["50 ft","10 ft","100 ft"]},
+{p:"Bus scolaire arrêté <b>devant une école</b> : passer à ___ max",pe:"School bus stopped <b>in front of a school</b>: pass at ___ max",a:"10 mph",o:["25 mph","15 mph","5 mph"]},
+{p:"Bus scolaire de l'autre côté d'une route <b>à terre-plein</b> : ___ max",pe:"School bus across a <b>divided road</b>: ___ max",a:"10 mph",o:["25 mph","STOP complet","15 mph"]},
+{p:"Arrêt obligatoire à un passage à niveau : entre ___ des rails",pe:"Mandatory stop at a railroad crossing: within ___ of the tracks",a:"15–50 ft",o:["5–15 ft","50–100 ft","10–25 ft"]},
+{p:"Distance de suivi : ___ par tranche de 10 mph",pe:"Following distance: ___ for every 10 mph",a:"1 longueur de voiture",o:["2 longueurs","3 longueurs","½ longueur"]},
+{p:"<b>Dépassement interdit</b> à moins de ___ d'une intersection",pe:"<b>No passing</b> within ___ of an intersection",a:"100 ft",o:["50 ft","200 ft","500 ft"]},
+{p:"Créneau : roues à ___ max du trottoir",pe:"Parallel parking: wheels within ___ of the curb",a:"6 in",o:["12 in","18 in","24 in"]},
+{p:"Doubler un <b>vélo</b> : écart minimum de ___",pe:"Passing a <b>cyclist</b>: minimum gap of ___",a:"4 ft",o:["3 ft","2 ft","6 ft"]},
+{p:"Vitesse en <b>zone scolaire</b>",pe:"Speed in a <b>school zone</b>",a:"25 mph",o:["15 mph","20 mph","35 mph"]},
+{p:"Vitesse en <b>quartier résidentiel</b> / business district",pe:"Speed in a <b>residential</b> / business district",a:"25 mph",o:["30 mph","35 mph","20 mph"]},
+{p:"Vitesse en zone <b>suburbaine</b>",pe:"Speed in a <b>suburban</b> area",a:"35 mph",o:["25 mph","45 mph","40 mph"]},
+{p:"Vitesse sur route <b>rurale non signalée</b>",pe:"Speed on an <b>unposted rural</b> road",a:"50 mph",o:["55 mph","45 mph","40 mph"]},
+{p:"Vitesse max sur certaines <b>interstates</b> du NJ",pe:"Max speed on certain NJ <b>interstates</b>",a:"65 mph",o:["70 mph","75 mph","55 mph"]},
+{p:"L'<b>aquaplaning</b> peut commencer dès ___",pe:"<b>Hydroplaning</b> can start as low as ___",a:"35 mph",o:["55 mph","45 mph","25 mph"]},
+{p:"Route <b>mouillée</b> : réduire sa vitesse de ___",pe:"<b>Wet road</b>: reduce your speed by ___",a:"5–10 mph",o:["15–20 mph","2–3 mph","25 mph"]},
+{p:"<b>Neige tassée</b> : vitesse ___",pe:"<b>Packed snow</b>: speed ___",a:"divisée par 2",o:["−10 mph","−5 mph","au pas"]},
+{p:"<b>BAC</b> limite à 21 ans et +",pe:"<b>BAC</b> limit, 21 and over",a:"0.08%",o:["0.05%","0.10%","0.15%"]},
+{p:"<b>BAC</b> limite avant 21 ans",pe:"<b>BAC</b> limit under 21",a:"0.01%",o:["0.00%","0.05%","0.08%"]},
+{p:"<b>BAC</b> limite conducteurs pro (CDL)",pe:"<b>BAC</b> limit for commercial drivers (CDL)",a:"0.04%",o:["0.08%","0.02%","0.06%"]},
+{p:"Le corps élimine environ <b>1 verre</b> par ___",pe:"The body clears about <b>1 drink</b> per ___",a:"1 heure",o:["30 min","2 heures","15 min"]},
+{p:"12 oz de bière = ___ de <b>vin</b>",pe:"12 oz of beer = ___ of <b>wine</b>",a:"5 oz",o:["12 oz","8 oz","2 oz"]},
+{p:"12 oz de bière = ___ de <b>spiritueux</b> (shot)",pe:"12 oz of beer = ___ of <b>liquor</b> (a shot)",a:"1.5 oz",o:["3 oz","0.5 oz","5 oz"]},
+{p:"<b>Suspension</b> du permis à ___",pe:"License <b>suspension</b> at ___",a:"12 points",o:["6 points","10 points","15 points"]},
+{p:"<b>Surtaxe</b> assurance : ___ en 3 ans",pe:"Insurance <b>surcharge</b>: ___ within 3 years",a:"6 points",o:["12 points","3 points","9 points"]},
+{p:"1 an <b>sans infraction</b> = ___",pe:"1 year with <b>no violations</b> = ___",a:"−3 points",o:["−1 point","−5 points","−2 points"]},
+{p:"Stage <b>defensive driving</b> = ___ (1×/5 ans)",pe:"<b>Defensive driving</b> course = ___ (1×/5 yrs)",a:"−2 points",o:["−3 points","−5 points","−1 point"]},
+{p:"Excès de vitesse <b>1–14 mph</b>",pe:"Speeding <b>1–14 mph</b> over",a:"2 points",o:["4 points","5 points","1 point"]},
+{p:"Excès de vitesse <b>15–29 mph</b>",pe:"Speeding <b>15–29 mph</b> over",a:"4 points",o:["2 points","5 points","3 points"]},
+{p:"Excès de vitesse <b>30+ mph</b>",pe:"Speeding <b>30+ mph</b> over",a:"5 points",o:["4 points","8 points","6 points"]},
+{p:"<b>Tailgating</b> (coller)",pe:"<b>Tailgating</b> (following too closely)",a:"5 points",o:["2 points","3 points","4 points"]},
+{p:"Griller un <b>bus scolaire</b>",pe:"Passing a stopped <b>school bus</b>",a:"5 points",o:["8 points","3 points","2 points"]},
+{p:"<b>Délit de fuite</b> avec blessé",pe:"<b>Hit-and-run</b> with an injury",a:"8 points",o:["5 points","12 points","4 points"]},
+{p:"<b>Piéton</b> non respecté dans un crosswalk",pe:"Failing a <b>pedestrian</b> in a crosswalk",a:"$200 + 2 pts",o:["$100 + 1 pt","$500 + 5 pts","$50 + 0 pt"]},
+{p:"<b>Téléphone</b> en main, 1re offense",pe:"Handheld <b>phone</b>, 1st offense",a:"$200–400",o:["$100–200","$400–600","$50–100"]},
+{p:"L'examen : ___ questions, ___ pour réussir",pe:"The exam: ___ questions, ___ to pass",a:"50 Q · 80%",o:["40 Q · 75%","100 Q · 90%","50 Q · 50%"]},
+{p:"<b>Vision</b> minimale requise",pe:"Minimum <b>vision</b> required",a:"20/50",o:["20/20","20/100","20/40"]},
+{p:"<b>Accompagnateur</b> GDL : âge et ancienneté",pe:"GDL <b>supervisor</b>: age and experience",a:"21 ans · 3 ans de permis",o:["18 ans · 1 an","25 ans · 5 ans","21 ans · 1 an"]},
+{p:"Pratique supervisée si tu as <b>21 ans ou +</b>",pe:"Supervised practice if you're <b>21 or over</b>",a:"20 jours",o:["3 mois","6 mois","1 an"]},
+{p:"<b>Couvre-feu</b> GDL (moins de 21 ans)",pe:"GDL <b>curfew</b> (under 21)",a:"23h01 – 5h00",o:["minuit – 6h","22h – 7h","21h – 5h"]},
+{p:"Prévenir le MVC d'un changement d'<b>adresse</b> sous ___",pe:"Notify the MVC of an <b>address</b> change within ___",a:"1 semaine",o:["30 jours","60 jours","2 semaines"]},
+{p:"Prévenir le MVC d'un changement de <b>nom</b> sous ___",pe:"Notify the MVC of a <b>name</b> change within ___",a:"2 semaines",o:["1 semaine","1 mois","90 jours"]},
+{p:"<b>Nouveau résident</b> NJ : transférer son permis sous ___",pe:"<b>New NJ resident</b>: transfer your license within ___",a:"60 jours",o:["30 jours","90 jours","14 jours"]},
+{p:"Siège <b>dos à la route</b> jusqu'à ___",pe:"<b>Rear-facing</b> seat until ___",a:"2 ans & 30 lb",o:["1 an & 20 lb","3 ans & 40 lb","4 ans & 30 lb"]},
+{p:"<b>Booster</b> obligatoire jusqu'à ___",pe:"<b>Booster</b> required until ___",a:"8 ans ou 57 in",o:["6 ans ou 50 in","10 ans ou 60 in","5 ans ou 45 in"]},
+{p:"<b>Pneus cloutés</b> autorisés du ___",pe:"<b>Studded tires</b> allowed from ___",a:"15 nov au 1er avril",o:["1 déc au 1er mars","1 oct au 1er mai","jamais"]},
+{p:"Rapport de police obligatoire si dégâts > ___",pe:"Police report required if damage exceeds ___",a:"$500",o:["$1,000","$250","$2,500"]}
 ];
 
 /* ---------------- GRIMOIRE (antisèche des chiffres) ---------------- */
 const FACTS=[
-{g:'🅿️ Stationnement interdit',items:[["Borne incendie","10 ft"],["Crosswalk (intersection)","25 ft"],["Panneau STOP","50 ft"],["Passage à niveau","50 ft"],["Caserne pompiers (même côté)","20 ft"],["Caserne pompiers (en face)","75 ft"],["Créneau : distance au trottoir","≤ 6 in"]]},
-{g:'📏 Distances de conduite',items:[["Clignotant avant de tourner","≥ 100 ft"],["Codes : véhicule en face à","500 ft"],["Phares si visibilité <","500 ft"],["Phares : après coucher / avant lever du soleil","½ heure"],["Essuie-glaces en marche","= phares allumés"],["Suivi : par tranche de 10 mph","1 longueur"],["Pas de dépassement près d'une intersection","100 ft"],["Arrêt au passage à niveau","15–50 ft"],["Écart minimum vélo","4 ft"],["Scanner la route devant soi","12 s (≈ 1 block)"]]},
-{g:'🚌 Bus scolaire',items:[["Feux rouges clignotants : STOP à","≥ 25 ft"],["Les deux sens (route non séparée)","STOP"],["Autre côté d'un terre-plein","10 mph"],["Bus arrêté devant une école","10 mph"],["Griller un bus","5 pts + ≥ $100"]]},
-{g:'⚡ Vitesses par défaut',items:[["Zone scolaire","25 mph"],["Résidentiel / business","25 mph"],["Suburbain","35 mph"],["Rural non signalé","50 mph"],["Highways / interstates","55–65 mph"],["Zone de travaux / Safe Corridor","amendes ×2"],["Route mouillée","−5 à 10 mph"],["Neige tassée","vitesse ÷ 2"],["Verglas","au pas"],["Aquaplaning possible dès","35 mph"]]},
-{g:'🍺 Alcool',items:[["BAC 21 ans et +","0.08%"],["BAC moins de 21 ans","0.01%"],["BAC pro (CDL)","0.04%"],["Élimination","1 verre / heure"],["Équivalence","12 oz bière = 5 oz vin = 1.5 oz shot"],["1re offense DUI (0.08–0.10)","$250–400 · IDRC 12–48 h · ≤ 30 j · interlock"],["Refus du breath test","sanctions séparées"],["Ce qui dégrise","le temps, rien d'autre"]]},
-{g:'⚖️ Points & amendes',items:[["Suspension","12 pts"],["Surtaxe","6 pts / 3 ans"],["1 an sans infraction","−3 pts"],["Stage defensive driving (1×/5 ans)","−2 pts"],["Excès 1–14 / 15–29 / 30+","2 / 4 / 5 pts"],["Tailgating","5 pts"],["Reckless / careless","5 / 2 pts"],["Dépassement interdit","4 pts"],["Délit de fuite (blessé)","8 pts"],["Piéton non respecté","$200 + 2 pts"],["Téléphone 1re / 2e / 3e","$200–400 / 400–600 / 600–800 + 3 pts"],["Sans assurance","$300–1000 + 1 an"]]},
-{g:'🎓 GDL & MVC',items:[["Examen théorique","50 Q · 80%"],["Vision","20/50"],["Accompagnateur","21 ans + 3 ans de permis"],["Pratique : 21 ans et +","20 jours"],["Pratique : moins de 21 ans","3 mois"],["Special learner (16 ans)","6 mois"],["Probatoire","1 an"],["Couvre-feu GDL","23h01 – 5h00"],["Passagers GDL","dépendants + 1"],["Électronique GDL","zéro, même mains-libres"],["Adresse / nom / nouveau résident","1 sem · 2 sem · 60 j"]]},
-{g:'👶 Enfants & divers',items:[["Dos à la route","< 2 ans & < 30 lb"],["Booster","< 8 ans & < 57 in"],["Banquette arrière recommandée","< 13 ans"],["Conducteur responsable des passagers","< 18 ans"],["Pneus cloutés","15 nov – 1er avril"],["Rapport de police si dégâts","> $500"],["Véhicule lent (triangle orange)","≤ 25 mph"]]}
+{g:'🅿️ Stationnement interdit',ge:'🅿️ No parking within',items:[["Borne incendie","Fire hydrant","10 ft"],["Crosswalk (intersection)","Crosswalk (intersection)","25 ft"],["Panneau STOP","Stop sign","50 ft"],["Passage à niveau","Railroad crossing","50 ft"],["Caserne pompiers (même côté)","Fire station (same side)","20 ft"],["Caserne pompiers (en face)","Fire station (opposite side)","75 ft"],["Créneau : distance au trottoir","Parallel parking: distance to curb","≤ 6 in"]]},
+{g:'📏 Distances de conduite',ge:'📏 Driving distances',items:[["Clignotant avant de tourner","Signal before turning","≥ 100 ft"],["Codes : véhicule en face à","Dim high beams: oncoming within","500 ft"],["Phares si visibilité <","Headlights if visibility <","500 ft"],["Phares : après coucher / avant lever du soleil","Headlights: after sunset / before sunrise","½ heure","½ hour"],["Essuie-glaces en marche","Wipers on","= phares allumés","= headlights on"],["Suivi : par tranche de 10 mph","Following: per 10 mph","1 longueur","1 car length"],["Pas de dépassement près d'une intersection","No passing near an intersection","100 ft"],["Arrêt au passage à niveau","Stop at railroad crossing","15–50 ft"],["Écart minimum vélo","Min. gap passing a cyclist","4 ft"],["Scanner la route devant soi","Scan the road ahead","12 s (≈ 1 block)","12 s (≈ 1 block)"]]},
+{g:'🚌 Bus scolaire',ge:'🚌 School bus',items:[["Feux rouges clignotants : STOP à","Flashing red lights: stop at","≥ 25 ft"],["Les deux sens (route non séparée)","Both directions (undivided road)","STOP","STOP"],["Autre côté d'un terre-plein","Other side of a median","10 mph"],["Bus arrêté devant une école","Bus stopped in front of a school","10 mph"],["Griller un bus","Passing a stopped bus","5 pts + ≥ $100","5 pts + ≥ $100"]]},
+{g:'⚡ Vitesses par défaut',ge:'⚡ Default speeds',items:[["Zone scolaire","School zone","25 mph"],["Résidentiel / business","Residential / business","25 mph"],["Suburbain","Suburban","35 mph"],["Rural non signalé","Rural, unposted","50 mph"],["Highways / interstates","Highways / interstates","55–65 mph"],["Zone de travaux / Safe Corridor","Work zone / Safe Corridor","amendes ×2","fines ×2"],["Route mouillée","Wet road","−5 à 10 mph","−5 to 10 mph"],["Neige tassée","Packed snow","vitesse ÷ 2","speed ÷ 2"],["Verglas","Ice","au pas","crawl"],["Aquaplaning possible dès","Hydroplaning starts at","35 mph"]]},
+{g:'🍺 Alcool',ge:'🍺 Alcohol',items:[["BAC 21 ans et +","BAC 21 and over","0.08%"],["BAC moins de 21 ans","BAC under 21","0.01%"],["BAC pro (CDL)","BAC commercial (CDL)","0.04%"],["Élimination","Elimination","1 verre / heure","1 drink / hour"],["Équivalence","Equivalence","12 oz bière = 5 oz vin = 1.5 oz shot","12 oz beer = 5 oz wine = 1.5 oz shot"],["1re offense DUI (0.08–0.10)","1st DUI (0.08–0.10)","$250–400 · IDRC 12–48 h · ≤ 30 j · interlock","$250–400 · IDRC 12–48 h · ≤ 30 days · interlock"],["Refus du breath test","Refusing the breath test","sanctions séparées","separate penalties"],["Ce qui dégrise","What sobers you up","le temps, rien d'autre","time, nothing else"]]},
+{g:'⚖️ Points & amendes',ge:'⚖️ Points & fines',items:[["Suspension","Suspension","12 pts"],["Surtaxe","Surcharge","6 pts / 3 ans","6 pts / 3 yrs"],["1 an sans infraction","1 year, no violations","−3 pts"],["Stage defensive driving (1×/5 ans)","Defensive driving course (1×/5 yrs)","−2 pts"],["Excès 1–14 / 15–29 / 30+","Speeding 1–14 / 15–29 / 30+","2 / 4 / 5 pts"],["Tailgating","Tailgating","5 pts"],["Reckless / careless","Reckless / careless","5 / 2 pts"],["Dépassement interdit","Improper passing","4 pts"],["Délit de fuite (blessé)","Leaving an injury crash","8 pts"],["Piéton non respecté","Failing to yield to a pedestrian","$200 + 2 pts"],["Téléphone 1re / 2e / 3e","Handheld phone 1st / 2nd / 3rd","$200–400 / 400–600 / 600–800 + 3 pts"],["Sans assurance","No insurance","$300–1000 + 1 an","$300–1000 + 1 yr"]]},
+{g:'🎓 GDL & MVC',ge:'🎓 GDL & MVC',items:[["Examen théorique","Knowledge test","50 Q · 80%"],["Vision","Vision","20/50"],["Accompagnateur","Supervising driver","21 ans + 3 ans de permis","21 + 3 yrs licensed"],["Pratique : 21 ans et +","Practice: 21 and over","20 jours","20 days"],["Pratique : moins de 21 ans","Practice: under 21","3 mois","3 months"],["Special learner (16 ans)","Special learner (age 16)","6 mois","6 months"],["Probatoire","Probationary","1 an","1 year"],["Couvre-feu GDL","GDL curfew","23h01 – 5h00","11:01 p.m. – 5 a.m."],["Passagers GDL","GDL passengers","dépendants + 1","dependents + 1"],["Électronique GDL","GDL electronics","zéro, même mains-libres","none, even hands-free"],["Adresse / nom / nouveau résident","Address / name / new resident","1 sem · 2 sem · 60 j","1 wk · 2 wks · 60 days"]]},
+{g:'👶 Enfants & divers',ge:'👶 Kids & misc',items:[["Dos à la route","Rear-facing seat","< 2 ans & < 30 lb","< 2 yrs & < 30 lb"],["Booster","Booster","< 8 ans & < 57 in","< 8 yrs & < 57 in"],["Banquette arrière recommandée","Back seat recommended","< 13 ans","< 13 yrs"],["Conducteur responsable des passagers","Driver responsible for passengers","< 18 ans","< 18 yrs"],["Pneus cloutés","Studded tires","15 nov – 1er avril","Nov 15 – Apr 1"],["Rapport de police si dégâts","Police report if damage","> $500"],["Véhicule lent (triangle orange)","Slow vehicle (orange triangle)","≤ 25 mph"]]}
 ];
 
 /* ---------------- NIVEAUX ---------------- */
 const LEVELS=[
-{xp:0,t:'Piéton',ic:'🚶'},
-{xp:120,t:'Passager Anxieux',ic:'😰'},
-{xp:280,t:'Pilote de Caddie',ic:'🛒'},
-{xp:500,t:'Apprenti du Bitume',ic:'🛣️'},
-{xp:780,t:'Dompteur de Ronds-Points',ic:'🔄'},
-{xp:1120,t:'Chevalier du Jughandle',ic:'⚔️'},
-{xp:1550,t:'Maître des Distances',ic:'📏'},
-{xp:2050,t:'Seigneur du Parking',ic:'🅿️'},
-{xp:2650,t:'Boss du Turnpike',ic:'🛻'},
-{xp:3400,t:'LÉGENDE DU MVC',ic:'👑'}
+{xp:0,t:'Piéton',te:'Pedestrian',ic:'🚶'},
+{xp:120,t:'Passager Anxieux',te:'Anxious Passenger',ic:'😰'},
+{xp:280,t:'Pilote de Caddie',te:'Shopping-Cart Pilot',ic:'🛒'},
+{xp:500,t:'Apprenti du Bitume',te:'Asphalt Apprentice',ic:'🛣️'},
+{xp:780,t:'Dompteur de Ronds-Points',te:'Roundabout Tamer',ic:'🔄'},
+{xp:1120,t:'Chevalier du Jughandle',te:'Knight of the Jughandle',ic:'⚔️'},
+{xp:1550,t:'Maître des Distances',te:'Master of Distances',ic:'📏'},
+{xp:2050,t:'Seigneur du Parking',te:'Lord of Parking',ic:'🅿️'},
+{xp:2650,t:'Boss du Turnpike',te:'Turnpike Boss',ic:'🛻'},
+{xp:3400,t:'LÉGENDE DU MVC',te:'MVC LEGEND',ic:'👑'}
 ];
 
 /* ---------------- BADGES ---------------- */
 const BADGES=[
-{id:'first',ic:'🛞',n:'Premier Tour de Roue',d:'Ta première bonne réponse'},
-{id:'run1',ic:'✅',n:'Échauffé',d:'Terminer une mission'},
-{id:'combo5',ic:'🔥',n:'Combo ×5',d:'5 bonnes réponses d\'affilée'},
-{id:'combo10',ic:'🌋',n:'Combo ×10',d:'10 d\'affilée — intouchable'},
-{id:'perfect',ic:'💎',n:'Sans Faute',d:'Une mission 10/10'},
-{id:'boss1',ic:'🥊',n:'Premier K.O.',d:'Vaincre ton premier boss'},
-{id:'bossall',ic:'🏆',n:'Tombeur d\'Inspecteurs',d:'Vaincre les 8 boss'},
-{id:'blitz15',ic:'⚡',n:'Doigts de Foudre',d:'15+ au Blitz 60s'},
-{id:'blitz25',ic:'🤖',n:'Machine à Chiffres',d:'25+ au Blitz 60s'},
-{id:'q100',ic:'💯',n:'Centurion',d:'100 questions répondues'},
-{id:'q250',ic:'🏃',n:'Marathonien',d:'250 questions répondues'},
-{id:'errors',ic:'🧹',n:'Revanchard',d:'Corriger 10 anciennes erreurs'},
-{id:'exam',ic:'🎓',n:'REÇU !',d:'Réussir un examen blanc (≥ 40/50)'},
-{id:'exam45',ic:'🌟',n:'Excellence',d:'45+ sur 50 à l\'examen blanc'},
-{id:'daily3',ic:'📅',n:'Assidu',d:'Objectif quotidien 3 jours de suite'},
-{id:'bayonne',ic:'🗽',n:'PRÊT POUR BAYONNE',d:'Examen réussi + toutes les zones à 80%+'}
+{id:'first',ic:'🛞',n:'Premier Tour de Roue',ne:'First Turn of the Wheel',d:'Ta première bonne réponse',de:'Your first correct answer'},
+{id:'run1',ic:'✅',n:'Échauffé',ne:'Warmed Up',d:'Terminer une mission',de:'Finish a mission'},
+{id:'combo5',ic:'🔥',n:'Combo ×5',ne:'Combo ×5',d:'5 bonnes réponses d\'affilée',de:'5 correct answers in a row'},
+{id:'combo10',ic:'🌋',n:'Combo ×10',ne:'Combo ×10',d:'10 d\'affilée — intouchable',de:'10 in a row — untouchable'},
+{id:'perfect',ic:'💎',n:'Sans Faute',ne:'Flawless',d:'Une mission 10/10',de:'A 10/10 mission'},
+{id:'boss1',ic:'🥊',n:'Premier K.O.',ne:'First K.O.',d:'Vaincre ton premier boss',de:'Beat your first boss'},
+{id:'bossall',ic:'🏆',n:'Tombeur d\'Inspecteurs',ne:'Inspector Slayer',d:'Vaincre les 8 boss',de:'Beat all 8 bosses'},
+{id:'blitz15',ic:'⚡',n:'Doigts de Foudre',ne:'Lightning Fingers',d:'15+ au Blitz 60s',de:'15+ on the 60s Blitz'},
+{id:'blitz25',ic:'🤖',n:'Machine à Chiffres',ne:'Number Machine',d:'25+ au Blitz 60s',de:'25+ on the 60s Blitz'},
+{id:'q100',ic:'💯',n:'Centurion',ne:'Centurion',d:'100 questions répondues',de:'100 questions answered'},
+{id:'q250',ic:'🏃',n:'Marathonien',ne:'Marathoner',d:'250 questions répondues',de:'250 questions answered'},
+{id:'errors',ic:'🧹',n:'Revanchard',ne:'Comeback Kid',d:'Corriger 10 anciennes erreurs',de:'Fix 10 past mistakes'},
+{id:'exam',ic:'🎓',n:'REÇU !',ne:'PASSED!',d:'Réussir un examen blanc (≥ 40/50)',de:'Pass a mock exam (≥ 40/50)'},
+{id:'exam45',ic:'🌟',n:'Excellence',ne:'Excellence',d:'45+ sur 50 à l\'examen blanc',de:'45+ out of 50 on the mock exam'},
+{id:'daily3',ic:'📅',n:'Assidu',ne:'Consistent',d:'Objectif quotidien 3 jours de suite',de:'Daily goal 3 days in a row'},
+{id:'bayonne',ic:'🗽',n:'PRÊT POUR BAYONNE',ne:'READY FOR BAYONNE',d:'Examen réussi + toutes les zones à 80%+',de:'Exam passed + all zones at 80%+'}
 ];
 
 'use strict';
@@ -594,6 +597,7 @@ const defaults=()=>({
   dayStreak:0, lastGoalDate:'',
   badges:{},           // badgeId -> timestamp
   sound:true,
+  lang:'fr',            // 'fr' = français + mètres · 'en' = anglais + unités US
   examDate:'2026-07-23'
 });
 let S=load();
@@ -605,6 +609,195 @@ function load(){
   }catch(e){ return defaults(); }
 }
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------- langue & unités ---------- */
+// t('français','english') → renvoie la chaîne dans la langue active
+function t(fr,en){ return S.lang==='en' ? en : fr; }
+function applyLang(){
+  try{ document.documentElement.lang=(S.lang==='en'?'en':'fr'); }catch(e){}
+}
+// Convertit les unités impériales en métrique quand la langue est le français.
+// En anglais, on garde les unités officielles US (ft, mph, lb, in).
+function nfr(n){ // formate un nombre à la française (virgule, sans .0 inutile)
+  let s=(Math.round(n*10)/10).toString();
+  return S.lang==='en' ? s : s.replace('.',',');
+}
+function toMetric(s){
+  if(typeof s!=='string'||S.lang==='en') return s;
+  // Convertit les distances impériales (feet, inches) en métrique.
+  // Les mph et lb restent tels quels (unités natives de la conduite au NJ).
+  return s.replace(
+    /(\d+(?:[.,]\d+)?)(?:\s*(?:–|—|-|to|à)\s*(\d+(?:[.,]\d+)?))?\s*(feet|foot|ft|inches|inch|in)\b/gi,
+    (m,a,b,unit)=>{
+      const u=unit.toLowerCase();
+      const n1=parseFloat(a.replace(',','.'));
+      const n2=(b!=null)?parseFloat(b.replace(',','.')):null;
+      const rng=(f,suf)=> nfr(f(n1))+(n2!=null?'–'+nfr(f(n2)):'')+' '+suf;
+      if(u==='in'||u==='inch'||u==='inches')  return rng(v=>Math.round(v*2.54),'cm');
+      return rng(v=>v*0.3048,'m'); // feet / foot / ft
+    }
+  );
+}
+// U() : à passer sur toute chaîne contenant des unités avant affichage.
+function U(s){ return toMetric(s); }
+
+/* Accesseurs bilingues pour les données de jeu */
+function wn(w){ return t(w.n, w.ne||w.n); }               // nom de zone
+function wd(w){ return t(w.d, w.de||w.d); }               // description de zone
+function wboss(w){ return t(w.boss, w.bosse||w.boss); }   // nom du boss
+function bn(b){ return t(b.n, b.ne||b.n); }               // nom de badge
+function bd(b){ return t(b.d, b.de||b.d); }               // description de badge
+// Explication d'une question : française par défaut, anglaise via XEN si dispo.
+function qx(q){ return S.lang==='en' ? (XEN[q.q]||q.x) : q.x; }
+// Traduction anglaise des libellés d'options du Blitz qui sont en français.
+var DOPT={
+  "1 longueur de voiture":"1 car length","2 longueurs":"2 car lengths","3 longueurs":"3 car lengths","½ longueur":"½ car length",
+  "STOP complet":"Full STOP","divisée par 2":"halved","au pas":"crawl",
+  "1 heure":"1 hour","2 heures":"2 hours","30 min":"30 min","15 min":"15 min",
+  "21 ans · 3 ans de permis":"21 yrs · 3 yrs licensed","18 ans · 1 an":"18 yrs · 1 yr","25 ans · 5 ans":"25 yrs · 5 yrs","21 ans · 1 an":"21 yrs · 1 yr",
+  "20 jours":"20 days","3 mois":"3 months","6 mois":"6 months","1 an":"1 year","1 mois":"1 month","30 jours":"30 days","60 jours":"60 days","90 jours":"90 days","14 jours":"14 days","1 semaine":"1 week","2 semaines":"2 weeks",
+  "23h01 – 5h00":"11:01 p.m. – 5 a.m.","minuit – 6h":"midnight – 6 a.m.","22h – 7h":"10 p.m. – 7 a.m.","21h – 5h":"9 p.m. – 5 a.m.",
+  "2 ans & 30 lb":"2 yrs & 30 lb","1 an & 20 lb":"1 yr & 20 lb","3 ans & 40 lb":"3 yrs & 40 lb","4 ans & 30 lb":"4 yrs & 30 lb",
+  "8 ans ou 57 in":"8 yrs or 57 in","6 ans ou 50 in":"6 yrs or 50 in","10 ans ou 60 in":"10 yrs or 60 in","5 ans ou 45 in":"5 yrs or 45 in",
+  "15 nov au 1er avril":"Nov 15 – Apr 1","1 déc au 1er mars":"Dec 1 – Mar 1","1 oct au 1er mai":"Oct 1 – May 1","jamais":"never"
+};
+// Affichage d'une option de Blitz : anglais mappé, sinon conversion métrique.
+function dshow(o){ return S.lang==='en' ? U(DOPT[o]||o) : U(o); }
+// Affichage du prompt d'un drill (bilingue).
+function dp(d){ return t(d.p, d.pe||d.p); }
+// XEN : traductions anglaises des explications de questions (clé = texte anglais q).
+var XEN={};
+Object.assign(XEN,{
+  "What does this eight-sided sign mean?": "Red octagon = STOP. Come to a FULL stop before the line or crosswalk — even if the street is empty.",
+  "What does this downward-pointing triangle mean?": "Downward triangle = YIELD: slow down and give way. No mandatory stop if the way is clear.",
+  "This sideways pennant-shaped sign marks:": "The yellow pennant, planted on the LEFT side of the road = NO PASSING ZONE. Passing is prohibited.",
+  "Diamond-shaped signs are used to:": "Diamond = WARNING: hazard or change ahead (curve, narrowing, deer…). Yellow with black lettering.",
+  "A five-sided (pentagon) sign means:": "Pentagon = SCHOOL. School zone or crossing — 25 mph when children are present.",
+  "A round yellow sign with an X and the letters RR means:": "The only ROUND sign: it warns of a railroad crossing ahead. Get ready to slow down.",
+  "The white X-shaped crossbuck at railroad tracks means:": "The white crossbuck AT the crossing = yield to trains. Flashing red lights = mandatory STOP.",
+  "Orange signs, cones and barrels always indicate:": "ORANGE = construction. And in a work zone, fines are DOUBLED.",
+  "Blue road signs tell you about:": "BLUE = services (gas, food, lodging, hospital, rest area).",
+  "Green road signs tell you about:": "GREEN = guidance: directions, distances, exits. (BROWN = parks and recreation.)",
+  "A flashing red traffic light means:": "Flashing RED = stop sign: full stop, then go when the way is clear.",
+  "A flashing yellow traffic light means:": "Flashing YELLOW = caution, slow down, proceed. No mandatory stop.",
+  "A steady yellow light means:": "Steady YELLOW = the light is about to turn red: stop if you can do it safely. Never speed up.",
+  "A green arrow shown with a red light means:": "Green arrow = PROTECTED turn (oncoming traffic is stopped). Stay alert: pedestrians already crossing go first.",
+  "In New Jersey, turning right at a red light is:": "Right on red = OK in NJ: come to a FULL stop, yield to pedestrians and traffic, unless a 'NO TURN ON RED' sign is posted.",
+  "A solid yellow line on your side of the center line means:": "YELLOW = separates opposing directions; solid on your side = no passing. WHITE = lanes going the same way.",
+  "In NJ, the sign 'ALL TURNS FROM RIGHT LANE' means:": "New Jersey's famous JUGHANDLE: to turn LEFT, you exit RIGHT and the ramp loops you around. A classic exam trap.",
+  "Unless otherwise posted, the speed limit in a school zone is:": "School zone = 25 mph (when children are present, per the signs).",
+  "Unless posted, the limit in business and residential districts is:": "Residential and business districts = 25 mph by default.",
+  "Unless posted, the limit in suburban business and residential areas is:": "Suburban areas = 35 mph. Remember the staircase: 25 → 35 → 50 → 55/65.",
+  "On non-posted rural roadways, the speed limit is:": "Rural road with no sign = 50 mph.",
+  "The maximum speed on certain NJ state highways and interstates is:": "55 mph generally; some stretches (Turnpike, Parkway, interstates) are posted at 65 mph.",
+  "In construction zones and Safe Corridors, fines are:": "Work zones + Safe Corridors = fines DOUBLED.",
+  "The posted speed limit is the maximum allowed:": "The limit applies under IDEAL conditions. Rain, fog, traffic → you must drive SLOWER than the sign.",
+  "On a wet road, you should reduce your speed by about:": "Wet road = 5 to 10 mph off your normal speed.",
+  "On packed snow, you should:": "Packed snow = cut your speed in HALF.",
+  "On ice, you should:": "Ice = slow to a crawl. And never use cruise control on slippery surfaces.",
+  "At night, drive slow enough to:": "Never overdrive your headlights: you must be able to stop WITHIN the area your headlights light up.",
+  "Driving much slower than the flow of traffic:": "Too slow = dangerous and ticketable (impeding traffic). And keep right except to pass.",
+  "Hydroplaning — tires riding on a film of water — can begin at speeds as low as:": "As low as 35 mph in heavy rain. Above 55, it gets really dangerous.",
+  "When entering a highway from an acceleration lane, you should:": "Acceleration lane: match the SPEED of traffic, find your gap, and merge in.",
+  "You may not park within ___ of a fire hydrant.": "Fire hydrant = 10 ft (~3 m). The start of the magic staircase: 10 – 25 – 50.",
+  "You may not park within ___ of a crosswalk at an intersection.": "Crosswalk = 25 ft.",
+  "You may not park within ___ of a stop sign.": "Stop sign = 50 ft. The full staircase: hydrant 10, crosswalk 25, stop 50.",
+  "You may not park within ___ of a railroad crossing.": "Railroad crossing = 50 ft, same as the stop sign.",
+  "You may not park within ___ of a fire station driveway entrance.": "Fire station: 20 ft on the same side, 75 ft on the opposite side. THE nasty rule — learn it, it shows up.",
+  "You must signal at least ___ before making a turn.": "Signal at least 100 ft before turning.",
+  "Dim your high beams when an oncoming vehicle is within:": "High beams → low beams when a vehicle is within 500 ft.",
+  "Headlights must be on from:": "Headlights: from ½ hour after sunset to ½ hour before sunrise. Also required when visibility is under 500 ft.",
+  "New Jersey law requires headlights on whenever you use your:": "Wipers running (rain, snow, fog) = headlights ON. It's the law in NJ.",
+  "A good rule for following distance is to stay back:": "1 car length for every 10 mph → at 50 mph, 5 lengths. Bad weather: even more.",
+  "You must stop at least ___ from a school bus with flashing red lights.": "School bus, red lights = STOP at least 25 ft away — in BOTH directions on an undivided road.",
+  "If a school bus has stopped directly in front of a school to pick up or let off children, you may:": "Bus stopped IN FRONT of the school = you may pass at 10 mph max. Same on the other side of a divided road: 10 mph.",
+  "When required to stop at a railroad crossing, stop within:": "Stop between 15 and 50 ft from the tracks. Never closer, never on them.",
+  "After passing a vehicle, return to your lane when:": "Move back over when you can see BOTH of its headlights in your rearview mirror.",
+  "You may not pass another vehicle within ___ of an intersection or railroad crossing.": "No passing within 100 ft of an intersection or railroad crossing.",
+  "When parallel parking, your wheels must be within ___ of the curb.": "A good parallel park = wheels within 6 inches (15 cm) of the curb.",
+  "Under NJ's Safe Passing Law, when passing a cyclist you must:": "2022 law: change lanes if possible, otherwise leave at least 4 ft of space — can't? Slow to 25 mph and be ready to stop.",
+  "In NJ, a driver 21 or older is legally under the influence at a BAC of:": "21 and over: 0.08%. But you can be convicted BELOW that if your driving is visibly impaired.",
+  "For drivers under 21, the BAC limit is:": "Under 21 = 0.01%: the slightest trace is enough. Zero tolerance.",
+  "For commercial (CDL) drivers, the BAC limit is:": "Commercial drivers = 0.04%. The series to remember: 0.01 / 0.04 / 0.08.",
+  "The only thing that removes alcohol from your body is:": "Only TIME sobers you up. Coffee, cold shower, exercise = myths. You just get a wet, wide-awake drunk.",
+  "The body gets rid of about one drink per:": "About 1 drink per HOUR. 4 drinks = at least 4 hours before getting behind the wheel.",
+  "Which of these contains the same amount of alcohol?": "12 oz of beer = 5 oz of wine = 1.5 oz of liquor (a shot). A 'drink' is a drink, whatever the beverage.",
+  "The FIRST ability affected by alcohol is:": "JUDGMENT goes first — the very thing that should tell you not to drive. Sneaky.",
+  "Alcohol is classified as a:": "A depressant: reflexes, vision, coordination, judgment — everything slows down.",
+  "NJ's implied consent law means that by driving here, you have agreed to:": "Driving in NJ = you've ALREADY consented to a breath test. Refusing costs you dearly.",
+  "If you refuse to take a breath test, you face:": "Refusing doesn't save you: separate penalties (suspension, interlock, fines), often as heavy as the DUI itself.",
+  "Open containers of alcohol in the passenger area of a vehicle are:": "An open container = prohibited for EVERYONE aboard. Its place: the trunk.",
+  "A first DUI conviction (BAC 0.08–0.10%) includes:": "First conviction: $250–$400, 12–48 hours at the IDRC, up to 30 days in jail, ignition interlock device.",
+  "Driving under the influence of drugs — including some prescription or over-the-counter medicines:": "Sleep aids, antihistamines, cannabis, etc. = DUI too. Read the labels on your meds.",
+  "A driver under 21 caught with any detectable alcohol (0.01%+) faces:": "Under 21: 30–90 day suspension + 15–30 days community service + IDRC program.",
+  "The best way to avoid driving under the influence is to:": "The plan is decided BEFORE you drink: sober driver, Uber, couch. A plan, not a gamble.",
+  "Your license is suspended when you accumulate ___ points.": "12 points = suspension. The fatal counter.",
+  "You pay an annual insurance surcharge if you get ___ points within 3 years.": "6 points in 3 years = annual surcharge ($150 + $25 per point above 6).",
+  "One full year with no violations or suspensions removes:": "1 year with no violation or suspension = −3 points.",
+  "Completing a defensive driving course removes:": "A 'defensive driving' course = −2 points, once every 5 years. (Driver Improvement Program = −3, every 2 years.)",
+  "Speeding 1–14 mph over the limit costs:": "Speeding scale: 1–14 mph → 2 pts · 15–29 → 4 pts · 30+ → 5 pts.",
+  "Speeding 15–29 mph over the limit costs:": "15–29 mph over = 4 points.",
+  "Speeding 30 mph or more over the limit costs:": "30 mph or more = 5 points. And probably a court summons.",
+  "Tailgating (following too closely) costs:": "Tailgating the car ahead = 5 points. As much as reckless driving.",
+  "Reckless driving costs ___ ; careless driving costs ___.": "Reckless (deliberate disregard for danger) = 5 pts. Careless (negligence) = 2 pts.",
+  "Improper passing costs:": "Improper passing = 4 points.",
+  "Passing a stopped school bus costs:": "Blowing past a school bus = 5 points + a fine of at least $100 (+ possible community service).",
+  "Leaving the scene of a crash where someone was injured costs:": "Hit-and-run with an injury = 8 points + license suspension. The top of the usual scale.",
+  "Failing to stop for a pedestrian in a crosswalk costs:": "Failing a pedestrian = $200 + 2 points (+ possible 15 days community service). In NJ, you STOP for pedestrians.",
+  "Using a handheld phone while driving — the first offense fine is:": "Handheld phone: 1st time $200–$400 · 2nd $400–$600 · 3rd $600–$800 + 3 points + possible 90-day suspension.",
+  "A third handheld-phone offense (within 10 years) adds:": "3rd offense: $600–$800 + 3 POINTS + possible 90-day suspension. Hands-free exists — use it.",
+  "Driving without insurance (first offense) brings:": "No insurance: $300–$1,000 + community service + 1 YEAR suspension. One of the heaviest penalties in the book.",
+  "Seat belts in NJ: the driver is responsible for buckling up all passengers:": "The driver is responsible for all passengers under 18. Seat belts = primary offense: you can be pulled over just for that.",
+  "When a pedestrian is in a marked crosswalk, NJ drivers must:": "Marked crosswalk = full STOP as long as the pedestrian is in it. Unmarked crossing = yield the right-of-way.",
+  "A person with a white cane or a guide dog:": "White cane / guide dog = ABSOLUTE right-of-way, everywhere, always.",
+  "Two vehicles reach a four-way stop at the same time. Who goes first?": "Arriving at the same time = the driver on the RIGHT goes first.",
+  "When turning left, you must yield to:": "Turning left = yield to oncoming traffic AND pedestrians. The turn signal gives you no right-of-way.",
+  "When entering a road from a driveway or private road, you must:": "Pulling out of a parking lot or driveway = you yield to EVERYONE, sidewalk included.",
+  "When an emergency vehicle approaches with lights and siren, you must:": "Pull RIGHT and STOP. Never stop in the middle of an intersection — clear it first, then pull over.",
+  "In NJ, when a bus signals to re-enter traffic from a stop, you must:": "A bus signaling to pull back out = let it go. It's the law in New Jersey.",
+  "When entering a roundabout, you must:": "Roundabout: yield to those already IN it. Traffic flows counterclockwise.",
+  "A motorcycle is entitled to:": "A motorcycle = a FULL lane. Never share its lane.",
+  "If you cannot see a truck driver in the truck's side mirror:": "No mirror visible = you're in the No-Zone (blind spots front, sides, rear). Get out of it fast.",
+  "Trucks making a right turn often:": "A truck turning right swings wide to the left first. NEVER squeeze in on its right at that moment.",
+  "Before turning right, you should check for:": "The 'right hook' is the classic cyclist crash: check your RIGHT blind spot before turning.",
+  "An orange triangle on the back of a vehicle means it:": "Orange triangle = slow-moving vehicle (≤ 25 mph): tractors, farm equipment. Patience and a clean pass.",
+  "When approaching a horse and rider, you should:": "A horse is an unpredictable animal: slow down, give wide berth, NO honking.",
+  "When turning left onto a road with multiple lanes, enter:": "Turn into the lane CLOSEST to your direction, then change lanes afterward if needed.",
+  "If a deer suddenly appears in front of your car, you should:": "Brake HARD, don't swerve: the swerve (into a tree, into oncoming traffic) kills more than the animal.",
+  "If the rear of your car starts to skid, you should:": "Skid: ease off the gas, no hard braking, steer INTO the skid (where you want to go).",
+  "If your brakes fail, you should:": "Dead brakes: pump the pedal, downshift, apply the parking brake GRADUALLY. Engine off = no power steering.",
+  "If a tire blows out, you should:": "Blowout: grip the wheel FIRMLY, decelerate gently, brake lightly once the car is stable.",
+  "Your car stalls on railroad tracks and a train is approaching. You should:": "RUN TOWARD the train (at an angle, away from the tracks): debris flies the other way. Counterintuitive = loved on the exam.",
+  "If your wheels drift off the pavement onto the shoulder, you should:": "Wheels on the shoulder: SLOW DOWN first, then ease back on gently. Jerking the wheel = rollover.",
+  "If your car starts to hydroplane, you should:": "Hydroplaning: ease off the gas, keep the wheel straight, no hard braking — wait for the tires to grip again.",
+  "Which road surfaces freeze FIRST?": "BRIDGES freeze first: cold passes over AND under them.",
+  "Blinded by oncoming high beams at night? Look:": "Guide off the RIGHT edge of the road. Never stare at oncoming headlights.",
+  "Highway hypnosis is best prevented by:": "Beat highway hypnosis by keeping your eyes moving: mirrors, signs, scenery — and take breaks.",
+  "The only real cure for drowsiness while driving is:": "Fatigue = SLEEP. Everything else just delays the microsleep by a few minutes.",
+  "If you miss your exit on a highway, you should:": "NEVER back up or make a U-turn on a highway. Next exit, period.",
+  "If your vehicle breaks down on a highway, you should:": "Off the road, hazards on, hood raised = the universal distress signal. And stay FAR from traffic.",
+  "Carbon monoxide is dangerous because it is:": "CO can't be seen or smelled. Never run an engine in a closed garage; keep the exhaust clear (snow!).",
+  "You must report a crash to the police when:": "Injury, death, OR damage over $500 = mandatory report. In practice: always call.",
+  "Before driving in winter, you must:": "Ice flying off the roof = fines (and up to $1,000+ if it causes damage). Clear it ALL off.",
+  "In city driving, you should scan the road about ___ ahead.": "Look about 12 seconds ahead: ≈ 1 city block in town, ≈ ¼ mile on the highway.",
+  "The NJ knowledge test has ___ questions and requires ___ to pass.": "50 questions, 80% = 40 correct answers. You get 10 wrong — the margin exists, build it here.",
+  "The minimum vision requirement for a NJ license is:": "Vision 20/50 minimum (glasses/contacts OK → 'corrective lenses' noted on the license).",
+  "A GDL supervising driver must be:": "Supervisor: at least 21 years old AND 3 years licensed, seated up FRONT.",
+  "With an examination permit, a driver aged 21+ must practice supervised driving for at least:": "21 and over: 20 days of supervised practice before the road test. (This is probably you!)",
+  "With an examination permit, a driver under 21 must practice for at least:": "Under 21: 3 months. And the 'special learner permit' (age 16): 6 months.",
+  "GDL permit and probationary drivers under 21 may NOT drive between:": "GDL curfew: 11:01 p.m. → 5:00 a.m. Work/religious exceptions with proof.",
+  "Besides dependents, a GDL driver may carry:": "Parent/guardian + dependents + ONLY 1 additional passenger.",
+  "GDL holders under 21 must display on their vehicle:": "Red decals ($4 a pair) on BOTH license plates. Required for GDL drivers under 21.",
+  "For GDL drivers, cell phones and electronic devices are:": "GDL = ZERO electronics, even hands-free. (Regular drivers: hands-free only.)",
+  "The probationary license phase (unsupervised, with restrictions) lasts:": "1 year of 'probationary license' before the basic license.",
+  "After moving, you must notify the MVC of your address change within:": "Address: 1 WEEK. Yes, one week. Absurd, and yet it's on the test.",
+  "You must report a legal name change to the MVC within:": "Name change = 2 weeks. (Address 1 week, name 2 weeks — in that order.)",
+  "New NJ residents must transfer their out-of-state license within:": "New resident: 60 days to transfer your license and registration.",
+  "A child under age 2 and under 30 pounds must ride in:": "Under 2 AND under 30 lb = rear-facing, 5-point harness, in the BACK seat.",
+  "A child under age 8 and under 57 inches tall must use:": "Under 8 and under 57 in (1.45 m) = booster in the back. And under 13: back seat recommended.",
+  "Studded snow tires are legal in New Jersey only between:": "Studded tires: November 15 → April 1. The calendar question that surprises everyone.",
+  "In New Jersey, driving is legally considered:": "'Driving is a privilege, not a right' — THE iconic line from the manual. It comes up regularly."
+});
 
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function touchDaily(){
@@ -692,7 +885,7 @@ function gainXp(n,ev){
   if(after>before){
     const L=LEVELS[after];
     SFX.lvl(); confetti(140);
-    showOverlay(L.ic,'NIVEAU '+(after+1),'Tu es maintenant <b>'+esc(L.t)+'</b> !');
+    showOverlay(L.ic,t('NIVEAU ','LEVEL ')+(after+1),t('Tu es maintenant <b>'+esc(t(L.t,L.te))+'</b> !','You are now <b>'+esc(t(L.t,L.te))+'</b>!'));
   }
   save(); renderHud();
 }
@@ -701,7 +894,7 @@ function award(id){
   const b=BADGES.find(x=>x.id===id); if(!b) return;
   S.badges[id]=Date.now(); save();
   SFX.win(); confetti(80);
-  toast(b.ic+' Badge débloqué : <b>'+esc(b.n)+'</b>');
+  toast(b.ic+' '+t('Badge débloqué : <b>'+esc(bn(b))+'</b>','Badge unlocked: <b>'+esc(bn(b))+'</b>'));
 }
 function checkBadges(){
   if(S.totalOk>=1) award('first');
@@ -761,7 +954,7 @@ function recordAnswer(qi,good){
       const y=new Date(Date.now()-864e5), ys=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
       S.dayStreak=(S.lastGoalDate===ys)?S.dayStreak+1:1;
       S.lastGoalDate=todayStr();
-      gainXp(50); toast('🎯 Objectif du jour atteint ! <b>+50 XP</b> · Série : '+S.dayStreak+' j');
+      gainXp(50); toast(t('🎯 Objectif du jour atteint ! <b>+50 XP</b> · Série : '+S.dayStreak+' j','🎯 Daily goal reached! <b>+50 XP</b> · Streak: '+S.dayStreak+' d'));
     }
   } else S.totalKo++;
   save();
@@ -781,14 +974,14 @@ function renderHud(){
   let chip='';
   if(dj!==null){
     if(dj>1) chip='<div class="jchip'+(dj<=2?' hot':'')+'">J−'+dj+' · BAYONNE</div>';
-    else if(dj===1) chip='<div class="jchip hot">DEMAIN · BAYONNE</div>';
-    else if(dj===0) chip='<div class="jchip hot">JOUR J 🍀</div>';
-    else chip='<div class="jchip">EXAM PASSÉ ?</div>';
+    else if(dj===1) chip='<div class="jchip hot">'+t('DEMAIN · BAYONNE','TOMORROW · BAYONNE')+'</div>';
+    else if(dj===0) chip='<div class="jchip hot">'+t('JOUR J 🍀','THE DAY 🍀')+'</div>';
+    else chip='<div class="jchip">'+t('EXAM PASSÉ ?','EXAM DONE?')+'</div>';
   }
   $('#hud').innerHTML='<div class="hud-in">'
-   +'<div class="lvl-shield" title="Niveau">'+L.num+'</div>'
+   +'<div class="lvl-shield" title="'+t('Niveau','Level')+'">'+L.num+'</div>'
    +'<div class="hud-mid">'
-     +'<div class="hud-title">'+L.cur.ic+' '+esc(L.cur.t)+' · '+S.xp+' XP</div>'
+     +'<div class="hud-title">'+L.cur.ic+' '+esc(t(L.cur.t,L.cur.te))+' · '+S.xp+' XP</div>'
      +'<div class="xp-lane"><div class="xp-fill" style="width:'+L.pct+'%"></div><div class="xp-dash"></div></div>'
    +'</div>'
    +'<div class="hud-right">'+chip
@@ -817,7 +1010,7 @@ function signSvg(t){
 /* ---------- overlay ---------- */
 function showOverlay(ic,title,html){
   $('#overlay').innerHTML='<div class="ov-card"><span class="oic">'+ic+'</span><h2>'+esc(title)+'</h2><p>'+html+'</p>'
-   +'<button class="btn btn-bus" style="justify-content:center" onclick="G.hideOverlay()">CONTINUER</button></div>';
+   +'<button class="btn btn-bus" style="justify-content:center" onclick="G.hideOverlay()">'+t('CONTINUER','CONTINUE')+'</button></div>';
   $('#overlay').classList.add('show');
 }
 
@@ -851,43 +1044,43 @@ function scrHome(){
   let djLine='';
   if(dj!==null&&dj>=0){
     djLine='<p class="small" style="text-align:center;margin-bottom:14px">'
-      +(dj===0?'C\'est <b style="color:var(--bus)">aujourd\'hui</b>. Respire. Tu sais tout. 🍀'
-      :dj===1?'Examen <b style="color:var(--stop)">demain</b> au MVC de Bayonne. Dernière ligne droite !'
-      :'Examen dans <b style="color:var(--bus)">'+dj+' jours</b> au MVC de Bayonne, NJ.')+'</p>';
+      +(dj===0?t('C\'est <b style="color:var(--bus)">aujourd\'hui</b>. Respire. Tu sais tout. 🍀','It\'s <b style="color:var(--bus)">today</b>. Breathe. You\'ve got this. 🍀')
+      :dj===1?t('Examen <b style="color:var(--stop)">demain</b> au MVC de Bayonne. Dernière ligne droite !','Exam <b style="color:var(--stop)">tomorrow</b> at the Bayonne MVC. Home stretch!')
+      :t('Examen dans <b style="color:var(--bus)">'+dj+' jours</b> au MVC de Bayonne, NJ.','Exam in <b style="color:var(--bus)">'+dj+' days</b> at the Bayonne MVC, NJ.'))+'</p>';
   }
   return '<h1 class="logo">ROUTE 440</h1>'
-   +'<div class="logo-sub">NJ Permit Quest · Opération Bayonne</div>'
+   +'<div class="logo-sub">NJ Permit Quest · '+t('Opération Bayonne','Operation Bayonne')+'</div>'
    +djLine
    +'<div class="menu">'
-   +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>Campagne<span class="sub">8 zones, 8 boss — la carte du New Jersey</span></span></button>'
-   +'<button class="btn btn-bus" onclick="G.go(\'blitz\',{phase:\'intro\'})"><span class="ic">⚡</span><span>Blitz 60s<span class="sub">Les Petites Règles™ — chiffres en rafale · record : '+S.blitzBest+'</span></span></button>'
-   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span><span>Examen blanc<span class="sub">50 questions, 80% pour réussir — comme au MVC'+(S.examBest?' · record : '+S.examBest+'/50':'')+'</span></span></button>'
-   +'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span><span>Boîte à erreurs<span class="sub">'+(errN?errN+' question'+(errN>1?'s':'')+' à venger':'Aucune erreur en attente — propre !')+'</span></span></button>'
+   +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>'+t('Campagne','Campaign')+'<span class="sub">'+t('8 zones, 8 boss — la carte du New Jersey','8 zones, 8 bosses — the map of New Jersey')+'</span></span></button>'
+   +'<button class="btn btn-bus" onclick="G.go(\'blitz\',{phase:\'intro\'})"><span class="ic">⚡</span><span>Blitz 60s<span class="sub">'+t('Les Petites Règles™ — chiffres en rafale · record : ','The Little Rules™ — numbers in a rush · best: ')+S.blitzBest+'</span></span></button>'
+   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span><span>'+t('Examen blanc','Mock exam')+'<span class="sub">'+t('50 questions, 80% pour réussir — comme au MVC','50 questions, 80% to pass — just like the MVC')+(S.examBest?t(' · record : ',' · best: ')+S.examBest+'/50':'')+'</span></span></button>'
+   +'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
    +'<div class="btnrow">'
-   +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>Grimoire</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'badges\')"><span class="ic">🏅</span>Trophées</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'settings\')" aria-label="Réglages"><span class="ic">⚙️</span></button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>'+t('Grimoire','Grimoire')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'badges\')"><span class="ic">🏅</span>'+t('Trophées','Trophies')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'settings\')" aria-label="'+t('Réglages','Settings')+'"><span class="ic">⚙️</span></button>'
    +'</div></div>'
    +'<hr class="centerline">'
    +'<div class="statrow">'
-   +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo)+'</div><div class="l">réponses</div></div>'
-   +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo?Math.round(S.totalOk/(S.totalOk+S.totalKo)*100):0)+'%</div><div class="l">précision</div></div>'
-   +'<div class="stat"><div class="v">'+Object.keys(S.bossWins).length+'/8</div><div class="l">boss K.O.</div></div>'
+   +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo)+'</div><div class="l">'+t('réponses','answers')+'</div></div>'
+   +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo?Math.round(S.totalOk/(S.totalOk+S.totalKo)*100):0)+'%</div><div class="l">'+t('précision','accuracy')+'</div></div>'
+   +'<div class="stat"><div class="v">'+Object.keys(S.bossWins).length+'/8</div><div class="l">'+t('boss K.O.','bosses K.O.')+'</div></div>'
    +'</div>'
-   +'<p class="footnote">Basé sur le New Jersey Driver Manual. Entraînement non officiel — vérifie les règles sur <a href="https://www.njmvc.gov" target="_blank" rel="noopener">njmvc.gov</a>.<br>Astuce : le test au MVC existe en plusieurs langues, dont le français — demande au guichet.</p>';
+   +'<p class="footnote">'+t('Basé sur le New Jersey Driver Manual. Entraînement non officiel — vérifie les règles sur ','Based on the New Jersey Driver Manual. Unofficial practice — verify the rules at ')+'<a href="https://www.njmvc.gov" target="_blank" rel="noopener">njmvc.gov</a>.<br>'+t('Astuce : le test au MVC existe en plusieurs langues, dont le français — demande au guichet.','Tip: the MVC test is available in several languages, including French — ask at the counter.')+'</p>';
 }
 
 /* ---------- carte des mondes ---------- */
 function scrWorlds(){
-  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">← QG</button><div class="scrtitle">Carte du NJ</div></div><div class="worlds">';
+  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Carte du NJ','NJ Map')+'</div></div><div class="worlds">';
   WORLDS.forEach(w=>{
     const m=mastery(w.id), beaten=S.bossWins[w.id];
     html+='<button class="wcard'+(beaten?' done':'')+'" onclick="G.openWorld(\''+w.id+'\')">'
      +(beaten?'<span class="beaten">👑</span>':'')
      +'<span class="ic">'+w.icon+'</span>'
-     +'<span class="nm">'+esc(w.n)+'</span>'
+     +'<span class="nm">'+esc(wn(w))+'</span>'
      +'<span class="mastery"><span class="mring" style="--p:'+m+'"><i>'+m+'</i></span>'
-     +'<span class="small" style="font-size:11px">'+(m>=80?'Prêt pour le boss !':m>=40?'En progrès…':'À explorer')+'</span></span>'
+     +'<span class="small" style="font-size:11px">'+(m>=80?t('Prêt pour le boss !','Boss-ready!'):m>=40?t('En progrès…','In progress…'):t('À explorer','Unexplored'))+'</span></span>'
      +'</button>';
   });
   return html+'</div>';
@@ -895,10 +1088,10 @@ function scrWorlds(){
 function openWorld(wid){
   const w=WORLDS.find(x=>x.id===wid);
   const m=mastery(wid);
-  showOverlay(w.icon, w.n,
-    esc(w.d)+'<br><br>Maîtrise : <b>'+m+'%</b>'
+  showOverlay(w.icon, wn(w),
+    esc(wd(w))+'<br><br>'+t('Maîtrise','Mastery')+' : <b>'+m+'%</b>'
     +'<span style="display:flex;gap:8px;margin-top:16px">'
-    +'<button class="btn btn-exit" style="justify-content:center;flex:1" onclick="G.startRun(\''+wid+'\')">MISSION ×10</button>'
+    +'<button class="btn btn-exit" style="justify-content:center;flex:1" onclick="G.startRun(\''+wid+'\')">'+t('MISSION ×10','MISSION ×10')+'</button>'
     +'<button class="btn btn-stop" style="justify-content:center;flex:1" onclick="G.startBoss(\''+wid+'\')">'+w.bossIc+' BOSS</button>'
     +'</span>');
 }
@@ -924,7 +1117,7 @@ function scrRun(){
    +'<div class="qbar"><i style="width:'+(c.i/c.qs.length*100)+'%"></i></div>'
    +'<div class="qcard" id="qcard">'
    +(q.s?'<div class="qsign">'+signSvg(q.s)+'</div>':'')
-   +'<div class="qtext">'+esc(q.q)+'</div><div class="opts">';
+   +'<div class="qtext">'+esc(U(q.q))+'</div><div class="opts">';
   c.order.forEach((optIdx,pos)=>{
     let cls='opt', dis=c.answered?' disabled':'';
     if(c.answered){
@@ -933,14 +1126,14 @@ function scrRun(){
       else if(pos===c.picked) cls+=' sel-ko';
       else cls+=' fade';
     }
-    html+='<button class="'+cls+'"'+dis+' onclick="G.answer('+pos+',event)"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(q.a[optIdx])+'</span></button>';
+    html+='<button class="'+cls+'"'+dis+' onclick="G.answer('+pos+',event)"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(U(q.a[optIdx]))+'</span></button>';
   });
   html+='</div>';
   if(c.answered){
     const good=c.order[c.picked]===0;
-    html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?['✅ EXACT !','✅ NICKEL !','✅ PROPRE !','✅ BOOM !'][c.i%4]:'❌ RATÉ !')+'</div>'
-     +'<div class="exp"><span class="tag">📌 LA RÈGLE</span>'+q.x+'</div>'
-     +'<div class="nextbar"><button class="btn btn-bus" style="justify-content:center" onclick="G.next()" id="nextbtn">'+(c.i+1<c.qs.length?'SUIVANT →':'RÉSULTAT 🏁')+'</button></div>';
+    html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?t(['✅ EXACT !','✅ NICKEL !','✅ PROPRE !','✅ BOOM !'][c.i%4],['✅ EXACT!','✅ NAILED IT!','✅ CLEAN!','✅ BOOM!'][c.i%4]):t('❌ RATÉ !','❌ MISSED!'))+'</div>'
+     +'<div class="exp"><span class="tag">'+t('📌 LA RÈGLE','📌 THE RULE')+'</span>'+U(qx(q))+'</div>'
+     +'<div class="nextbar"><button class="btn btn-bus" style="justify-content:center" onclick="G.next()" id="nextbtn">'+(c.i+1<c.qs.length?t('SUIVANT →','NEXT →'):t('RÉSULTAT 🏁','RESULT 🏁'))+'</button></div>';
   }
   return html+'</div>';
 }
@@ -983,15 +1176,15 @@ function endRun(){
   const m=c.wid?mastery(c.wid):null;
   $('#app').innerHTML='<div class="screen">'
    +'<div class="panel" style="text-align:center">'
-   +'<div class="eyebrow">MISSION TERMINÉE'+(w?' — '+esc(w.n):'')+'</div>'
+   +'<div class="eyebrow">'+t('MISSION TERMINÉE','MISSION COMPLETE')+(w?' — '+esc(wn(w)):'')+'</div>'
    +'<div class="stars">'+'⭐'.repeat(stars)+'<span class="off">'+'⭐'.repeat(3-stars)+'</span></div>'
    +'<div class="bigscore '+(c.ok>=8?'ok':'ko')+'">'+c.ok+'/'+c.qs.length+'</div>'
-   +(m!==null?'<p class="small">Maîtrise de la zone : <b style="color:var(--exit)">'+m+'%</b>'+(m>=80?' — le boss t\'attend ! '+(w?w.bossIc:''):'')+'</p>':'')
-   +(bonus?'<p class="small">Bonus étoiles : <b style="color:var(--bus)">+'+bonus+' XP</b></p>':'')
+   +(m!==null?'<p class="small">'+t('Maîtrise de la zone','Zone mastery')+' : <b style="color:var(--exit)">'+m+'%</b>'+(m>=80?t(' — le boss t\'attend ! ',' — the boss awaits! ')+(w?w.bossIc:''):'')+'</p>':'')
+   +(bonus?'<p class="small">'+t('Bonus étoiles','Star bonus')+' : <b style="color:var(--bus)">+'+bonus+' XP</b></p>':'')
    +'<div class="menu" style="margin-top:16px">'
-   +(c.wid?'<button class="btn btn-exit" onclick="G.startRun(\''+c.wid+'\')"><span class="ic">🔁</span>ENCORE ×10</button>':'')
-   +(c.wid&&m>=80&&!S.bossWins[c.wid]?'<button class="btn btn-stop" onclick="G.startBoss(\''+c.wid+'\')"><span class="ic">'+(w?w.bossIc:'👊')+'</span>DÉFIER LE BOSS</button>':'')
-   +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>Carte</button>'
+   +(c.wid?'<button class="btn btn-exit" onclick="G.startRun(\''+c.wid+'\')"><span class="ic">🔁</span>'+t('ENCORE ×10','AGAIN ×10')+'</button>':'')
+   +(c.wid&&m>=80&&!S.bossWins[c.wid]?'<button class="btn btn-stop" onclick="G.startBoss(\''+c.wid+'\')"><span class="ic">'+(w?w.bossIc:'👊')+'</span>'+t('DÉFIER LE BOSS','CHALLENGE THE BOSS')+'</button>':'')
+   +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte','Map')+'</button>'
    +'</div></div></div>';
   renderHud();
 }
@@ -999,7 +1192,7 @@ function endRun(){
 /* ---------- boîte à erreurs ---------- */
 function startErrors(){
   const pool=errorPool();
-  if(!pool.length){ toast('🧹 Rien à venger — la boîte à erreurs est vide !'); return; }
+  if(!pool.length){ toast(t('🧹 Rien à venger — la boîte à erreurs est vide !','🧹 Nothing to avenge — the mistake box is empty!')); return; }
   const qs=shuffle(pool).slice(0,10);
   go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
 }
@@ -1017,14 +1210,14 @@ function scrBoss(){
   const q=c.qs[c.i%c.qs.length].q;
   if(!c.order) c.order=optOrder(q);
   let html='<div class="bosshead"><div class="bossface" id="bossface">'+w.bossIc+'</div>'
-   +'<div style="flex:1"><div class="bossname">'+esc(w.boss)+'</div>'
+   +'<div style="flex:1"><div class="bossname">'+esc(wboss(w))+'</div>'
    +'<div class="hpbar" style="margin-top:7px"><div class="hpfill" style="width:'+c.hp+'%"></div><div class="hplabel">'+c.hp+'/100</div></div>'
    +'<div class="hearts">'+'❤️'.repeat(c.hearts)+'<span class="off">'+'🖤'.repeat(3-c.hearts)+'</span></div>'
    +'</div></div>'
-   +(c.combo>=3?'<div class="combo" style="margin-bottom:8px"><span class="f">🔥</span>COMBO — dégâts ×'+(1+Math.min(c.combo,5))+'</div>':'')
+   +(c.combo>=3?'<div class="combo" style="margin-bottom:8px"><span class="f">🔥</span>'+t('COMBO — dégâts ×','COMBO — damage ×')+(1+Math.min(c.combo,5))+'</div>':'')
    +'<div class="qcard">'
    +(q.s?'<div class="qsign">'+signSvg(q.s)+'</div>':'')
-   +'<div class="qtext">'+esc(q.q)+'</div><div class="opts">';
+   +'<div class="qtext">'+esc(U(q.q))+'</div><div class="opts">';
   c.order.forEach((optIdx,pos)=>{
     let cls='opt', dis=c.answered?' disabled':'';
     if(c.answered){
@@ -1033,14 +1226,14 @@ function scrBoss(){
       else if(pos===c.picked) cls+=' sel-ko';
       else cls+=' fade';
     }
-    html+='<button class="'+cls+'"'+dis+' onclick="G.bossAnswer('+pos+',event)"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(q.a[optIdx])+'</span></button>';
+    html+='<button class="'+cls+'"'+dis+' onclick="G.bossAnswer('+pos+',event)"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(U(q.a[optIdx]))+'</span></button>';
   });
   html+='</div>';
   if(c.answered){
     const good=c.order[c.picked]===0;
-    html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?'💥 −'+c.lastDmg+' HP !':'❌ Le boss te frappe ! −1 ❤️')+'</div>'
-     +'<div class="exp"><span class="tag">📌 LA RÈGLE</span>'+q.x+'</div>'
-     +'<div class="nextbar"><button class="btn btn-stop" style="justify-content:center" onclick="G.bossNext()" id="nextbtn">EN GARDE →</button></div>';
+    html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?t('💥 −'+c.lastDmg+' HP !','💥 −'+c.lastDmg+' HP!'):t('❌ Le boss te frappe ! −1 ❤️','❌ The boss hits you! −1 ❤️'))+'</div>'
+     +'<div class="exp"><span class="tag">'+t('📌 LA RÈGLE','📌 THE RULE')+'</span>'+U(qx(q))+'</div>'
+     +'<div class="nextbar"><button class="btn btn-stop" style="justify-content:center" onclick="G.bossNext()" id="nextbtn">'+t('EN GARDE →','ON GUARD →')+'</button></div>';
   }
   return html+'</div>';
 }
@@ -1081,22 +1274,22 @@ function bossWinHtml(w){
   return '<div class="panel" style="text-align:center">'
    +'<div style="font-size:56px;filter:grayscale(1) opacity(.6)">'+w.bossIc+'</div>'
    +'<div class="stamp ok">K.O. !</div>'
-   +'<p style="margin-bottom:6px"><b>'+esc(w.boss)+'</b> mord la poussière.</p>'
-   +'<p class="small">+150 XP · Zone « '+esc(w.n)+' » conquise 👑</p>'
+   +'<p style="margin-bottom:6px"><b>'+esc(wboss(w))+'</b> '+t('mord la poussière.','bites the dust.')+'</p>'
+   +'<p class="small">+150 XP · '+t('Zone « '+esc(wn(w))+' » conquise 👑','Zone "'+esc(wn(w))+'" conquered 👑')+'</p>'
    +'<div class="menu" style="margin-top:16px">'
-   +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>Carte du NJ</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>QG</button>'
+   +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte du NJ','NJ Map')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
    +'</div></div>';
 }
 function bossLoseHtml(w){
   return '<div class="panel" style="text-align:center">'
    +'<div style="font-size:56px">'+w.bossIc+'</div>'
-   +'<div class="stamp ko">DÉFAITE…</div>'
-   +'<p class="small">'+esc(w.boss)+' ricane. Révise la zone et reviens le corriger.</p>'
+   +'<div class="stamp ko">'+t('DÉFAITE…','DEFEAT…')+'</div>'
+   +'<p class="small">'+esc(wboss(w))+' '+t('ricane. Révise la zone et reviens le corriger.','sneers. Review the zone and come back to fix it.')+'</p>'
    +'<div class="menu" style="margin-top:16px">'
-   +'<button class="btn btn-exit" onclick="G.startRun(\''+w.id+'\')"><span class="ic">📖</span>Réviser ×10</button>'
-   +'<button class="btn btn-stop" onclick="G.startBoss(\''+w.id+'\')"><span class="ic">🔁</span>Revanche</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>Carte</button>'
+   +'<button class="btn btn-exit" onclick="G.startRun(\''+w.id+'\')"><span class="ic">📖</span>'+t('Réviser ×10','Review ×10')+'</button>'
+   +'<button class="btn btn-stop" onclick="G.startBoss(\''+w.id+'\')"><span class="ic">🔁</span>'+t('Revanche','Rematch')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte','Map')+'</button>'
    +'</div></div>';
 }
 
@@ -1104,31 +1297,31 @@ function bossLoseHtml(w){
 function scrBlitz(){
   const c=CUR;
   if(c.phase==='intro'){
-    return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">← QG</button><div class="scrtitle">Blitz 60s</div></div>'
+    return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">Blitz 60s</div></div>'
      +'<div class="panel" style="text-align:center">'
      +'<div style="font-size:50px">⚡</div>'
-     +'<h2 class="px" style="font-size:13px;margin:10px 0;color:var(--bus)">LES PETITES RÈGLES™</h2>'
-     +'<p class="small" style="max-width:40ch;margin:0 auto 6px">Tous les chiffres pénibles — distances, points, amendes, BAC — en rafale pendant <b>60 secondes</b>. Ton record : <b style="color:var(--bus)">'+S.blitzBest+'</b>.</p>'
-     +'<div class="menu" style="margin-top:16px"><button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">GO ! ⏱️</button></div></div>';
+     +'<h2 class="px" style="font-size:13px;margin:10px 0;color:var(--bus)">'+t('LES PETITES RÈGLES™','THE LITTLE RULES™')+'</h2>'
+     +'<p class="small" style="max-width:40ch;margin:0 auto 6px">'+t('Tous les chiffres pénibles — distances, points, amendes, BAC — en rafale pendant <b>60 secondes</b>. Ton record : ','Every annoying number — distances, points, fines, BAC — in a rush for <b>60 seconds</b>. Your best: ')+'<b style="color:var(--bus)">'+S.blitzBest+'</b>.</p>'
+     +'<div class="menu" style="margin-top:16px"><button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">'+t('GO ! ⏱️','GO! ⏱️')+'</button></div></div>';
   }
   if(c.phase==='end'){
     const nb=c.score>S.blitzBest;
     return '<div class="panel" style="text-align:center">'
-     +'<div class="eyebrow">TEMPS ÉCOULÉ</div>'
+     +'<div class="eyebrow">'+t('TEMPS ÉCOULÉ','TIME\'S UP')+'</div>'
      +'<div class="bigscore '+(c.score>=15?'ok':'ko')+'">'+c.score+'</div>'
-     +(nb?'<div class="stamp ok" style="font-size:13px">NOUVEAU RECORD !</div>':'<p class="small">Record : '+S.blitzBest+'</p>')
+     +(nb?'<div class="stamp ok" style="font-size:13px">'+t('NOUVEAU RECORD !','NEW BEST!')+'</div>':'<p class="small">'+t('Record : ','Best: ')+S.blitzBest+'</p>')
      +'<div class="menu" style="margin-top:14px">'
-     +'<button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">🔁 ENCORE</button>'
-     +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.go(\'home\')">🏠 QG</button>'
+     +'<button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">🔁 '+t('ENCORE','AGAIN')+'</button>'
+     +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.go(\'home\')">🏠 '+t('QG','HQ')+'</button>'
      +'</div></div>';
   }
   // phase 'play'
   const d=c.deck[c.di];
   return '<div class="blitzhead"><div class="timer'+(c.t<=10?' low':'')+'" id="timer">'+c.t+'s</div>'
    +'<div class="blitzscore">🏆 '+c.score+(c.streak>=3?' <span style="color:var(--zone)">🔥'+c.streak+'</span>':'')+'</div></div>'
-   +'<div class="qcard"><div class="drillp">'+d.p+'</div>'
+   +'<div class="qcard"><div class="drillp">'+dp(d)+'</div>'
    +'<div class="opts grid2">'
-   +c.opts.map((o,i)=>'<button class="opt" onclick="G.blitzAnswer('+i+',event)"><span>'+esc(o)+'</span></button>').join('')
+   +c.opts.map((o,i)=>'<button class="opt" onclick="G.blitzAnswer('+i+',event)"><span>'+esc(dshow(o))+'</span></button>').join('')
    +'</div></div>';
 }
 function startBlitz(){
@@ -1161,10 +1354,10 @@ function blitzAnswer(i,ev){
   if(good){
     c.score++; c.streak++;
     SFX.ok(); gainXp(4,ev);
-    if(c.streak%5===0){ gainXp(20); toast('🔥 Série de '+c.streak+' ! <b>+20 XP</b>'); }
+    if(c.streak%5===0){ gainXp(20); toast(t('🔥 Série de '+c.streak+' ! <b>+20 XP</b>','🔥 Streak of '+c.streak+'! <b>+20 XP</b>')); }
   }else{
     c.streak=0; SFX.ko();
-    toast('❌ C\'était : <b>'+esc(d.a)+'</b>');
+    toast(t('❌ C\'était : <b>'+esc(dshow(d.a))+'</b>','❌ It was: <b>'+esc(dshow(d.a))+'</b>'));
   }
   c.di++; nextDrill(); render();
 }
@@ -1184,22 +1377,22 @@ function startExam(){
 function scrExam(){
   const c=CUR, q=c.qs[c.i].q;
   if(!c.order) c.order=optOrder(q);
-  let html='<div class="qmeta"><div class="qprog">🎓 EXAMEN · '+(c.i+1)+'/50</div>'
-   +'<button class="backbtn" onclick="G.quitExam()" style="font-size:8px">ABANDON</button></div>'
+  let html='<div class="qmeta"><div class="qprog">🎓 '+t('EXAMEN','EXAM')+' · '+(c.i+1)+'/50</div>'
+   +'<button class="backbtn" onclick="G.quitExam()" style="font-size:8px">'+t('ABANDON','QUIT')+'</button></div>'
    +'<div class="qbar"><i style="width:'+(c.i/50*100)+'%;background:var(--bus)"></i></div>'
    +'<div class="qcard">'
    +(q.s?'<div class="qsign">'+signSvg(q.s)+'</div>':'')
-   +'<div class="qtext">'+esc(q.q)+'</div><div class="opts">';
+   +'<div class="qtext">'+esc(U(q.q))+'</div><div class="opts">';
   c.order.forEach((optIdx,pos)=>{
-    html+='<button class="opt" onclick="G.examAnswer('+pos+')"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(q.a[optIdx])+'</span></button>';
+    html+='<button class="opt" onclick="G.examAnswer('+pos+')"><span class="key">'+String.fromCharCode(65+pos)+'</span><span>'+esc(U(q.a[optIdx]))+'</span></button>';
   });
-  return html+'</div></div><p class="small" style="text-align:center;margin-top:12px">Pas de correction en direct — comme au vrai test. Verdict à la fin.</p>';
+  return html+'</div></div><p class="small" style="text-align:center;margin-top:12px">'+t('Pas de correction en direct — comme au vrai test. Verdict à la fin.','No live feedback — just like the real test. Verdict at the end.')+'</p>';
 }
 function quitExam(){
-  showOverlay('🏳️','Abandonner ?','L\'examen ne sera pas compté.'
+  showOverlay('🏳️',t('Abandonner ?','Quit the exam?'),t('L\'examen ne sera pas compté.','The exam won\'t be counted.')
    +'<span style="display:flex;gap:8px;margin-top:14px">'
-   +'<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="G.hideOverlay()">RESTER</button>'
-   +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.hideOverlay();G.go(\'home\')">QUITTER</button></span>');
+   +'<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="G.hideOverlay()">'+t('RESTER','STAY')+'</button>'
+   +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.hideOverlay();G.go(\'home\')">'+t('QUITTER','LEAVE')+'</button></span>');
 }
 function examAnswer(pos){
   const c=CUR;
@@ -1223,25 +1416,25 @@ function scrExamEnd(){
   if(pass&&!c.fxDone){ c.fxDone=true; SFX.win(); confetti(200); }
   const wrong=c.answers.filter(a=>!a.good);
   let html='<div class="panel" style="text-align:center">'
-   +'<div class="eyebrow">VERDICT DU MVC</div>'
-   +'<div class="stamp '+(pass?'ok':'ko')+'">'+(pass?'REÇU ✔':'RECALÉ ✘')+'</div>'
+   +'<div class="eyebrow">'+t('VERDICT DU MVC','MVC VERDICT')+'</div>'
+   +'<div class="stamp '+(pass?'ok':'ko')+'">'+(pass?t('REÇU ✔','PASSED ✔'):t('RECALÉ ✘','FAILED ✘'))+'</div>'
    +'<div class="bigscore '+(pass?'ok':'ko')+'">'+c.score+'/50</div>'
    +'<p class="small">'+(pass
-     ?(c.score>=45?'Score d\'assassin. Bayonne ne te verra même pas transpirer. 😎':'Au-dessus de la barre des 40 — comme jeudi. Continue de consolider !')
-     :'Il te faut 40/50. Encore '+(40-c.score)+' de plus — la boîte à erreurs est ton amie.')+'</p>'
+     ?(c.score>=45?t('Score d\'assassin. Bayonne ne te verra même pas transpirer. 😎','Killer score. Bayonne won\'t even see you sweat. 😎'):t('Au-dessus de la barre des 40 — comme jeudi. Continue de consolider !','Above the 40 bar — like on exam day. Keep it up!'))
+     :t('Il te faut 40/50. Encore '+(40-c.score)+' de plus — la boîte à erreurs est ton amie.','You need 40/50. '+(40-c.score)+' more to go — the mistake box is your friend.'))+'</p>'
    +'<div class="menu" style="margin-top:14px">'
-   +(wrong.length?'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span>Venger mes '+wrong.length+' erreurs</button>':'')
-   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span>Nouvel examen</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>QG</button>'
+   +(wrong.length?'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span>'+t('Venger mes '+wrong.length+' erreurs','Avenge my '+wrong.length+' mistakes')+'</button>':'')
+   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span>'+t('Nouvel examen','New exam')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
    +'</div></div>';
   if(wrong.length){
-    html+='<div class="panel"><div class="eyebrow">TES ERREURS DU JOUR</div>';
+    html+='<div class="panel"><div class="eyebrow">'+t('TES ERREURS DU JOUR','YOUR MISTAKES')+'</div>';
     wrong.forEach(a=>{
       const q=Q[a.qi];
       html+='<div style="padding:10px 0;border-bottom:1px dashed var(--edge)">'
-       +'<div style="font-size:14px;font-weight:600;margin-bottom:5px">'+esc(q.q)+'</div>'
-       +'<div style="font-size:13px;color:var(--exit);margin-bottom:4px">✔ '+esc(q.a[0])+'</div>'
-       +'<div class="small" style="font-size:12.5px">'+q.x+'</div></div>';
+       +'<div style="font-size:14px;font-weight:600;margin-bottom:5px">'+esc(U(q.q))+'</div>'
+       +'<div style="font-size:13px;color:var(--exit);margin-bottom:4px">✔ '+esc(U(q.a[0]))+'</div>'
+       +'<div class="small" style="font-size:12.5px">'+U(qx(q))+'</div></div>';
     });
     html+='</div>';
   }
@@ -1250,11 +1443,12 @@ function scrExamEnd(){
 
 /* ---------- grimoire ---------- */
 function scrGrimoire(){
-  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">← QG</button><div class="scrtitle">Grimoire des Chiffres</div></div>'
-   +'<p class="small" style="margin-bottom:14px">L\'antisèche complète. Lis-la, puis va la transpirer au Blitz. ⚡</p>';
+  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Grimoire des Chiffres','Grimoire of Numbers')+'</div></div>'
+   +'<p class="small" style="margin-bottom:14px">'+t('L\'antisèche complète. Lis-la, puis va la transpirer au Blitz. ⚡','The complete cheat sheet. Read it, then go sweat it out in the Blitz. ⚡')+'</p>';
   FACTS.forEach(sec=>{
-    html+='<div class="panel gsec"><h3>'+sec.g+'</h3><table class="gtable">';
-    sec.items.forEach(([l,v])=>{ html+='<tr><td>'+esc(l)+'</td><td>'+esc(v)+'</td></tr>'; });
+    html+='<div class="panel gsec"><h3>'+esc(t(sec.g,sec.ge||sec.g))+'</h3><table class="gtable">';
+    sec.items.forEach(it=>{ const l=it[0],le=it[1],v=it[2],ve=it[3];
+      html+='<tr><td>'+esc(t(l,le))+'</td><td>'+esc(U(t(v,ve||v)))+'</td></tr>'; });
     html+='</table></div>';
   });
   return html;
@@ -1262,34 +1456,40 @@ function scrGrimoire(){
 
 /* ---------- badges ---------- */
 function scrBadges(){
-  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">← QG</button><div class="scrtitle">Trophées</div></div><div class="badges">';
+  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Trophées','Trophies')+'</div></div><div class="badges">';
   BADGES.forEach(b=>{
     const got=!!S.badges[b.id];
     html+='<div class="badge'+(got?'':' locked')+'"><span class="bic">'+b.ic+'</span>'
-     +'<div class="bnm">'+esc(b.n)+'</div><div class="bds">'+esc(b.d)+'</div></div>';
+     +'<div class="bnm">'+esc(bn(b))+'</div><div class="bds">'+esc(bd(b))+'</div></div>';
   });
   return html+'</div>';
 }
 
 /* ---------- réglages ---------- */
 function scrSettings(){
-  return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">← QG</button><div class="scrtitle">Réglages</div></div>'
+  return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Réglages','Settings')+'</div></div>'
    +'<div class="panel">'
-   +'<div class="setrow"><label for="set-sound">🔊 Effets sonores</label><input type="checkbox" id="set-sound" '+(S.sound?'checked':'')+' onchange="G.setSound(this.checked)" style="width:22px;height:22px"></div>'
-   +'<div class="setrow"><label for="set-date">📅 Date de l\'examen</label><input type="date" id="set-date" value="'+esc(S.examDate)+'" onchange="G.setDate(this.value)"></div>'
-   +'<div class="setrow"><label>💾 Progression</label><button class="backbtn" onclick="G.resetAsk()" style="color:var(--stop);border-color:var(--stopD)">TOUT EFFACER</button></div>'
+   +'<div class="setrow"><label>🌐 '+t('Langue / Language','Language / Langue')+'</label>'
+   +'<span class="langtoggle">'
+   +'<button class="langbtn'+(S.lang!=='en'?' on':'')+'" onclick="G.setLang(\'fr\')">🇫🇷 FR · m</button>'
+   +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 EN · ft</button>'
+   +'</span></div>'
+   +'<div class="setrow"><label for="set-sound">🔊 '+t('Effets sonores','Sound effects')+'</label><input type="checkbox" id="set-sound" '+(S.sound?'checked':'')+' onchange="G.setSound(this.checked)" style="width:22px;height:22px"></div>'
+   +'<div class="setrow"><label for="set-date">📅 '+t('Date de l\'examen','Exam date')+'</label><input type="date" id="set-date" value="'+esc(S.examDate)+'" onchange="G.setDate(this.value)"></div>'
+   +'<div class="setrow"><label>💾 '+t('Progression','Progress')+'</label><button class="backbtn" onclick="G.resetAsk()" style="color:var(--stop);border-color:var(--stopD)">'+t('TOUT EFFACER','ERASE ALL')+'</button></div>'
    +'</div>'
-   +'<p class="footnote">ROUTE 440 est un jeu d\'entraînement indépendant, non affilié au NJ MVC.<br>Sauvegarde locale sur cet appareil (localStorage).</p>';
+   +'<p class="footnote">'+t('ROUTE 440 est un jeu d\'entraînement indépendant, non affilié au NJ MVC.<br>Sauvegarde locale sur cet appareil (localStorage).','ROUTE 440 is an independent practice game, not affiliated with the NJ MVC.<br>Progress is saved locally on this device (localStorage).')+'</p>';
 }
 function setSound(v){ S.sound=v; save(); if(v){ SFX.ok(); } }
-function setDate(v){ S.examDate=v; save(); renderHud(); toast('📅 Date d\'examen mise à jour'); }
+function setLang(v){ S.lang=(v==='en'?'en':'fr'); save(); applyLang(); render(); toast(t('🌐 Langue : Français · unités métriques','🌐 Language: English · US units')); }
+function setDate(v){ S.examDate=v; save(); renderHud(); toast(t('📅 Date d\'examen mise à jour','📅 Exam date updated')); }
 function resetAsk(){
-  showOverlay('🗑️','Tout effacer ?','XP, badges, records, erreurs — tout repart de zéro.'
+  showOverlay('🗑️',t('Tout effacer ?','Erase everything?'),t('XP, badges, records, erreurs — tout repart de zéro.','XP, badges, records, mistakes — everything resets to zero.')
    +'<span style="display:flex;gap:8px;margin-top:14px">'
-   +'<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="G.hideOverlay()">NON</button>'
-   +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.resetAll()">OUI, RESET</button></span>');
+   +'<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="G.hideOverlay()">'+t('NON','NO')+'</button>'
+   +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.resetAll()">'+t('OUI, RESET','YES, RESET')+'</button></span>');
 }
-function resetAll(){ S=defaults(); save(); hideOverlay(); go('home'); toast('💾 Sauvegarde effacée. Nouveau départ !'); }
+function resetAll(){ const lang=S.lang; S=defaults(); S.lang=lang; save(); hideOverlay(); go('home'); toast(t('💾 Sauvegarde effacée. Nouveau départ !','💾 Save erased. Fresh start!')); }
 function hideOverlay(){ $('#overlay').classList.remove('show'); }
 
 /* ---------- clavier ---------- */
@@ -1310,8 +1510,9 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  setSound, setDate, resetAsk, resetAll, hideOverlay};
+  setSound, setLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
+applyLang();
 touchDaily(); save();
 render();
 
