@@ -88,6 +88,9 @@ main#app{display:block;padding-top:14px}
   box-shadow:0 2px 0 #0008;
 }
 .jchip.hot{background:var(--stopD);border-color:var(--stop);animation:pulse 1.4s infinite}
+.hudlang{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:15px;line-height:1;padding:5px 7px;border:2px solid var(--bus);border-radius:9px;background:#3A2F00;box-shadow:0 2px 0 #0008}
+.hudlang i{font-style:normal;font-family:var(--px);font-size:7px;color:var(--bus);letter-spacing:.5px}
+.hudlang:active{transform:translateY(1px)}
 .goalchip{font-family:var(--mono);font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .goalchip b{color:var(--bus)}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
@@ -988,6 +991,7 @@ function renderHud(){
      +'<div class="hud-title">'+L.cur.ic+' '+esc(t(L.cur.t,L.cur.te))+' · '+S.xp+' XP</div>'
      +'<div class="xp-lane"><div class="xp-fill" style="width:'+L.pct+'%"></div><div class="xp-dash"></div></div>'
    +'</div>'
+   +'<button class="hudlang" onclick="G.toggleLang()" aria-label="'+t('Changer de langue','Switch language')+'" title="'+t('Changer de langue','Switch language')+'">'+(S.lang==='en'?'🇺🇸<i>EN</i>':'🇫🇷<i>FR</i>')+'</button>'
    +'<div class="hud-right">'+chip
      +'<div class="goalchip">🎯 <b>'+Math.min(S.daily.ok,DAILY_GOAL)+'</b>/'+DAILY_GOAL+'</div>'
    +'</div></div>';
@@ -1490,6 +1494,7 @@ function scrSettings(){
 }
 function setSound(v){ S.sound=v; save(); if(v){ SFX.ok(); } }
 function setLang(v){ S.lang=(v==='en'?'en':'fr'); save(); applyLang(); render(); toast(t('🌐 Langue : Français · unités métriques','🌐 Language: English · US units')); }
+function toggleLang(){ setLang(S.lang==='en'?'fr':'en'); }
 function setDate(v){ S.examDate=v; save(); renderHud(); toast(t('📅 Date d\'examen mise à jour','📅 Exam date updated')); }
 function resetAsk(){
   showOverlay('🗑️',t('Tout effacer ?','Erase everything?'),t('XP, badges, records, erreurs — tout repart de zéro.','XP, badges, records, mistakes — everything resets to zero.')
@@ -1518,7 +1523,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  setSound, setLang, setDate, resetAsk, resetAll, hideOverlay};
+  setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
 touchDaily(); save();
