@@ -247,6 +247,36 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .gtable td:last-child{text-align:right;font-family:var(--mono);font-weight:700;color:var(--bus);font-variant-numeric:tabular-nums}
 .gtable tr:last-child td{border-bottom:none}
 
+/* ---------- village gaulois ---------- */
+.vpanel{background:linear-gradient(#12253F 0%,#12253F 26%,#1E2A12 26%,#243617 100%);border-color:#7BAE3F}
+.vsky{font-size:19px;letter-spacing:14px;padding:2px 4px 12px;opacity:.9}
+.vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.vslot{aspect-ratio:1;display:grid;place-items:center;font-size:30px;border:2px dashed #7BAE3F55;border-radius:10px;background:#00000022}
+.vslot.filled{border-style:solid;border-color:#7BAE3F;background:#2C441C;box-shadow:0 3px 0 #00000055;animation:popOk .35s}
+.shoprow{display:flex;align-items:center;gap:11px;padding:9px 2px;border-bottom:1px dashed var(--edge)}
+.shoprow:last-child{border-bottom:none}
+.shoprow.got{opacity:.55}
+.shoprow .sic{font-size:23px;flex:none;width:30px;text-align:center}
+.shoprow .snm{flex:1;font-size:14px}
+.shoprow .sgot{font-family:var(--px);font-size:8px;color:var(--exit)}
+.sbuy{font-family:var(--px);font-size:9px;padding:9px 11px;border:2px solid var(--bus);border-radius:9px;background:#3A2F00;color:var(--bus);white-space:nowrap;box-shadow:0 2px 0 #0008}
+.sbuy.cant{border-color:var(--edge);color:var(--dim);background:var(--lane2);opacity:.7}
+.sbuy:active{transform:translateY(1px)}
+
+/* ---------- incontournables ---------- */
+.hcard{background:var(--lane);border:3px solid var(--edge);border-radius:11px;padding:0;margin-bottom:9px;overflow:hidden}
+.hcard summary{cursor:pointer;list-style:none;padding:12px 13px;font-size:14.5px;font-weight:600;line-height:1.4;position:relative;padding-right:34px}
+.hcard summary::after{content:'▾';position:absolute;right:13px;top:12px;color:var(--dim)}
+.hcard[open]{border-color:var(--stop)}
+.hcard[open] summary::after{content:'▴'}
+.hcard .hans{padding:0 13px;color:var(--exit);font-size:13.5px;font-weight:700}
+.hcard .small{padding:0 13px 12px}
+
+/* ---------- progression globale ---------- */
+.gprog{margin:4px 0 12px}
+.gprog-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--px);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:6px}
+.gprog-top b{color:var(--exit);font-size:11px}
+
 /* ---------- badges ---------- */
 .badges{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .badge{background:var(--lane);border:3px solid var(--edge);border-radius:12px;padding:13px 11px;text-align:center;box-shadow:0 4px 0 #00000055}
@@ -655,7 +685,37 @@ const LEVELS=[
 {xp:1550,t:'Maître des Distances',te:'Master of Distances',ic:'📏'},
 {xp:2050,t:'Seigneur du Parking',te:'Lord of Parking',ic:'🅿️'},
 {xp:2650,t:'Boss du Turnpike',te:'Turnpike Boss',ic:'🛻'},
-{xp:3400,t:'LÉGENDE DU MVC',te:'MVC LEGEND',ic:'👑'}
+{xp:3400,t:'Légende du MVC',te:'MVC Legend',ic:'👑'},
+{xp:4300,t:'Livreur de Menhirs',te:'Menhir Hauler',ic:'🗿'},
+{xp:5300,t:'Éclaireur de la Route 440',te:'Route 440 Scout',ic:'🧭'},
+{xp:6400,t:'Sentinelle des Crosswalks',te:'Crosswalk Sentinel',ic:'🚸'},
+{xp:7600,t:'Druide du Bitume',te:'Asphalt Druid',ic:'🌿'},
+{xp:9000,t:'Barde des Highways',te:'Highway Bard',ic:'🎶'},
+{xp:10500,t:'Centurion du Code',te:'Centurion of the Code',ic:'🛡️'},
+{xp:12200,t:'Chef du Village',te:'Village Chief',ic:'🛖'},
+{xp:14000,t:'Irréductible Gaulois',te:'Indomitable Gaul',ic:'⚔️'},
+{xp:16000,t:'Potion Magique Vivante',te:'Living Magic Potion',ic:'⚗️'},
+{xp:18500,t:'DIEU DE BAYONNE',te:'GOD OF BAYONNE',ic:'🗽'}
+];
+
+/* ---------------- BOUTIQUE / VILLAGE GAULOIS ---------------- */
+const SHOP=[
+{id:'feu',ic:'🔥',n:'Feu de camp',ne:'Campfire',p:60},
+{id:'hutte',ic:'🛖',n:'Hutte',ne:'Hut',p:80},
+{id:'ble',ic:'🌾',n:'Champ de blé',ne:'Wheat field',p:90},
+{id:'poule',ic:'🐔',n:'Poulailler',ne:'Hen house',p:100},
+{id:'puits',ic:'⛲',n:'Puits',ne:'Well',p:110},
+{id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
+{id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
+{id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140},
+{id:'forge',ic:'⚒️',n:'Forge',ne:'Forge',p:150},
+{id:'chien',ic:'🐶',n:'Idéfix le chien',ne:'Dogmatix the dog',p:160},
+{id:'barde',ic:'🎶',n:'Le barde (ligoté)',ne:'The bard (tied up)',p:180},
+{id:'taverne',ic:'🍺',n:'Taverne',ne:'Tavern',p:200},
+{id:'chaudron',ic:'⚗️',n:'Chaudron de potion',ne:'Potion cauldron',p:220},
+{id:'druide',ic:'🧙',n:'Le druide',ne:'The druid',p:250},
+{id:'chef',ic:'👑',n:'Le chef sur son bouclier',ne:'The chief on his shield',p:300},
+{id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400}
 ];
 
 /* ---------------- BADGES ---------------- */
@@ -675,7 +735,14 @@ const BADGES=[
 {id:'exam',ic:'🎓',n:'REÇU !',ne:'PASSED!',d:'Réussir un examen blanc (≥ 40/50)',de:'Pass a mock exam (≥ 40/50)'},
 {id:'exam45',ic:'🌟',n:'Excellence',ne:'Excellence',d:'45+ sur 50 à l\'examen blanc',de:'45+ out of 50 on the mock exam'},
 {id:'daily3',ic:'📅',n:'Assidu',ne:'Consistent',d:'Objectif quotidien 3 jours de suite',de:'Daily goal 3 days in a row'},
-{id:'bayonne',ic:'🗽',n:'PRÊT POUR BAYONNE',ne:'READY FOR BAYONNE',d:'Examen réussi + toutes les zones à 80%+',de:'Exam passed + all zones at 80%+'}
+{id:'bayonne',ic:'🗽',n:'PRÊT POUR BAYONNE',ne:'READY FOR BAYONNE',d:'Examen réussi + toutes les zones à 80%+',de:'Exam passed + all zones at 80%+'},
+{id:'shop1',ic:'🛒',n:'Premier Sesterce Dépensé',ne:'First Sesterce Spent',d:'Acheter ton premier élément de village',de:'Buy your first village item'},
+{id:'village8',ic:'🏘️',n:'Hameau Prospère',ne:'Thriving Hamlet',d:'8 éléments construits au village',de:'8 items built in the village'},
+{id:'village16',ic:'🎆',n:'PAR TOUTATIS !',ne:'BY TOUTATIS!',d:'Village gaulois complet — banquet final',de:'Gaulish village complete — final banquet'},
+{id:'arena1',ic:'🏟️',n:'Gladiateur',ne:'Gladiator',d:'Remporter un tournoi de l\'Arène',de:'Win an Arena tournament'},
+{id:'arena3',ic:'🦁',n:'Empereur de l\'Arène',ne:'Emperor of the Arena',d:'3 tournois remportés',de:'3 tournaments won'},
+{id:'hardpass',ic:'💀',n:'Tueur de Hardcore',ne:'Hardcore Slayer',d:'Réussir l\'examen HARDCORE (24/30)',de:'Pass the HARDCORE exam (24/30)'},
+{id:'rich',ic:'🪙',n:'Crésus du Bitume',ne:'Asphalt Croesus',d:'Amasser 1000 sesterces au total',de:'Earn 1,000 sesterces in total'}
 ];
 
 'use strict';
@@ -694,6 +761,10 @@ const defaults=()=>({
   bossWins:{},         // worldId -> true
   blitzBest:0,
   examBest:0, examPassed:false, examsTaken:0,
+  examEclairBest:0, examHardBest:0,
+  coins:0, coinsTotal:0,   // sesterces 🪙
+  village:[],              // ids d'objets achetés, dans l'ordre
+  arenaWins:0,
   daily:{date:'', ok:0, rewarded:false},
   dayStreak:0, lastGoalDate:'',
   badges:{},           // badgeId -> timestamp
@@ -982,6 +1053,7 @@ function floatXp(txt,x,y){
 }
 
 /* ---------- XP / badges ---------- */
+function gainCoins(n){ S.coins+=n; S.coinsTotal+=n; }
 function gainXp(n,ev){
   const before=levelIdx();
   S.xp+=n;
@@ -1020,6 +1092,13 @@ function checkBadges(){
   if(S.examBest>=45) award('exam45');
   if(S.dayStreak>=3) award('daily3');
   if(S.examPassed && WORLDS.every(w=>mastery(w.id)>=80)) award('bayonne');
+  if(S.village.length>=1) award('shop1');
+  if(S.village.length>=8) award('village8');
+  if(S.village.length>=SHOP.length) award('village16');
+  if(S.arenaWins>=1) award('arena1');
+  if(S.arenaWins>=3) award('arena3');
+  if(S.examHardBest>=24) award('hardpass');
+  if(S.coinsTotal>=1000) award('rich');
 }
 
 /* ---------- SRS / sélection de questions ---------- */
@@ -1050,7 +1129,7 @@ function errorPool(){
 function recordAnswer(qi,good){
   const s=qstat(qi);
   const wasError=s.box===1&&s.ko>0;
-  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++; }
+  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++; gainCoins(2); }
   else{ s.ko++; s.box=1; }
   if(good){
     S.totalOk++; touchDaily(); S.daily.ok++;
@@ -1091,7 +1170,7 @@ function renderHud(){
    +'</div>'
    +'<button class="hudlang" onclick="G.toggleLang()" aria-label="'+t('Changer de langue','Switch language')+'" title="'+t('Changer de langue','Switch language')+'">'+(S.lang==='en'?'🇺🇸<i>EN</i>':'🇫🇷<i>FR</i>')+'</button>'
    +'<div class="hud-right">'+chip
-     +'<div class="goalchip">🎯 <b>'+Math.min(S.daily.ok,DAILY_GOAL)+'</b>/'+DAILY_GOAL+'</div>'
+     +'<div class="goalchip">🎯 <b>'+Math.min(S.daily.ok,DAILY_GOAL)+'</b>/'+DAILY_GOAL+' · 🪙 <b>'+S.coins+'</b></div>'
    +'</div></div>';
 }
 
@@ -1137,7 +1216,8 @@ function render(){
   renderHud();
   const app=$('#app');
   const fn={home:scrHome, worlds:scrWorlds, run:scrRun, boss:scrBoss, blitz:scrBlitz,
-    exam:scrExam, examEnd:scrExamEnd, grimoire:scrGrimoire,
+    exam:scrExam, examEnd:scrExamEnd, grimoire:scrGrimoire, exams:scrExams,
+    village:scrVillage, hard:scrHard,
     badges:scrBadges, settings:scrSettings}[CUR.screen]||scrHome;
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
@@ -1164,18 +1244,28 @@ function scrHome(){
    +'<div class="menu">'
    +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>'+t('Campagne','Campaign')+'<span class="sub">'+t('8 zones, 8 boss — la carte du New Jersey','8 zones, 8 bosses — the map of New Jersey')+'</span></span></button>'
    +'<button class="btn btn-bus" onclick="G.go(\'blitz\',{phase:\'intro\'})"><span class="ic">⚡</span><span>Blitz 60s<span class="sub">'+t('Les Petites Règles™ — chiffres en rafale · record : ','The Little Rules™ — numbers in a rush · best: ')+S.blitzBest+'</span></span></button>'
-   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span><span>'+t('Examen blanc','Mock exam')+'<span class="sub">'+t('50 questions, 80% pour réussir — comme au MVC','50 questions, 80% to pass — just like the MVC')+(S.examBest?t(' · record : ',' · best: ')+S.examBest+'/50':'')+'</span></span></button>'
-   +'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
+   +'<button class="btn btn-shield" onclick="G.go(\'exams\')"><span class="ic">🎓</span><span>'+t('Examens blancs','Mock exams')+'<span class="sub">'+t('Officiel 50 Q · Éclair 25 Q · Hardcore 💀','Official 50 Q · Lightning 25 Q · Hardcore 💀')+(S.examBest?t(' · record : ',' · best: ')+S.examBest+'/50':'')+'</span></span></button>'
+   +'<button class="btn btn-stop" onclick="G.startArena()"><span class="ic">🏟️</span><span>'+t('L\'Arène','The Arena')+'<span class="sub">'+t('3 boss d\'affilée, 3 ❤️ pour tout le tournoi · +100 🪙',
+     '3 bosses in a row, 3 ❤️ for the whole tournament · +100 🪙')+(S.arenaWins?t(' · victoires : ',' · wins: ')+S.arenaWins:'')+'</span></span></button>'
+   +'<button class="btn btn-bus" onclick="G.go(\'village\')" style="background:#1E2A12;border-color:#7BAE3F;color:#C9E8A5"><span class="ic">🛖</span><span>'+t('Village gaulois','Gaulish village')+'<span class="sub">'+t('Boutique & construction : '+S.village.length+'/'+SHOP.length+' éléments · '+S.coins+' 🪙','Shop & building: '+S.village.length+'/'+SHOP.length+' items · '+S.coins+' 🪙')+'</span></span></button>'
+   +'<button class="btn btn-ghost" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
    +'<div class="btnrow">'
    +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>'+t('Grimoire','Grimoire')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'hard\')"><span class="ic">🏛️</span>'+t('Par cœur','By heart')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'badges\')"><span class="ic">🏅</span>'+t('Trophées','Trophies')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'settings\')" aria-label="'+t('Réglages','Settings')+'"><span class="ic">⚙️</span></button>'
    +'</div></div>'
    +'<hr class="centerline">'
+   +(function(){
+      const gm=Math.round(WORLDS.reduce((s,w)=>s+mastery(w.id),0)/WORLDS.length);
+      return '<div class="gprog"><div class="gprog-top"><span>'+t('PROGRESSION VERS BAYONNE','PROGRESS TOWARD BAYONNE')+'</span><b>'+gm+'%</b></div>'
+       +'<div class="xp-lane" style="height:12px"><div class="xp-fill" style="width:'+gm+'%;background:linear-gradient(90deg,var(--exitD),var(--exit))"></div><div class="xp-dash"></div></div></div>';
+    })()
    +'<div class="statrow">'
    +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo)+'</div><div class="l">'+t('réponses','answers')+'</div></div>'
    +'<div class="stat"><div class="v">'+(S.totalOk+S.totalKo?Math.round(S.totalOk/(S.totalOk+S.totalKo)*100):0)+'%</div><div class="l">'+t('précision','accuracy')+'</div></div>'
    +'<div class="stat"><div class="v">'+Object.keys(S.bossWins).length+'/8</div><div class="l">'+t('boss K.O.','bosses K.O.')+'</div></div>'
+   +'<div class="stat"><div class="v">'+S.village.length+'/'+SHOP.length+'</div><div class="l">'+t('village','village')+'</div></div>'
    +'</div>'
    +'<p class="footnote">'+t('Basé sur le New Jersey Driver Manual. Entraînement non officiel — vérifie les règles sur ','Based on the New Jersey Driver Manual. Unofficial practice — verify the rules at ')+'<a href="https://www.njmvc.gov" target="_blank" rel="noopener">njmvc.gov</a>.<br>'+t('Astuce : le test au MVC existe en plusieurs langues, dont le français — demande au guichet.','Tip: the MVC test is available in several languages, including French — ask at the counter.')+'</p>';
 }
@@ -1376,9 +1466,10 @@ function bossNext(){
   c.i++; c.answered=false; c.picked=-1; c.order=null; render();
 }
 function bossWinHtml(w){
+  if(CUR.arena) return arenaWinHtml(w);
   if(!CUR.rewarded){
     CUR.rewarded=true;
-    S.bossWins[w.id]=true; save();
+    S.bossWins[w.id]=true; gainCoins(25); save();
     SFX.win(); confetti(180); gainXp(150); checkBadges();
   }
   return '<div class="panel" style="text-align:center">'
@@ -1401,6 +1492,111 @@ function bossLoseHtml(w){
    +'<button class="btn btn-stop" onclick="G.startBoss(\''+w.id+'\')"><span class="ic">🔁</span>'+t('Revanche','Rematch')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte','Map')+'</button>'
    +'</div></div>';
+}
+
+/* ---------- arène (tournoi de 3 combats) ---------- */
+function startArena(){
+  $('#overlay').classList.remove('show');
+  const ws=shuffle(WORLDS.slice()).slice(0,3);
+  go('boss',{arena:true, stageList:ws.map(x=>x.id), stage:0, wid:ws[0].id,
+    qs:pickQuestions(null,40), i:0, hp:80, hearts:3, combo:0, answered:false, picked:-1, order:null});
+}
+function arenaNext(){
+  const c=CUR;
+  c.stage++; c.wid=c.stageList[c.stage];
+  c.hp=80+c.stage*20; c.answered=false; c.picked=-1; c.order=null; c.i++;
+  render();
+}
+function arenaWinHtml(w){
+  const c=CUR;
+  if(c.stage<2){
+    if(!c.stageFx){ c.stageFx=true; SFX.win(); confetti(60); }
+    const nw=WORLDS.find(x=>x.id===c.stageList[c.stage+1]);
+    return '<div class="panel" style="text-align:center">'
+     +'<div style="font-size:52px;filter:grayscale(1) opacity(.6)">'+w.bossIc+'</div>'
+     +'<div class="stamp ok">'+t('À TERRE !','DOWN!')+'</div>'
+     +'<p class="small">'+t('Combat '+(c.stage+1)+'/3 gagné. Le suivant entre dans l\'arène…','Fight '+(c.stage+1)+'/3 won. The next one enters the arena…')+'</p>'
+     +'<div style="font-size:44px;margin:8px 0">'+nw.bossIc+'</div>'
+     +'<p class="small"><b>'+esc(wboss(nw))+'</b> · '+(80+(c.stage+1)*20)+' HP · '+'❤️'.repeat(c.hearts)+'</p>'
+     +'<div class="menu" style="margin-top:14px"><button class="btn btn-stop" style="justify-content:center" onclick="G.arenaNext();delete CUR.stageFx">'+t('COMBAT SUIVANT ⚔️','NEXT FIGHT ⚔️')+'</button></div></div>';
+  }
+  if(!c.rewarded){
+    c.rewarded=true; S.arenaWins++; gainCoins(100); save();
+    SFX.win(); confetti(220); gainXp(200); checkBadges();
+  }
+  return '<div class="panel" style="text-align:center">'
+   +'<div style="font-size:56px">🏆</div>'
+   +'<div class="stamp ok">'+t('CHAMPION !','CHAMPION!')+'</div>'
+   +'<p class="small">'+t('Tournoi remporté : 3 boss au tapis avec '+c.hearts+' ❤️ restants.<br><b>+200 XP · +100 🪙</b>','Tournament won: 3 bosses floored with '+c.hearts+' ❤️ left.<br><b>+200 XP · +100 🪙</b>')+'</p>'
+   +'<div class="menu" style="margin-top:14px">'
+   +'<button class="btn btn-stop" onclick="G.startArena()"><span class="ic">🏟️</span>'+t('NOUVEAU TOURNOI','NEW TOURNAMENT')+'</button>'
+   +'<button class="btn btn-bus" onclick="G.go(\'village\')"><span class="ic">🛖</span>'+t('Dépenser au village','Spend in the village')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
+   +'</div></div>';
+}
+
+/* ---------- village gaulois + boutique ---------- */
+function scrVillage(){
+  const owned=S.village;
+  let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
+   +'<div class="panel vpanel"><div class="vsky">'+(owned.includes('banquet')?'🎆':'☁️')+' &nbsp; 🌤️'+(owned.length>=8?' &nbsp; 🕊️':'')+'</div><div class="vgrid">';
+  for(let i=0;i<SHOP.length;i++){
+    const it=owned[i]?SHOP.find(s=>s.id===owned[i]):null;
+    v+='<div class="vslot'+(it?' filled':'')+'">'+(it?it.ic:'')+'</div>';
+  }
+  v+='</div><p class="small" style="text-align:center;margin-top:10px">'
+   +(owned.length>=SHOP.length
+     ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
+     :t('Village : <b>'+owned.length+'/'+SHOP.length+'</b> éléments · chaque bonne réponse rapporte des 🪙','Village: <b>'+owned.length+'/'+SHOP.length+'</b> items · every correct answer earns 🪙'))+'</p></div>'
+   +'<div class="panel"><div class="eyebrow">🛒 '+t('BOUTIQUE — tes sesterces : ','SHOP — your sesterces: ')+S.coins+' 🪙</div>';
+  SHOP.forEach(s=>{
+    const got=owned.includes(s.id), can=S.coins>=s.p;
+    v+='<div class="shoprow'+(got?' got':'')+'"><span class="sic">'+s.ic+'</span>'
+     +'<span class="snm">'+esc(t(s.n,s.ne))+'</span>'
+     +(got?'<span class="sgot">✔ '+t('acquis','owned')+'</span>'
+      :'<button class="sbuy'+(can?'':' cant')+'" onclick="G.buy(\''+s.id+'\')">'+s.p+' 🪙</button>');
+    v+='</div>';
+  });
+  return v+'</div>';
+}
+function buy(id){
+  const it=SHOP.find(s=>s.id===id); if(!it) return;
+  if(S.village.includes(id)) return;
+  if(S.coins<it.p){ SFX.ko(); toast(t('🪙 Pas assez de sesterces ! Il t\'en manque '+(it.p-S.coins)+'. Va répondre à des questions !','🪙 Not enough sesterces! You need '+(it.p-S.coins)+' more. Go answer questions!')); return; }
+  S.coins-=it.p; S.village.push(id); save(); checkBadges();
+  SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
+  toast(it.ic+' '+t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!'));
+  render();
+}
+
+/* ---------- examens (3 modes) ---------- */
+function scrExams(){
+  return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Salle d\'examen','Exam room')+'</div></div>'
+   +'<div class="menu">'
+   +'<button class="btn btn-shield" onclick="G.startExam(\'full\')"><span class="ic">🎓</span><span>'+t('Examen officiel','Official exam')+'<span class="sub">'+t('50 Q · 40 pour réussir — la simulation exacte du MVC','50 Q · 40 to pass — the exact MVC simulation')+(S.examBest?' · record : '+S.examBest+'/50':'')+'</span></span></button>'
+   +'<button class="btn btn-bus" onclick="G.startExam(\'eclair\')"><span class="ic">⚡</span><span>'+t('Examen éclair','Lightning exam')+'<span class="sub">'+t('25 Q · 20 pour réussir — le format café','25 Q · 20 to pass — the coffee-break format')+(S.examEclairBest?' · record : '+S.examEclairBest+'/25':'')+'</span></span></button>'
+   +'<button class="btn btn-stop" onclick="G.startExam(\'hard\')"><span class="ic">💀</span><span>'+t('Examen HARDCORE','HARDCORE exam')+'<span class="sub">'+t('30 Q niveau expert uniquement · 24 pour réussir','30 expert-only questions · 24 to pass')+(S.examHardBest?' · record : '+S.examHardBest+'/30':'')+'</span></span></button>'
+   +'</div>'
+   +'<p class="small" style="text-align:center;margin-top:14px">'+t('Réussir un examen rapporte <b>+50 🪙</b> (+ 1 🪙 par bonne réponse).','Passing an exam earns <b>+50 🪙</b> (+ 1 🪙 per correct answer).')+'</p>';
+}
+
+/* ---------- incontournables (par cœur) ---------- */
+function hardPool(){ return Q.map((q,i)=>({q,i})).filter(o=>o.q.xe); }
+function scrHard(){
+  const pool=hardPool();
+  let h='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Les Incontournables','The Essentials')+'</div></div>'
+   +'<p class="small" style="margin-bottom:12px">'+t('Les <b>'+pool.length+' questions expertes</b> à connaître PAR CŒUR. Touche une carte pour révéler la réponse, ou lance une série.','The <b>'+pool.length+' expert questions</b> to know BY HEART. Tap a card to reveal the answer, or start a run.')+'</p>'
+   +'<div class="menu" style="margin-bottom:14px"><button class="btn btn-stop" style="justify-content:center" onclick="G.startHardRun()">💀 '+t('SÉRIE ×10 ALÉATOIRE','RANDOM RUN ×10')+'</button></div>';
+  pool.forEach(o=>{
+    h+='<details class="hcard"><summary>'+esc(U(o.q.q))+'</summary>'
+     +'<div class="hans">✔ '+esc(U(o.q.a[0]))+'</div>'
+     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div></details>';
+  });
+  return h;
+}
+function startHardRun(){
+  const qs=shuffle(hardPool()).slice(0,10);
+  go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
 }
 
 /* ---------- blitz ---------- */
@@ -1474,22 +1670,28 @@ function blitzAnswer(i,ev){
 function endBlitz(){
   stopTimers();
   const c=CUR;
+  gainCoins(c.score); save();
   if(c.score>S.blitzBest){ S.blitzBest=c.score; save(); SFX.win(); confetti(100); }
   checkBadges();
   c.phase='end'; render();
 }
 
 /* ---------- examen blanc ---------- */
-function startExam(){
-  const qs=shuffle(Q.map((q,i)=>({q,i}))).slice(0,50);
-  go('exam',{qs, i:0, answers:[], order:null});
+function startExam(mode){
+  mode=mode||'full';
+  let qs, need;
+  if(mode==='hard'){ qs=shuffle(hardPool()).slice(0,30); need=24; }
+  else if(mode==='eclair'){ qs=shuffle(Q.map((q,i)=>({q,i}))).slice(0,25); need=20; }
+  else { qs=shuffle(Q.map((q,i)=>({q,i}))).slice(0,50); need=40; }
+  go('exam',{mode, qs, need, i:0, answers:[], order:null});
 }
 function scrExam(){
-  const c=CUR, q=c.qs[c.i].q;
+  const c=CUR, q=c.qs[c.i].q, N=c.qs.length;
   if(!c.order) c.order=optOrder(q);
-  let html='<div class="qmeta"><div class="qprog">🎓 '+t('EXAMEN','EXAM')+' · '+(c.i+1)+'/50</div>'
+  const tag=c.mode==='hard'?'💀 HARDCORE':c.mode==='eclair'?'⚡ '+t('ÉCLAIR','LIGHTNING'):'🎓 '+t('EXAMEN','EXAM');
+  let html='<div class="qmeta"><div class="qprog">'+tag+' · '+(c.i+1)+'/'+N+'</div>'
    +'<button class="backbtn" onclick="G.quitExam()" style="font-size:8px">'+t('ABANDON','QUIT')+'</button></div>'
-   +'<div class="qbar"><i style="width:'+(c.i/50*100)+'%;background:var(--bus)"></i></div>'
+   +'<div class="qbar"><i style="width:'+(c.i/N*100)+'%;background:var(--bus)"></i></div>'
    +'<div class="qcard">'
    +(q.s?'<div class="qsign">'+signSvg(q.s)+'</div>':'')
    +'<div class="qtext">'+esc(U(q.q))+'</div><div class="opts">';
@@ -1514,28 +1716,32 @@ function examAnswer(pos){
   else{
     S.examsTaken++;
     const score=c.answers.filter(a=>a.good).length;
-    if(score>S.examBest){ S.examBest=score; }
-    if(score>=40){ S.examPassed=true; }
+    const pass=score>=c.need;
+    if(c.mode==='hard'){ if(score>S.examHardBest) S.examHardBest=score; }
+    else if(c.mode==='eclair'){ if(score>S.examEclairBest) S.examEclairBest=score; }
+    else{ if(score>S.examBest) S.examBest=score; if(pass) S.examPassed=true; }
+    gainCoins(score+(pass?50:0));
     save(); checkBadges();
-    gainXp(score*2+(score>=40?200:0));
-    go('examEnd',{score, answers:c.answers});
+    gainXp(score*2+(pass?(c.mode==='full'?200:100):0));
+    go('examEnd',{score, answers:c.answers, mode:c.mode, need:c.need, total:c.qs.length});
   }
 }
 function scrExamEnd(){
-  const c=CUR, pass=c.score>=40;
+  const c=CUR, pass=c.score>=c.need;
   if(pass&&!c.fxDone){ c.fxDone=true; SFX.win(); confetti(200); }
   const wrong=c.answers.filter(a=>!a.good);
   let html='<div class="panel" style="text-align:center">'
-   +'<div class="eyebrow">'+t('VERDICT DU MVC','MVC VERDICT')+'</div>'
+   +'<div class="eyebrow">'+(c.mode==='hard'?t('VERDICT HARDCORE','HARDCORE VERDICT'):t('VERDICT DU MVC','MVC VERDICT'))+'</div>'
    +'<div class="stamp '+(pass?'ok':'ko')+'">'+(pass?t('REÇU ✔','PASSED ✔'):t('RECALÉ ✘','FAILED ✘'))+'</div>'
-   +'<div class="bigscore '+(pass?'ok':'ko')+'">'+c.score+'/50</div>'
+   +'<div class="bigscore '+(pass?'ok':'ko')+'">'+c.score+'/'+c.total+'</div>'
    +'<p class="small">'+(pass
-     ?(c.score>=45?t('Score d\'assassin. Bayonne ne te verra même pas transpirer. 😎','Killer score. Bayonne won\'t even see you sweat. 😎'):t('Au-dessus de la barre des 40 — comme jeudi. Continue de consolider !','Above the 40 bar — like on exam day. Keep it up!'))
-     :t('Il te faut 40/50. Encore '+(40-c.score)+' de plus — la boîte à erreurs est ton amie.','You need 40/50. '+(40-c.score)+' more to go — the mistake box is your friend.'))+'</p>'
+     ?(c.score>=c.total-3?t('Score d\'assassin. Bayonne ne te verra même pas transpirer. 😎','Killer score. Bayonne won\'t even see you sweat. 😎'):t('Au-dessus de la barre. Continue de consolider !','Above the bar. Keep consolidating!'))
+     :t('Il te faut '+c.need+'/'+c.total+'. Encore '+(c.need-c.score)+' de plus — la boîte à erreurs est ton amie.','You need '+c.need+'/'+c.total+'. '+(c.need-c.score)+' more — the mistake box is your friend.'))
+   +(pass?'<br><b>+'+(c.score+50)+' 🪙</b>':'')+'</p>'
    +'<div class="menu" style="margin-top:14px">'
    +(wrong.length?'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span>'+t('Venger mes '+wrong.length+' erreurs','Avenge my '+wrong.length+' mistakes')+'</button>':'')
-   +'<button class="btn btn-shield" onclick="G.startExam()"><span class="ic">🎓</span>'+t('Nouvel examen','New exam')+'</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
+   +'<button class="btn btn-shield" onclick="G.startExam(\''+(c.mode||'full')+'\')"><span class="ic">🎓</span>'+t('Nouvel examen','New exam')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'exams\')"><span class="ic">🚪</span>'+t('Salle d\'examen','Exam room')+'</button>'
    +'</div></div>';
   if(wrong.length){
     html+='<div class="panel"><div class="eyebrow">'+t('TES ERREURS DU JOUR','YOUR MISTAKES')+'</div>';
@@ -1621,6 +1827,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
+  startArena, arenaNext, buy, startHardRun,
   setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
