@@ -272,6 +272,15 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .hcard .hans{padding:0 13px;color:var(--exit);font-size:13.5px;font-weight:700}
 .hcard .small{padding:0 13px 12px}
 
+/* ---------- bête noire ---------- */
+.hcard.nem summary{padding-left:12px}
+.nembadge{display:inline-block;min-width:44px;text-align:center;font-family:var(--px);font-size:9px;padding:5px 6px;border-radius:7px;margin-right:8px;vertical-align:middle;background:#3A1113;color:#FFB3B5;border:2px solid var(--stop)}
+.hcard.nem.warm .nembadge{background:#3A2A05;color:#FFDD8A;border-color:var(--zone)}
+.hcard.nem.tamed .nembadge{background:#0F3A22;color:#A9E8C4;border-color:var(--exit)}
+.hcard.nem.tamed{opacity:.7}
+.hcard.nem.hot{border-color:var(--stopD)}
+.nemmeta{font-size:11.5px;color:var(--dim);font-weight:400;margin-top:6px}
+
 /* ---------- progression globale ---------- */
 .gprog{margin:4px 0 12px}
 .gprog-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--px);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:6px}
@@ -906,7 +915,9 @@ const BADGES=[
 {id:'arena1',ic:'🏟️',n:'Gladiateur',ne:'Gladiator',d:'Remporter un tournoi de l\'Arène',de:'Win an Arena tournament'},
 {id:'arena3',ic:'🦁',n:'Empereur de l\'Arène',ne:'Emperor of the Arena',d:'3 tournois remportés',de:'3 tournaments won'},
 {id:'hardpass',ic:'💀',n:'Tueur de Hardcore',ne:'Hardcore Slayer',d:'Réussir l\'examen HARDCORE (24/30)',de:'Pass the HARDCORE exam (24/30)'},
-{id:'rich',ic:'🪙',n:'Crésus du Bitume',ne:'Asphalt Croesus',d:'Amasser 1000 sesterces au total',de:'Earn 1,000 sesterces in total'}
+{id:'rich',ic:'🪙',n:'Crésus du Bitume',ne:'Asphalt Croesus',d:'Amasser 1000 sesterces au total',de:'Earn 1,000 sesterces in total'},
+{id:'nem10',ic:'😈',n:'Dompteur de Bêtes Noires',ne:'Nemesis Tamer',d:'Maîtriser 10 questions que tu ratais',de:'Master 10 questions you used to miss'},
+{id:'nem30',ic:'🔱',n:'Exorciste du Code',ne:'Code Exorcist',d:'Maîtriser 30 questions que tu ratais',de:'Master 30 questions you used to miss'}
 ];
 
 'use strict';
@@ -1263,6 +1274,9 @@ function checkBadges(){
   if(S.arenaWins>=3) award('arena3');
   if(S.examHardBest>=24) award('hardpass');
   if(S.coinsTotal>=1000) award('rich');
+  const tamed=Object.keys(S.qstat).filter(k=>{ const s=S.qstat[k]; return s&&s.ko>0&&s.box>=3; }).length;
+  if(tamed>=10) award('nem10');
+  if(tamed>=30) award('nem30');
 }
 
 /* ---------- SRS / sélection de questions ---------- */
@@ -1381,7 +1395,7 @@ function render(){
   const app=$('#app');
   const fn={home:scrHome, worlds:scrWorlds, run:scrRun, boss:scrBoss, blitz:scrBlitz,
     exam:scrExam, examEnd:scrExamEnd, grimoire:scrGrimoire, exams:scrExams,
-    village:scrVillage, hard:scrHard,
+    village:scrVillage, hard:scrHard, nemesis:scrNemesis,
     badges:scrBadges, settings:scrSettings}[CUR.screen]||scrHome;
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
@@ -1413,6 +1427,9 @@ function scrHome(){
      '3 bosses in a row, 3 ❤️ for the whole tournament · +100 🪙')+(S.arenaWins?t(' · victoires : ',' · wins: ')+S.arenaWins:'')+'</span></span></button>'
    +'<button class="btn btn-bus" onclick="G.go(\'village\')" style="background:#1E2A12;border-color:#7BAE3F;color:#C9E8A5"><span class="ic">🛖</span><span>'+t('Village gaulois','Gaulish village')+'<span class="sub">'+t('Boutique & construction : '+S.village.length+'/'+SHOP.length+' éléments · '+S.coins+' 🪙','Shop & building: '+S.village.length+'/'+SHOP.length+' items · '+S.coins+' 🪙')+'</span></span></button>'
    +'<button class="btn btn-ghost" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
+   +(function(){ const np=nemesisPool(); return '<button class="btn btn-stop" onclick="G.go(\'nemesis\')" style="background:#2A1030;border-color:#B45CE0;color:#EBC7FA"><span class="ic">😈</span><span>'+t('Ma Bête Noire','My Nemesis')
+     +'<span class="sub">'+(np.length?t(np.length+' question'+(np.length>1?'s':'')+' classée'+(np.length>1?'s':'')+' par taux d\'échec · pire : '+Math.round(np[0].rate*100)+'%',np.length+' question'+(np.length>1?'s':'')+' ranked by failure rate · worst: '+Math.round(np[0].rate*100)+'%')
+       :t('Se remplit toute seule avec tes erreurs','Fills itself with your mistakes'))+'</span></span></button>'; })()
    +'<div class="btnrow">'
    +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>'+t('Grimoire','Grimoire')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'hard\')"><span class="ic">🏛️</span>'+t('Par cœur','By heart')+'</button>'
@@ -1744,6 +1761,61 @@ function scrExams(){
    +'<p class="small" style="text-align:center;margin-top:14px">'+t('Réussir un examen rapporte <b>+50 🪙</b> (+ 1 🪙 par bonne réponse).','Passing an exam earns <b>+50 🪙</b> (+ 1 🪙 per correct answer).')+'</p>';
 }
 
+/* ---------- ma bête noire (questions les plus ratées) ---------- */
+// Score de douleur : privilégie les questions ratées souvent ET avec un fort taux d'échec.
+function nemesisPool(){
+  return Q.map((q,i)=>({q,i}))
+    .map(o=>{ const s=S.qstat[o.i]; if(!s||!s.ko) return null;
+      const tot=s.ok+s.ko, rate=s.ko/tot;
+      return {...o, ko:s.ko, ok:s.ok, tot, rate, box:s.box, score:s.ko*(0.5+rate)}; })
+    .filter(Boolean)
+    .sort((a,b)=>b.score-a.score);
+}
+function scrNemesis(){
+  const pool=nemesisPool();
+  let h='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Ma Bête Noire','My Nemesis')+'</div></div>';
+  if(!pool.length){
+    return h+'<div class="panel" style="text-align:center"><div style="font-size:50px">😇</div>'
+     +'<p class="small" style="margin-top:8px">'+t('Aucune question ratée pour l\'instant — rien à traquer !<br>Joue quelques missions : celles que tu rates atterriront ici automatiquement, classées de la pire à la moins pire.','No missed questions yet — nothing to hunt!<br>Play a few missions: whatever you get wrong lands here automatically, ranked worst first.')+'</p>'
+     +'<div class="menu" style="margin-top:14px"><button class="btn btn-exit" style="justify-content:center" onclick="G.go(\'worlds\')">🗺️ '+t('Aller jouer','Go play')+'</button></div></div>';
+  }
+  const tamed=pool.filter(o=>o.box>=3).length;
+  const hot=pool.filter(o=>o.box===1).length;
+  h+='<div class="panel" style="margin-bottom:12px">'
+   +'<div class="eyebrow">'+t('TON TABLEAU DE CHASSE','YOUR HIT LIST')+'</div>'
+   +'<div class="statrow" style="margin:6px 0 0">'
+   +'<div class="stat"><div class="v" style="color:var(--stop)">'+hot+'</div><div class="l">'+t('à venger','to avenge')+'</div></div>'
+   +'<div class="stat"><div class="v">'+pool.length+'</div><div class="l">'+t('ratées un jour','ever missed')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--exit)">'+tamed+'</div><div class="l">'+t('domptées','tamed')+'</div></div>'
+   +'</div>'
+   +'<div class="menu" style="margin-top:12px">'
+   +'<button class="btn btn-stop" style="justify-content:center" onclick="G.startNemesisRun()">🎯 '+t('ENTRAÎNEMENT ×10 SUR LES PIRES','DRILL ×10 ON THE WORST')+'</button>'
+   +(pool.length>=20?'<button class="btn btn-ghost" style="justify-content:center" onclick="G.startNemesisExam()">💀 '+t('EXAMEN BÊTE NOIRE (20 Q)','NEMESIS EXAM (20 Q)')+'</button>':'')
+   +'</div></div>';
+  pool.forEach(o=>{
+    const pct=Math.round(o.rate*100);
+    const cls=o.box>=3?'tamed':o.box===1?'hot':'warm';
+    h+='<details class="hcard nem '+cls+'"><summary>'
+     +'<span class="nembadge">'+pct+'%</span> '+esc(U(o.q.q))
+     +'<div class="nemmeta">'+t('raté '+o.ko+'× sur '+o.tot+' tentative'+(o.tot>1?'s':''),'missed '+o.ko+'× of '+o.tot+' attempt'+(o.tot>1?'s':''))
+     +' · '+(o.box>=3?t('domptée ✔','tamed ✔'):o.box===1?t('à venger ⚔️','to avenge ⚔️'):t('en cours…','in progress…'))+'</div></summary>'
+     +'<div class="hans">✔ '+esc(U(o.q.a[0]))+'</div>'
+     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div></details>';
+  });
+  return h;
+}
+function startNemesisRun(){
+  const pool=nemesisPool();
+  if(!pool.length){ toast(t('😇 Aucune question ratée à travailler !','😇 No missed questions to work on!')); return; }
+  const qs=shuffle(pool.slice(0,20)).slice(0,10);
+  go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
+}
+function startNemesisExam(){
+  const pool=nemesisPool();
+  const qs=shuffle(pool.slice(0,40)).slice(0,20);
+  go('exam',{mode:'nemesis', qs, need:16, i:0, answers:[], order:null});
+}
+
 /* ---------- incontournables (par cœur) ---------- */
 function hardPool(){ return Q.map((q,i)=>({q,i})).filter(o=>o.q.xe); }
 function scrHard(){
@@ -1852,7 +1924,7 @@ function startExam(mode){
 function scrExam(){
   const c=CUR, q=c.qs[c.i].q, N=c.qs.length;
   if(!c.order) c.order=optOrder(q);
-  const tag=c.mode==='hard'?'💀 HARDCORE':c.mode==='eclair'?'⚡ '+t('ÉCLAIR','LIGHTNING'):'🎓 '+t('EXAMEN','EXAM');
+  const tag=c.mode==='hard'?'💀 HARDCORE':c.mode==='nemesis'?'😈 '+t('BÊTE NOIRE','NEMESIS'):c.mode==='eclair'?'⚡ '+t('ÉCLAIR','LIGHTNING'):'🎓 '+t('EXAMEN','EXAM');
   let html='<div class="qmeta"><div class="qprog">'+tag+' · '+(c.i+1)+'/'+N+'</div>'
    +'<button class="backbtn" onclick="G.quitExam()" style="font-size:8px">'+t('ABANDON','QUIT')+'</button></div>'
    +'<div class="qbar"><i style="width:'+(c.i/N*100)+'%;background:var(--bus)"></i></div>'
@@ -1882,6 +1954,7 @@ function examAnswer(pos){
     const score=c.answers.filter(a=>a.good).length;
     const pass=score>=c.need;
     if(c.mode==='hard'){ if(score>S.examHardBest) S.examHardBest=score; }
+    else if(c.mode==='nemesis'){ /* pas de record : le pool change tout le temps */ }
     else if(c.mode==='eclair'){ if(score>S.examEclairBest) S.examEclairBest=score; }
     else{ if(score>S.examBest) S.examBest=score; if(pass) S.examPassed=true; }
     gainCoins(score+(pass?50:0));
@@ -1991,7 +2064,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  startArena, arenaNext, buy, startHardRun,
+  startArena, arenaNext, buy, startHardRun, startNemesisRun, startNemesisExam,
   setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
