@@ -247,6 +247,23 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .gtable td:last-child{text-align:right;font-family:var(--mono);font-weight:700;color:var(--bus);font-variant-numeric:tabular-nums}
 .gtable tr:last-child td{border-bottom:none}
 
+
+/* ---------- compte à rebours invasion ---------- */
+.cdbox{background:linear-gradient(#2A1012,#1A0C10);border:3px solid var(--stopD);border-radius:12px;
+  padding:12px 14px;margin-bottom:14px;text-align:center;box-shadow:0 4px 0 #00000066}
+.cdbox.hot{border-color:var(--stop);animation:pulse 1.6s infinite}
+.cdbox.past{border-color:var(--bus);background:linear-gradient(#2A2405,#1A1604)}
+.cdt{font-family:var(--px);font-size:10px;color:var(--stop);letter-spacing:1px;margin-bottom:9px}
+.cdbox.past .cdt{color:var(--bus)}
+.cdrow{display:flex;justify-content:center;gap:7px}
+.cdc{display:flex;flex-direction:column;align-items:center;background:#00000066;border:2px solid var(--stopD);
+  border-radius:8px;padding:6px 9px;min-width:46px}
+.cdc b{font-family:var(--px);font-size:15px;color:#FFD7D8;font-variant-numeric:tabular-nums}
+.cdc i{font-style:normal;font-family:var(--px);font-size:7px;color:var(--dim);margin-top:4px}
+.cdsub{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:9px}
+.shoprow.lock{opacity:.6}
+.sdesc{display:block;font-style:normal;font-size:11px;color:var(--dim);margin-top:3px;line-height:1.35}
+
 /* ---------- village 3D (WebGL) ---------- */
 .v3d{position:relative;height:330px;margin-bottom:12px;border:3px solid #6E9A38;border-radius:14px;overflow:hidden;
   background:#9FD4EA;touch-action:none;cursor:grab;box-shadow:0 5px 0 #00000066}
@@ -887,6 +904,7 @@ const LEVELS=[
 
 /* ---------------- BOUTIQUE / VILLAGE GAULOIS ---------------- */
 const SHOP=[
+/* --- village --- */
 {id:'feu',ic:'🔥',n:'Feu de camp',ne:'Campfire',p:60},
 {id:'hutte',ic:'🛖',n:'Hutte',ne:'Hut',p:80},
 {id:'ble',ic:'🌾',n:'Champ de blé',ne:'Wheat field',p:90},
@@ -895,15 +913,34 @@ const SHOP=[
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
 {id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140},
-{id:'forge',ic:'⚒️',n:'Forge',ne:'Forge',p:150},
+{id:'forge',ic:'⚒️',n:'Forge du forgeron',ne:'Blacksmith forge',p:150},
 {id:'chien',ic:'🐶',n:'Idéfix le chien',ne:'Dogmatix the dog',p:160},
 {id:'barde',ic:'🎶',n:'Le barde (ligoté)',ne:'The bard (tied up)',p:180},
 {id:'taverne',ic:'🍺',n:'Taverne',ne:'Tavern',p:200},
 {id:'chaudron',ic:'⚗️',n:'Chaudron de potion',ne:'Potion cauldron',p:220},
 {id:'druide',ic:'🧙',n:'Le druide',ne:'The druid',p:250},
 {id:'chef',ic:'👑',n:'Le chef sur son bouclier',ne:'The chief on his shield',p:300},
-{id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400}
+{id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400},
+/* --- armée : chaîne de progression contre Rome --- */
+{id:'camp',ic:'⛺',n:'Camp militaire',ne:'Military camp',p:260,cat:'army',req:'forge',pw:10,
+ d:'Tentes et feu de guerre',de:'Tents and a war fire'},
+{id:'entrainement',ic:'🎯',n:'Terrain d\'entraînement',ne:'Training ground',p:300,cat:'army',req:'camp',pw:12,
+ d:'Mannequins et râtelier d\'armes',de:'Dummies and a weapon rack'},
+{id:'guerriers',ic:'🛡️',n:'Escouade de guerriers',ne:'Warrior squad',p:340,cat:'army',req:'entrainement',pw:18,
+ d:'4 guerriers casqués en patrouille',de:'4 helmeted warriors on patrol'},
+{id:'tour',ic:'🗼',n:'Tour de guet',ne:'Watchtower',p:380,cat:'army',req:'palissade',pw:15,
+ d:'Voit venir les légions de loin',de:'Spots the legions from afar'},
+{id:'muraille',ic:'🧱',n:'Muraille de pierre',ne:'Stone rampart',p:450,cat:'army',req:'palissade',pw:25,
+ d:'Remparts crénelés autour du village',de:'Crenellated ramparts around the village'},
+{id:'catapulte',ic:'🎪',n:'Catapulte',ne:'Catapult',p:520,cat:'army',req:'entrainement',pw:22,
+ d:'De quoi renvoyer les Romains chez eux',de:'Enough to send the Romans home'},
+{id:'chefguerre',ic:'⚔️',n:'Chef de guerre',ne:'Warlord',p:600,cat:'army',req:'guerriers',pw:30,
+ d:'Il mène la charge, panache rouge au vent',de:'He leads the charge, red plume flying'}
 ];
+const ARMY_MAX=132;   // puissance totale si tout est acheté
+function armyPower(){ return SHOP.filter(i=>i.cat==='army'&&S.village.includes(i.id))
+  .reduce((n,i)=>n+i.pw,0); }
+function armyPct(){ return Math.min(100,Math.round(armyPower()/ARMY_MAX*100)); }
 
 /* ---------------- BADGES ---------------- */
 const BADGES=[
@@ -953,13 +990,14 @@ const defaults=()=>({
   examEclairBest:0, examHardBest:0,
   coins:0, coinsTotal:0,   // sesterces 🪙
   village:[],              // ids d'objets achetés, dans l'ordre
+  vpos:{},                 // id -> [x,z] : placement libre par le joueur
   arenaWins:0,
   daily:{date:'', ok:0, rewarded:false},
   dayStreak:0, lastGoalDate:'',
   badges:{},           // badgeId -> timestamp
   sound:true,
   lang:'fr',            // 'fr' = français + mètres · 'en' = anglais + unités US
-  examDate:'2026-07-23'
+  examDate:'2026-08-04', examTime:'14:00'
 });
 let S=load();
 function load(){
@@ -1344,6 +1382,32 @@ function daysToExam(){
   now.setHours(0,0,0,0);
   return Math.round((ex-now)/864e5);
 }
+/* instant exact de l'attaque romaine (date + heure de l'examen) */
+function examMoment(){
+  if(!S.examDate) return null;
+  const [y,m,d]=S.examDate.split('-').map(Number);
+  const [hh,mm]=(S.examTime||'14:00').split(':').map(Number);
+  return new Date(y,m-1,d,hh||0,mm||0,0,0);
+}
+function countdown(){
+  const ex=examMoment(); if(!ex) return null;
+  let ms=ex-new Date();
+  const past=ms<0; if(past) ms=-ms;
+  return {past, d:Math.floor(ms/864e5), h:Math.floor(ms/36e5)%24,
+          m:Math.floor(ms/6e4)%60, s:Math.floor(ms/1e3)%60};
+}
+function cdHtml(){
+  const c=countdown(); if(!c) return '';
+  const cell=(v,l)=>'<span class="cdc"><b>'+String(v).padStart(2,'0')+'</b><i>'+l+'</i></span>';
+  if(c.past) return '<div class="cdbox past"><div class="cdt">⚔️ '+t('L\'ATTAQUE A COMMENCÉ','THE ATTACK HAS BEGUN')+'</div>'
+    +'<p class="small" style="margin:6px 0 0">'+t('Le jour J est passé. Alors, ce permis ?','The day has come and gone. So, that permit?')+'</p></div>';
+  const hot=c.d<=2;
+  return '<div class="cdbox'+(hot?' hot':'')+'" id="cdlive">'
+   +'<div class="cdt">🏛️ '+t('INVASION ROMAINE','ROMAN INVASION')+'</div>'
+   +'<div class="cdrow">'+cell(c.d,t('J','D'))+cell(c.h,'H')+cell(c.m,'M')+cell(c.s,'S')+'</div>'
+   +'<p class="cdsub">'+t('Mardi 4 août, 14 h 00 — MVC de Bayonne.<br>César attaque : ton village doit être prêt.',
+     'Tuesday August 4, 2:00 p.m. — Bayonne MVC.<br>Caesar attacks: your village must be ready.')+'</p></div>';
+}
 function renderHud(){
   const L=levelInfo(); touchDaily();
   const dj=daysToExam();
@@ -1404,6 +1468,16 @@ function go(screen,params){
   render();
   scrollTo({top:0});
 }
+let cdTimer=0;
+function startCd(){
+  if(cdTimer) clearInterval(cdTimer);
+  cdTimer=setInterval(()=>{
+    const box=$('#cdlive'); if(!box){ clearInterval(cdTimer); cdTimer=0; return; }
+    const c=countdown(); if(!c||c.past) return;
+    const v=[c.d,c.h,c.m,c.s];
+    box.querySelectorAll('.cdc b').forEach((b,i)=>{ b.textContent=String(v[i]).padStart(2,'0'); });
+  },1000);
+}
 function render(){
   renderHud();
   const app=$('#app');
@@ -1414,19 +1488,14 @@ function render(){
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
   if(CUR.screen==='village'){ v3dInit(); miniInit(); }
+  if($('#cdlive')) startCd();
 }
 
 /* ---------- accueil ---------- */
 function scrHome(){
   const errN=errorPool().length;
   const dj=daysToExam();
-  let djLine='';
-  if(dj!==null&&dj>=0){
-    djLine='<p class="small" style="text-align:center;margin-bottom:14px">'
-      +(dj===0?t('C\'est <b style="color:var(--bus)">aujourd\'hui</b>. Respire. Tu sais tout. 🍀','It\'s <b style="color:var(--bus)">today</b>. Breathe. You\'ve got this. 🍀')
-      :dj===1?t('Examen <b style="color:var(--stop)">demain</b> au MVC de Bayonne. Dernière ligne droite !','Exam <b style="color:var(--stop)">tomorrow</b> at the Bayonne MVC. Home stretch!')
-      :t('Examen dans <b style="color:var(--bus)">'+dj+' jours</b> au MVC de Bayonne, NJ.','Exam in <b style="color:var(--bus)">'+dj+' days</b> at the Bayonne MVC, NJ.'))+'</p>';
-  }
+  const djLine=cdHtml();
   return '<h1 class="logo">ROUTE 440</h1>'
    +'<div class="logo-sub">NJ Permit Quest · '+t('Opération Bayonne','Operation Bayonne')+'</div>'
    +'<div class="langrow">'
@@ -1738,7 +1807,7 @@ function arenaWinHtml(w){
    ============================================================ */
 let V3={ready:false, raf:0, ren:null, scene:null, cam:null, host:null,
         rot:-0.55, tilt:0.72, dist:180, drag:false, auto:true, lx:0, ly:0,
-        mixers:[], t0:0, minis:[]};
+        mixers:[], t0:0, minis:[], edit:false, sel:null, place:{}, ring:null};
 
 function v3dStop(){
   if(V3.raf){ cancelAnimationFrame(V3.raf); V3.raf=0; }
@@ -1989,6 +2058,93 @@ const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[
   taverne:[47,3], ble:[31,34], banquet:[0,52], poule:[-34,34], forge:[-48,3],
   chaudron:[-19,16], druide:[-20,2], chef:[20,14], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
 
+/* guerrier gaulois : casque, bouclier, lance */
+function warrior(i,plume){
+  const g=new THREE.Group();
+  const p=person(i); g.add(p);
+  const hel=cyl(2.3,2.4,1.9,0xb9c2c8,8); g.add(at(hel,0,8.5,0));
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.6,.5,10),mat(0xc0463c));
+  sh.rotation.z=Math.PI/2; sh.rotation.y=0.15; g.add(at(sh,-3,4.4,.6));
+  const sp=cyl(.3,.3,15,COL.wood,6); g.add(at(sp,3,7,0));
+  g.add(at(cone(.7,2.2,0xd8dde0,6),3,15,0));
+  if(plume){ g.add(at(cone(1.1,3.4,0xc0463c,6),0,11.2,0)); g.add(at(cyl(2.6,2.7,2.2,0xd4b23c,8),0,8.6,0)); }
+  return g;
+}
+Object.assign(B3,{
+  camp(){ const g=new THREE.Group();
+    [[-9,-4,1],[9,-3,.95],[0,7,1.05]].forEach((t,i)=>{
+      const c=cone(7*t[2],11*t[2],i%2?0xb8a075:0xa8926a,7);
+      g.add(at(c,t[0],5.5*t[2],t[1]));
+      g.add(at(cyl(.4,.4,14*t[2],COL.wood,5),t[0],7*t[2],t[1]));
+    });
+    g.add(at(box(.6,13,.6,COL.wood),0,6.5,-11));
+    const fl=new THREE.Mesh(new THREE.PlaneGeometry(7,4.4),
+      new THREE.MeshLambertMaterial({color:0xc0463c,side:THREE.DoubleSide}));
+    fl.name='flag'; g.add(at(fl,3.6,11,-11));
+    for(let i=0;i<5;i++){ const a=i/5*Math.PI*2; g.add(at(box(1.8,1.2,1.8,COL.stone),Math.cos(a)*3.4,.6,Math.sin(a)*3.4+2)); }
+    const f=new THREE.Mesh(new THREE.ConeGeometry(1.8,4.4,6),new THREE.MeshBasicMaterial({color:COL.fire}));
+    f.name='flame'; g.add(at(f,0,3.2,2));
+    g.userData.smoke={x:0,y:6,z:2,n:2};
+    return g; },
+  entrainement(){ const g=new THREE.Group();
+    const pl=new THREE.Mesh(new THREE.CircleGeometry(15,20),mat(COL.dirtDark));
+    pl.rotation.x=-Math.PI/2; pl.position.y=.2; pl.receiveShadow=true; g.add(pl);
+    [[-7,-5],[0,-8],[7,-5]].forEach((p,i)=>{ // mannequins de paille
+      const d=new THREE.Group();
+      d.add(at(cyl(.9,1.1,11,COL.wood,6),0,5.5,0));
+      d.add(at(box(9,1.2,1.2,COL.wood),0,8.4,0));
+      d.add(at(cyl(2.2,1.9,4,0xd9be62,8),0,7.4,0));
+      d.add(at(sph(1.8,0xc9ad55,0),0,10.6,0));
+      d.name='dummy'; d.userData.p=i*0.8; d.position.set(p[0],0,p[1]); g.add(d); });
+    // râtelier d'armes
+    g.add(at(box(11,1,2.2,COL.wood),4,5.4,7));
+    [-3,0,3].forEach((x,i)=>{ g.add(at(cyl(.3,.3,10,COL.wood,5),4+x,5,7));
+      g.add(at(cone(.6,1.8,0xb9c2c8,6),4+x,10.4,7)); });
+    [-5,5].forEach(x=>g.add(at(cyl(.8,.9,6,COL.wood,6),4+x,3,7)));
+    return g; },
+  guerriers(){ const g=new THREE.Group();
+    [[-6,-4,0],[6,-3,1],[-4,6,2],[7,6,3]].forEach((p,i)=>{
+      const w=warrior(i+2,false); w.position.set(p[0],0,p[1]); w.rotation.y=i*1.4;
+      w.name='guard'; w.userData.p=i*0.7; g.add(w); });
+    return g; },
+  tour(){ const g=new THREE.Group();
+    g.add(at(cyl(6,7.5,26,COL.stone,10),0,13,0));
+    g.add(at(cyl(8,8,2.4,COL.stoneDark,10),0,26.5,0));
+    for(let i=0;i<10;i++){ const a=i/10*Math.PI*2;
+      g.add(at(box(2,3,2,COL.stone),Math.cos(a)*7,29,Math.sin(a)*7)); }
+    const r=cone(9,8,COL.thatchDark,7); g.add(at(r,0,33,0));
+    const wr=warrior(1,false); wr.scale.setScalar(.8); wr.name='guard'; wr.userData.p=0;
+    g.add(at(wr,0,27.7,0));
+    return g; },
+  muraille(){ const g=new THREE.Group(); const R=92;
+    for(let i=0;i<40;i++){ const a=i/40*Math.PI*2;
+      const seg=box(15,11,5,i%2?COL.stone:COL.stoneDark);
+      seg.position.set(Math.cos(a)*R,5.5,Math.sin(a)*R); seg.rotation.y=-a; g.add(seg);
+      const cr=box(4,3.4,5.4,COL.stone);
+      cr.position.set(Math.cos(a)*R,12.4,Math.sin(a)*R); cr.rotation.y=-a; g.add(cr); }
+    return g; },
+  catapulte(){ const g=new THREE.Group();
+    g.add(at(box(13,2.4,9,COL.wood),0,3,0));
+    [-1,1].forEach(k=>{ const w=cyl(3,3,1,COL.woodDark,12); w.rotation.x=Math.PI/2;
+      g.add(at(w,k*5.5,3,4.2)); g.add(at(w.clone(),k*5.5,3,-4.2)); });
+    [-1,1].forEach(k=>{ const b=box(1.6,11,1.6,COL.wood); b.rotation.x=k*0.35;
+      g.add(at(b,k*3.4,9,0)); });
+    const arm=new THREE.Group();
+    arm.add(at(box(1.8,1.8,17,COL.wood),0,0,-6));
+    arm.add(at(sph(2.6,COL.stoneDark,0),0,0,-14));
+    arm.position.set(0,12,2); arm.rotation.x=-0.9; arm.name='arm'; g.add(arm);
+    return g; },
+  chefguerre(){ const g=new THREE.Group();
+    const w=warrior(0,true); w.scale.setScalar(1.25); g.add(w);
+    g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
+    const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
+      new THREE.MeshLambertMaterial({color:0xd4b23c,side:THREE.DoubleSide}));
+    fl.name='flag'; g.add(at(fl,-2,14.5,-2));
+    return g; }
+});
+Object.assign(P3,{ camp:[-62,-30], entrainement:[58,-30], guerriers:[-40,20],
+  tour:[70,-58], muraille:[0,0], catapulte:[44,-52], chefguerre:[-24,-16] });
+
 /* ---------- construction de la scène ---------- */
 function buildVillage(scene){
   const owned=S.village;
@@ -2006,10 +2162,12 @@ function buildVillage(scene){
   path(11,86,-18,-16,0.5); path(10,72,26,14,-0.75); path(9,60,-6,34,0.15);
   // articles achetés
   const anim=[];
+  V3.place={};
   SHOP.forEach(it=>{
-    const p=P3[it.id]||[0,0];
+    const p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     if(owned.includes(it.id)){
       const g=B3[it.id](); g.position.set(p[0],0,p[1]); scene.add(g); anim.push(g);
+      if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
     }else if(it.id!=='palissade'){
       const m=new THREE.Mesh(new THREE.RingGeometry(4,5.2,12),
         new THREE.MeshBasicMaterial({color:0xcfe8a0,transparent:true,opacity:.45,side:THREE.DoubleSide}));
@@ -2110,6 +2268,10 @@ function v3dInit(){
   const fill=new THREE.DirectionalLight(0xa8c8f0,0.14); fill.position.set(90,60,-70); scene.add(fill);
 
   const built=buildVillage(scene);
+  // anneau qui suit l'objet en cours de déplacement
+  const ring=new THREE.Mesh(new THREE.RingGeometry(7,9.5,24),
+    new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85,side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2; ring.visible=false; scene.add(ring); V3.ring=ring;
   let smoke=[]; built.anim.forEach(g=>{ smoke=smoke.concat(makeSmoke(scene,g)); });
   const flame=scene.getObjectByName('flame'), flight=scene.getObjectByName('firelight');
   const wheat=[]; scene.traverse(o=>{ if(o.name==='wheat') wheat.push(o); });
@@ -2118,12 +2280,41 @@ function v3dInit(){
         potion=scene.getObjectByName('potion'), ember=scene.getObjectByName('ember');
 
   // interaction
-  const down=e=>{ V3.drag=true; V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
-  const move=e=>{ if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
+  // --- placement libre : rayon depuis le doigt vers la scène ---
+  const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),0), hit=new THREE.Vector3();
+  const toNdc=(e)=>{ const r=host.getBoundingClientRect();
+    ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; };
+  const pickAt=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
+    const hits=ray.intersectObjects(Object.values(V3.place),true);
+    for(const h of hits){ let o=h.object; while(o&&!o.userData.pid) o=o.parent; if(o) return o; }
+    return null; };
+  const groundAt=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
+    return ray.ray.intersectPlane(plane,hit)?hit.clone():null; };
+
+  const down=e=>{
+    if(V3.edit){
+      const o=pickAt(e);
+      if(o){ V3.sel=o; V3.auto=false; host.classList.add('dragging');
+             if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
+             if(e.cancelable) e.preventDefault(); return; }
+    }
+    V3.drag=true; V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
+  const move=e=>{
+    if(V3.sel){ const g=groundAt(e);
+      if(g){ const r=Math.min(150,Math.hypot(g.x,g.z)), a=Math.atan2(g.z,g.x);
+        V3.sel.position.x=Math.cos(a)*r; V3.sel.position.z=Math.sin(a)*r;
+        if(V3.ring) V3.ring.position.set(V3.sel.position.x,0.4,V3.sel.position.z); }
+      if(e.cancelable) e.preventDefault(); return; }
+    if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
     V3.rot+=(t0.clientX-V3.lx)*0.008;
     V3.tilt=Math.max(0.25,Math.min(1.35,V3.tilt-(t0.clientY-V3.ly)*0.005));
     V3.lx=t0.clientX; V3.ly=t0.clientY; if(e.cancelable) e.preventDefault(); };
-  const up=()=>{ V3.drag=false; host.classList.remove('dragging'); };
+  const up=()=>{
+    if(V3.sel){ S.vpos=S.vpos||{};
+      S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
+      save(); V3.sel=null; if(V3.ring) V3.ring.visible=false; SFX.click(); }
+    V3.drag=false; host.classList.remove('dragging'); };
   host.addEventListener('pointerdown',down);
   host.addEventListener('pointermove',move,{passive:false});
   window.addEventListener('pointerup',up);
@@ -2217,27 +2408,58 @@ function miniInit(){
 }
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
-  const owned=S.village;
+  const owned=S.village, ap=armyPct(), pw=armyPower();
+  const vill=SHOP.filter(i=>i.cat!=='army'), army=SHOP.filter(i=>i.cat==='army');
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
+   +cdHtml()
    +v3dHost()
+   +'<div class="panel" style="margin-bottom:12px">'
+   +'<div class="setrow" style="padding-top:0"><label>🔧 '+t('Réorganiser le village','Rearrange the village')+'</label>'
+   +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
+   +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
+   +'</div>'
+   +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
+   +'<div class="gprog-top" style="margin-top:6px"><span>'+t('Prêt à repousser César','Ready to repel Caesar')+'</span><b>'+ap+'%</b></div>'
+   +'<div class="xp-lane" style="height:12px"><div class="xp-fill" style="width:'+ap+'%;background:linear-gradient(90deg,#7C1215,#E5383B)"></div><div class="xp-dash"></div></div>'
+   +'<p class="small" style="margin-top:8px">'+(ap>=100?t('🏆 Village imprenable. Rome peut venir.','🏆 Impregnable village. Let Rome come.')
+      :ap>=50?t('Défenses solides — continue, il reste des failles.','Solid defenses — keep going, there are still gaps.')
+      :t('Village vulnérable ! Construis la forge, puis le camp militaire.','Village vulnerable! Build the forge, then the military camp.'))
+   +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p></div>'
    +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
-     :t('Village : <b>'+owned.length+'/'+SHOP.length+'</b> éléments · chaque bonne réponse rapporte des 🪙','Village: <b>'+owned.length+'/'+SHOP.length+'</b> items · every correct answer earns 🪙'))+'</p></div>'
-   +'<div class="panel"><div class="eyebrow">🛒 '+t('BOUTIQUE — tes sesterces : ','SHOP — your sesterces: ')+S.coins+' 🪙</div>';
-  SHOP.forEach(s=>{
-    const got=owned.includes(s.id), can=S.coins>=s.p;
-    v+='<div class="shoprow'+(got?' got':'')+'">'+mini3d(s.id)
-     +'<span class="snm">'+esc(t(s.n,s.ne))+'</span>'
-     +(got?'<span class="sgot">✔ '+t('acquis','owned')+'</span>'
-      :'<button class="sbuy'+(can?'':' cant')+'" onclick="G.buy(\''+s.id+'\')">'+s.p+' 🪙</button>');
-    v+='</div>';
-  });
+     :t('Village : <b>'+owned.length+'/'+SHOP.length+'</b> éléments · chaque bonne réponse rapporte des 🪙','Village: <b>'+owned.length+'/'+SHOP.length+'</b> items · every correct answer earns 🪙'))+'</p></div>';
+  const row=s2=>{
+    const got=S.village.includes(s2.id), can=S.coins>=s2.p;
+    const lock=s2.req&&!S.village.includes(s2.req);
+    const reqN=lock?(SHOP.find(x=>x.id===s2.req)||{}):null;
+    let r='<div class="shoprow'+(got?' got':'')+(lock?' lock':'')+'">'+mini3d(s2.id)
+     +'<span class="snm">'+esc(t(s2.n,s2.ne))
+     +(s2.d?'<i class="sdesc">'+esc(t(s2.d,s2.de))+(s2.pw?' · +'+s2.pw+' ⚔️':'')+'</i>':'')
+     +(lock?'<i class="sdesc">🔒 '+t('nécessite : ','requires: ')+esc(t(reqN.n,reqN.ne))+'</i>':'')+'</span>';
+    r+= got?'<span class="sgot">✔ '+t('acquis','owned')+'</span>'
+       :'<button class="sbuy'+(can&&!lock?'':' cant')+'" onclick="G.buy(\''+s2.id+'\')">'+s2.p+' 🪙</button>';
+    return r+'</div>';
+  };
+  v+='<div class="panel"><div class="eyebrow">🛒 '+t('VILLAGE — tes sesterces : ','VILLAGE — your sesterces: ')+S.coins+' 🪙</div>';
+  vill.forEach(x=>{ v+=row(x); });
+  v+='</div><div class="panel"><div class="eyebrow" style="color:var(--stop)">⚔️ '+t('ARMÉE — défendre le village','ARMY — defend the village')+'</div>';
+  army.forEach(x=>{ v+=row(x); });
   return v+'</div>';
+}
+function toggleEdit(){
+  V3.edit=!V3.edit;
+  if(!V3.edit&&V3.ring) V3.ring.visible=false;
+  V3.sel=null; render();
+  toast(V3.edit?t('🔧 Mode placement : glisse les bâtiments','🔧 Placement mode: drag the buildings')
+                :t('✅ Village enregistré','✅ Village saved'));
 }
 function buy(id){
   const it=SHOP.find(s=>s.id===id); if(!it) return;
   if(S.village.includes(id)) return;
+  if(it.req&&!S.village.includes(it.req)){
+    const r=SHOP.find(x=>x.id===it.req)||{};
+    SFX.ko(); toast('🔒 '+t('Il te faut d\'abord : ','You first need: ')+'<b>'+esc(t(r.n,r.ne))+'</b>'); return; }
   if(S.coins<it.p){ SFX.ko(); toast(t('🪙 Pas assez de sesterces ! Il t\'en manque '+(it.p-S.coins)+'. Va répondre à des questions !','🪙 Not enough sesterces! You need '+(it.p-S.coins)+' more. Go answer questions!')); return; }
   S.coins-=it.p; S.village.push(id); save(); checkBadges();
   SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
@@ -2559,7 +2781,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  startArena, arenaNext, buy, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
+  startArena, arenaNext, buy, toggleEdit, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
