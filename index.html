@@ -282,6 +282,13 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 
 
 /* ---------- besoins du village ---------- */
+.folk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.folkc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--lane2);
+  border:2px solid var(--edge);border-radius:10px;padding:9px 10px;text-align:left}
+.folkc:active{transform:translateY(1px)}
+.folkc .fkn{font-family:var(--px);font-size:8px;color:var(--bus);line-height:1.6}
+.folkc .fkt{font-size:11px;color:var(--retro)}
+.folkc .fkb{font-size:10.5px;color:var(--dim)}
 .needbk{background:#0000004d;border:2px solid var(--edge);border-radius:10px;padding:9px 10px;margin-bottom:8px}
 .needbk.ok{border-color:var(--exitD)}
 .needinfo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
@@ -1085,6 +1092,7 @@ const defaults=()=>({
   village:[],              // ids d'objets achetés, dans l'ordre
   vpos:{},                 // id -> [x,z] : placement libre par le joueur
   stack:{},                // id -> nombre d'exemplaires (huttes)
+  people:[],               // habitants nommés et persistants
   arenaWins:0,
   daily:{date:'', ok:0, rewarded:false},
   dayStreak:0, lastGoalDate:'',
@@ -2013,7 +2021,8 @@ function villagerSay(p){
   const el=$('#v3dsay'); if(!el) return;
   const j=p.userData.job, lines=t(j.say,j.saye);
   const txt=lines[Math.floor(Math.random()*lines.length)];
-  el.innerHTML='<b>'+j.ic+' '+esc(t(j.n,j.ne))+'</b> — '+esc(txt);
+  const nm=p.userData.rec?p.userData.rec.name:t(j.n,j.ne);
+  el.innerHTML='<b>'+j.ic+' '+esc(nm)+'</b> <i style="color:var(--dim);font-style:normal">('+esc(t(j.n,j.ne))+')</i> — '+esc(txt);
   el.classList.add('show');
   clearTimeout(V3.sayT); V3.sayT=setTimeout(()=>el.classList.remove('show'),3200);
 }
@@ -2290,6 +2299,55 @@ function tree(s,pine){
       o.scale.y=0.86; g.add(at(o,b[0]*s,th+b[1]*s,b[2]*s)); });
   }
   return g;
+}
+/* ---------- habitants nommés, persistants d'une session à l'autre ---------- */
+const NAMES_M=['Bravourix','Tranquilix','Ronchonnix','Costaudix','Malinix','Rapidix','Gourmandix',
+ 'Bavardix','Têtubix','Vaillantix','Râleurix','Doucix','Farouchix','Solidix','Gaillardix',
+ 'Musclix','Astucix','Grognonix','Sagacix','Pétulantix'];
+const NAMES_F=['Belladona','Fleurine','Aurélia','Morgane','Brenna','Ysolde','Ambra','Nemetona',
+ 'Rhiannon','Sirona','Éponine','Maëlys','Enora','Solenn','Gwenaëlle'];
+const TRAITS=[
+ {k:'bavard',  n:'bavard',ne:'chatty',      d:'Ne peut pas s\'empêcher de raconter sa vie',de:'Cannot stop telling his life story'},
+ {k:'travailleur',n:'travailleur',ne:'hardworking',d:'Toujours le premier au travail',de:'Always first to work'},
+ {k:'gourmand',n:'gourmand',ne:'greedy',    d:'Rôde souvent autour du banquet',de:'Often lurks near the banquet'},
+ {k:'reveur',  n:'rêveur',ne:'dreamer',     d:'Regarde souvent les nuages',de:'Often stares at the clouds'},
+ {k:'grognon', n:'grognon',ne:'grumpy',     d:'Trouve toujours à redire',de:'Always has something to complain about'},
+ {k:'courageux',n:'courageux',ne:'brave',   d:'Sera au premier rang face à César',de:'Will stand front row against Caesar'},
+ {k:'curieux', n:'curieux',ne:'curious',    d:'Pose des questions sur tout',de:'Asks questions about everything'}
+];
+function newPerson(i){
+  const f=Math.random()<0.42;
+  const pool=f?NAMES_F:NAMES_M;
+  const used=(S.people||[]).map(x=>x.name);
+  let name=pool[Math.floor(Math.random()*pool.length)], guard=0;
+  while(used.includes(name)&&guard++<40) name=pool[Math.floor(Math.random()*pool.length)];
+  return {id:'p'+Date.now().toString(36)+i, name, f, ci:Math.floor(Math.random()*8),
+          tr:TRAITS[Math.floor(Math.random()*TRAITS.length)].k,
+          born:Date.now(), bond:{}, chats:0, days:0};
+}
+/* garde la liste d'habitants alignée sur le nombre de villageois affichés */
+function syncPeople(n){
+  S.people=S.people||[];
+  while(S.people.length<n){ const p=newPerson(S.people.length); S.people.push(p); }
+  if(S.people.length>n) S.people=S.people.slice(0,n);
+  save(); return S.people;
+}
+function traitOf(k){ return TRAITS.find(x=>x.k===k)||TRAITS[0]; }
+function daysIn(p){ return Math.max(0,Math.floor((Date.now()-p.born)/864e5)); }
+function bestFriend(p){
+  let best=null,bv=0;
+  Object.keys(p.bond||{}).forEach(k=>{ if(p.bond[k]>bv){ bv=p.bond[k]; best=k; } });
+  if(!best) return null;
+  const o=(S.people||[]).find(x=>x.id===best);
+  return o?{p:o,n:bv}:null;
+}
+/* routine : ce que fait un habitant selon l'heure réelle */
+function routine(){
+  const h=new Date().getHours();
+  if(h>=23||h<7) return 'sleep';
+  if(h>=12&&h<14) return 'eat';
+  if(h>=19) return 'social';
+  return 'work';
 }
 /* métiers : chacun a un lieu, un outil, une couleur et des répliques */
 const JOBS=[
@@ -2667,15 +2725,24 @@ function buildVillage(scene){
   addSpot('chaudron',-17,14,'potion'); addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');
   if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
   const n=Math.min(12,Math.floor(owned.length/2)+1+hutCount()), walkers=[];
+  const folk=syncPeople(n);
+  // lieux de repos : les huttes servent de maisons pour la nuit
+  const homes=[]; for(let i=0;i<Math.max(1,hutCount());i++){
+    const k=i?'hutte#'+i:'hutte';
+    const g=V3.place&&V3.place[k];
+    homes.push(g?{x:g.position.x,z:g.position.z+12}:{x:-33,z:-21});
+  }
   for(let i=0;i<n;i++){
-    const p=person(i);
+    const rec=folk[i];
+    const p=person(rec.ci);
     const st=spots[i%spots.length];
     const job=JOBS.find(j=>j.k===st.job)||JOBS[JOBS.length-1];
     p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
     const tl=toolMesh(job.tool);
     if(tl&&p.userData.hand) p.userData.hand.add(tl);
-    p.userData={ ...p.userData, id:i, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
-                 timer:2+i*1.4, job, home:st, sp:7+((i*7)%5), talk:null, said:0 };
+    p.userData={ ...p.userData, id:i, rec, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
+                 timer:2+i*1.4, job, home:st, bed:homes[i%homes.length],
+                 sp:7+((i*7)%5), talk:null, npc:1 };
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
@@ -2754,7 +2821,13 @@ function v3dInit(){
   const groundAt=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
     return ray.ray.intersectPlane(plane,hit)?hit.clone():null; };
 
+  const pickNpc=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
+    const hits=ray.intersectObjects(built.walkers,true);
+    for(const h of hits){ let o=h.object; while(o&&!o.userData.npc) o=o.parent; if(o) return o; }
+    return null; };
+  V3.pickNpc=pickNpc;
   const down=e=>{
+    if(!V3.edit){ const npc=pickNpc(e); if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); return; } }
     if(V3.edit){
       const o=pickAt(e);
       if(o){ V3.sel=o; V3.auto=false; host.classList.add('dragging');
@@ -2829,7 +2902,10 @@ function v3dInit(){
         }
       }else{
         p.position.y=0;
-        if(u.state==='work'){
+        if(u.state==='work'&&routine()==='sleep'){
+          if(ar){ ar[0].rotation.x=0; ar[1].rotation.x=0; }
+          p.position.y=-1.2;                       // accroupi/endormi près de sa hutte
+        }else if(u.state==='work'){
           // geste propre au métier
           const k=u.job.k;
           if(k==='forge'||k==='bois'){                 // frappe régulière
@@ -2865,12 +2941,27 @@ function v3dInit(){
           p.position.y=Math.abs(Math.sin(tt*2.4+u.id))*0.18;
         }
         if(u.timer<=0){
-          if(Math.random()<0.4&&built.walkers.length>1){        // aller discuter
+          const mode=routine();
+          const social=(mode==='social'||mode==='eat');
+          const chatChance=social?0.75:(u.rec&&u.rec.tr==='bavard'?0.55:0.35);
+          if(mode==='sleep'){                                   // rentrer se coucher
+            u.tgt.set(u.bed.x+(Math.random()-0.5)*6,0,u.bed.z+(Math.random()-0.5)*6); u.talk=null;
+          }else if(Math.random()<chatChance&&built.walkers.length>1){   // aller discuter
             const o=built.walkers[Math.floor(Math.random()*built.walkers.length)];
-            if(o!==p){ u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p; }
-            else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
+            if(o!==p){
+              u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p;
+              // l'amitié se renforce à chaque discussion
+              if(u.rec&&o.userData.rec){
+                const A=u.rec,B=o.userData.rec;
+                A.bond[B.id]=(A.bond[B.id]||0)+1; B.bond[A.id]=(B.bond[A.id]||0)+1;
+                A.chats++; B.chats++; V3.saveSoon=1;
+              }
+            } else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
+          }else if(social){                                     // veillée autour du feu / banquet
+            const f=built.spots.find(x=>x.job==='feu')||u.home;
+            u.tgt.set(f.x+(Math.random()-0.5)*16,0,f.z+(Math.random()-0.5)*16); u.talk=null;
           }else{                                                // retourner travailler
-            const h=Math.random()<0.7?u.home:built.spots[Math.floor(Math.random()*built.spots.length)];
+            const h=Math.random()<0.75?u.home:built.spots[Math.floor(Math.random()*built.spots.length)];
             u.tgt.set(h.x+(Math.random()-0.5)*8,0,h.z+(Math.random()-0.5)*8); u.talk=null;
           }
           u.state='walk';
@@ -2878,6 +2969,7 @@ function v3dInit(){
       }
     });
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
+    if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
     ren.render(scene,cam);
     V3.raf=requestAnimationFrame(loop);
   };
@@ -2945,6 +3037,7 @@ function scrVillage(){
    +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
    +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
    +'</div>'
+   +peopleHtml()
    +needsHtml()
    +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
    +'<div class="gprog-top" style="margin-top:6px"><span>'+t('Prêt à repousser César','Ready to repel Caesar')+'</span><b>'+ap+'%</b></div>'
@@ -2989,6 +3082,41 @@ function goHome(){
     +'<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="G.hideOverlay()">'+t('RESTER','STAY')+'</button>'
     +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.hideOverlay();G.go(\'home\')">'+t('QUITTER','LEAVE')+'</button></span>');
 }
+/* fiche détaillée d'un habitant */
+function showPerson(rec,obj){
+  const tr=traitOf(rec.tr), bf=bestFriend(rec);
+  const job=obj&&obj.userData.job?obj.userData.job:null;
+  const d=daysIn(rec);
+  const mode=routine(), doing={work:t('au travail','at work'),eat:t('à table','eating'),
+    social:t('à la veillée','at the evening gathering'),sleep:t('endormi','asleep')}[mode];
+  showOverlay(job?job.ic:'🧑', rec.name,
+    '<div style="text-align:left;font-size:13.5px;line-height:1.7">'
+    +(job?'<b>'+t('Métier','Trade')+' :</b> '+esc(t(job.n,job.ne))+'<br>':'')
+    +'<b>'+t('Caractère','Character')+' :</b> '+esc(t(tr.n,tr.ne))+' — <i>'+esc(t(tr.d,tr.de))+'</i><br>'
+    +'<b>'+t('Au village depuis','In the village for')+' :</b> '+(d?d+' '+t('jour'+(d>1?'s':''),'day'+(d>1?'s':'')):t('aujourd\'hui','today'))+'<br>'
+    +'<b>'+t('Discussions','Chats')+' :</b> '+(rec.chats||0)+'<br>'
+    +'<b>'+t('Meilleur ami','Best friend')+' :</b> '+(bf?esc(bf.p.name)+' <span style="color:var(--dim)">('+bf.n+' '+t('échanges','talks')+')</span>':t('personne encore…','nobody yet…'))+'<br>'
+    +'<b>'+t('En ce moment','Right now')+' :</b> '+doing
+    +'</div>');
+}
+/* liste des habitants sous le village */
+function peopleHtml(){
+  const list=S.people||[];
+  if(!list.length) return '';
+  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">👥 '
+   +t('LES HABITANTS','THE VILLAGERS')+' · '+list.length+'</div><div class="folk">';
+  list.forEach(r=>{
+    const bf=bestFriend(r), tr=traitOf(r.tr);
+    h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
+     +'<span class="fkn">'+esc(r.name)+'</span>'
+     +'<span class="fkt">'+esc(t(tr.n,tr.ne))+'</span>'
+     +'<span class="fkb">'+(bf?'🤝 '+esc(bf.p.name):'—')+'</span></button>';
+  });
+  return h+'</div><p class="small" style="margin-top:8px">'
+   +t('Touche un villageois dans la scène 3D (hors mode déplacement) pour voir sa fiche. Chaque nouvelle hutte fait venir un habitant.',
+      'Tap a villager in the 3D scene (outside move mode) to see their profile. Each new hut brings in a villager.')+'</p></div>';
+}
+function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
 function toggleEdit(){
   V3.edit=!V3.edit;
   if(!V3.edit&&V3.ring) V3.ring.visible=false;
@@ -3011,7 +3139,8 @@ function buy(id){
   save(); checkBadges();
   SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
   toast(it.ic+' '+(it.stack
-    ? t('Hutte n°'+nOwned(id)+' bâtie — un villageois s\'installe !','Hut #'+nOwned(id)+' built — a villager moves in!')
+    ? (function(){ const np=newPerson((S.people||[]).length); S.people=S.people||[]; S.people.push(np); save();
+        return t(np.name+' s\'installe dans la hutte n°'+nOwned(id)+' !',np.name+' moves into hut #'+nOwned(id)+'!'); })()
     : t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!')));
   render();
 }
@@ -3334,7 +3463,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  startArena, arenaNext, buy, toggleEdit, goHome, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
+  startArena, arenaNext, buy, toggleEdit, goHome, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
