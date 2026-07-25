@@ -315,6 +315,11 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
   background:#9FD4EA;touch-action:none;cursor:grab;box-shadow:0 5px 0 #00000066}
 .v3d.dragging{cursor:grabbing}
 .v3d canvas{display:block;width:100%;height:100%}
+.v3d-say{position:absolute;left:8px;right:8px;top:8px;padding:8px 11px;border-radius:10px;
+  background:rgba(12,17,24,.86);border:2px solid var(--bus);color:var(--retro);font-size:12.5px;line-height:1.4;
+  opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none}
+.v3d-say.show{opacity:1;transform:translateY(0)}
+.v3d-say b{color:var(--bus)}
 .v3d-hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#fff;opacity:.85;pointer-events:none;text-shadow:0 1px 3px #000}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
 .v3d-ctl button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
@@ -2003,6 +2008,15 @@ function v3dStop(){
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
 function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
+/* bulle de dialogue : un villageois « parle » au-dessus de la scène */
+function villagerSay(p){
+  const el=$('#v3dsay'); if(!el) return;
+  const j=p.userData.job, lines=t(j.say,j.saye);
+  const txt=lines[Math.floor(Math.random()*lines.length)];
+  el.innerHTML='<b>'+j.ic+' '+esc(t(j.n,j.ne))+'</b> — '+esc(txt);
+  el.classList.add('show');
+  clearTimeout(V3.sayT); V3.sayT=setTimeout(()=>el.classList.remove('show'),3200);
+}
 
 /* ---------- palette stylisée ---------- */
 const COL={
@@ -2072,6 +2086,24 @@ function buildTextures(){
     for(let i=0;i<26;i++){ x.strokeStyle='rgba(150,128,92,'+rnd(.1,.28)+')'; x.lineWidth=rnd(.5,1.2);
       x.beginPath(); x.moveTo(rnd(0,w),rnd(0,h)); x.lineTo(rnd(0,w),rnd(0,h)); x.stroke(); }
   },2);
+  // rondins verticaux (palissade / muraille)
+  TX.logs=mkTex(160,128,(x,w,h)=>{
+    x.fillStyle='#4a3520'; x.fillRect(0,0,w,h);
+    const n=8, lw=w/n;
+    for(let i=0;i<n;i++){
+      const gd=x.createLinearGradient(i*lw,0,(i+1)*lw,0);
+      gd.addColorStop(0,'#5b3f22'); gd.addColorStop(.28,'#a1743f');
+      gd.addColorStop(.55,'#8c6335'); gd.addColorStop(1,'#4f381f');
+      x.fillStyle=gd; x.fillRect(i*lw+1,0,lw-2,h);
+      for(let k=0;k<9;k++){ x.strokeStyle='rgba(74,52,28,'+rnd(.16,.44)+')'; x.lineWidth=rnd(.5,1.5);
+        const px=i*lw+rnd(2.5,lw-2.5);
+        x.beginPath(); x.moveTo(px,0); x.bezierCurveTo(px+rnd(-2,2),h/3,px+rnd(-2,2),2*h/3,px+rnd(-2,2),h); x.stroke(); }
+      x.strokeStyle='rgba(255,226,170,.16)'; x.lineWidth=1.4;
+      x.beginPath(); x.moveTo(i*lw+lw*0.3,0); x.lineTo(i*lw+lw*0.3,h); x.stroke();
+    }
+    for(let k=0;k<3;k++){ const y=rnd(0,h);      // ligatures horizontales
+      x.fillStyle='rgba(58,40,22,.5)'; x.fillRect(0,y,w,rnd(2,4)); }
+  },1,1);
   // pierre : moellons
   TX.stone=mkTex(128,128,(x,w,h)=>{
     x.fillStyle='#8f979c'; x.fillRect(0,0,w,h);
@@ -2259,6 +2291,32 @@ function tree(s,pine){
   }
   return g;
 }
+/* métiers : chacun a un lieu, un outil, une couleur et des répliques */
+const JOBS=[
+ {k:'moisson',ic:'🌾',need:'ble',   n:'Paysan',ne:'Farmer',   tool:'faux',  say:['Belle récolte !','Le blé est mûr.','Encore un panier…'],saye:['Fine harvest!','The wheat is ripe.','One more basket…']},
+ {k:'forge',  ic:'⚒️',need:'forge', n:'Forgeron',ne:'Smith',  tool:'marteau',say:['Le fer chauffe !','Une épée de plus.','Par Toutatis, quelle chaleur !'],saye:['The iron is hot!','One more sword.','By Toutatis, it is hot!']},
+ {k:'eau',    ic:'🪣',need:'puits', n:'Porteur d\'eau',ne:'Water carrier',tool:'seau',say:['L\'eau est fraîche.','J\'en rapporte au chef.','Encore un seau…'],saye:['The water is cool.','Bringing some to the chief.','One more bucket…']},
+ {k:'boire',  ic:'🍺',need:'taverne',n:'Habitué',ne:'Regular', tool:'chope', say:['À la santé du village !','Encore une tournée !','La cervoise est bonne.'],saye:['To the village!','Another round!','The ale is good.']},
+ {k:'garde',  ic:'🛡️',need:'camp',  n:'Guetteur',ne:'Watchman',tool:'lance',say:['Rien à l\'horizon.','Les Romains approchent…','Je monte la garde.'],saye:['Nothing on the horizon.','The Romans are coming…','I stand watch.']},
+ {k:'bois',   ic:'🪵',need:null,     n:'Bûcheron',ne:'Woodcutter',tool:'hache',say:['Du bois pour l\'hiver.','Cet arbre fera l\'affaire.','Ça fend bien !'],saye:['Wood for winter.','This tree will do.','Splits nicely!']},
+ {k:'poules', ic:'🐔',need:'poule',  n:'Éleveuse',ne:'Keeper', tool:'panier',say:['Trois œufs ce matin !','Mes poules sont grasses.','Venez, mes belles !'],saye:['Three eggs this morning!','My hens are plump.','Come on, girls!']},
+ {k:'potion', ic:'⚗️',need:'chaudron',n:'Apprenti druide',ne:'Druid apprentice',tool:'louche',say:['La potion bouillonne !','Il manque du gui.','Ne goûte pas !'],saye:['The potion bubbles!','We need mistletoe.','Do not taste it!']},
+ {k:'feu',    ic:'🔥',need:null,     n:'Conteur',ne:'Storyteller',tool:null,  say:['…et le sanglier fit trois bonds !','Écoutez cette histoire…','C\'était au temps de mon père.'],saye:['…and the boar leapt thrice!','Listen to this tale…','It was in my father\'s day.']}
+];
+/* outil tenu en main */
+function toolMesh(kind){
+  if(!kind) return null;
+  const g=new THREE.Group();
+  if(kind==='marteau'){ g.add(at(cyl(.3,.3,5,COL.wood,5),0,2.5,0)); g.add(at(box(2.4,1.4,1.4,0x8a9098),0,5,0)); }
+  else if(kind==='hache'){ g.add(at(cyl(.3,.3,6,COL.wood,5),0,3,0)); g.add(at(box(2.2,2,.5,0xb9c2c8),.9,5.6,0)); }
+  else if(kind==='faux'){ g.add(at(cyl(.3,.3,6.5,COL.wood,5),0,3.2,0));
+    const bl=box(4.2,.4,.8,0xc8d0d6); bl.rotation.z=.5; g.add(at(bl,1.8,6,0)); }
+  else if(kind==='lance'){ g.add(at(cyl(.3,.3,9,COL.wood,5),0,4.5,0)); g.add(at(cone(.6,1.8,0xd8dde0,6),0,9.6,0)); }
+  else if(kind==='seau'||kind==='panier'){ g.add(at(cyl(1.1,.85,1.8,kind==='seau'?0x8a9098:0xb98a4a,8),0,1,0)); }
+  else if(kind==='chope'){ g.add(at(cyl(.9,.9,1.7,0xd8b45c,8),0,1,0)); }
+  else if(kind==='louche'){ g.add(at(cyl(.25,.25,4.5,COL.wood,5),0,2.2,0)); g.add(at(sph(.9,0x8a9098,0),0,4.6,0)); }
+  return g;
+}
 /* petit villageois low-poly qui marche */
 function person(colorIdx){
   const g=new THREE.Group(); g.userData.noshadow=1;
@@ -2267,6 +2325,7 @@ function person(colorIdx){
   g.add(at(sph(2.2,COL.skin,0),0,7.6,0));
   const la=at(cyl(.7,.7,3.6,c,5),-2.5,3.8,0), ra=at(cyl(.7,.7,3.6,c,5),2.5,3.8,0);
   g.add(la); g.add(ra); g.userData.arms=[la,ra];
+  const hand=new THREE.Group(); hand.position.set(2.9,2.6,0.6); g.add(hand); g.userData.hand=hand;
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   return g;
 }
@@ -2317,11 +2376,19 @@ const B3={
   sanglier(){ const g=new THREE.Group();
     const a=at(animal('boar'),0,0,0); a.name='walker'; a.userData.p=0; g.add(a);
     const b=at(animal('boar'),9,0,5); b.scale.setScalar(.8); g.add(b); return g; },
-  palissade(){ const g=new THREE.Group();
-    for(let i=0;i<34;i++){ const a=i/34*Math.PI*2, r=138;
-      const p=at(cyl(1.5,1.9,10+(i%3),COL.wood,6),Math.cos(a)*r,5,Math.sin(a)*r);
-      const tip=at(cone(1.9,2.6,COL.woodDark,6),Math.cos(a)*r,10.5+(i%3),Math.sin(a)*r);
-      g.add(p); g.add(tip); }
+  palissade(){ // pieux jointifs avec ligature : segments texturés + tour de ceinture
+    const g=new THREE.Group(), R=138, N=26, step=Math.PI*2/N;
+    const segW=2*R*Math.sin(step/2)+2;
+    for(let i=0;i<N;i++){
+      if(i===Math.round(N*0.25)) continue;                 // ouverture (entrée)
+      const a=i*step, x=Math.cos(a)*R, z=Math.sin(a)*R, hh=11+(i%3);
+      const w=new THREE.Mesh(new THREE.BoxGeometry(segW,hh,2.6),matT(0xffffff,TX.logs,1.6,1));
+      w.castShadow=w.receiveShadow=true; w.position.set(x,hh/2,z); w.rotation.y=-(a+Math.PI/2); g.add(w);
+      const tip=new THREE.Mesh(new THREE.BoxGeometry(segW,1.6,3.2),mat(COL.woodDark));
+      tip.castShadow=true; tip.position.set(x,hh+0.6,z); tip.rotation.y=-(a+Math.PI/2); g.add(tip);
+    }
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(R,0.7,5,48),mat(COL.woodDark));
+    ring.rotation.x=Math.PI/2; ring.position.y=7.5; g.add(ring);
     return g; },
   forge(){ const g=house(16,13,11,9,COL.thatchDark);
     g.add(at(cyl(2.4,3,10,COL.stone,7),5,5,-4));
@@ -2429,12 +2496,60 @@ Object.assign(B3,{
     const wr=warrior(1,false); wr.scale.setScalar(.8); wr.name='guard'; wr.userData.p=0;
     g.add(at(wr,0,27.7,0));
     return g; },
-  muraille(){ const g=new THREE.Group(); const R=152;
-    for(let i=0;i<40;i++){ const a=i/40*Math.PI*2;
-      const seg=box(25,11,5,i%2?COL.stone:COL.stoneDark);
-      seg.position.set(Math.cos(a)*R,5.5,Math.sin(a)*R); seg.rotation.y=-a; g.add(seg);
-      const cr=box(4,3.4,5.4,COL.stone);
-      cr.position.set(Math.cos(a)*R,12.4,Math.sin(a)*R); cr.rotation.y=-a; g.add(cr); }
+  muraille(){ // rempart gaulois : rondins jointifs, ligatures, chemin de ronde, tours et porte
+    const g=new THREE.Group(), R=152, N=30, step=Math.PI*2/N;
+    const segW=2*R*Math.sin(step/2)+2.4, H=19, GATE=0;
+    const logMat=matT(0xffffff,TX.logs,2.2,1);
+    for(let i=0;i<N;i++){
+      const a=i*step, x=Math.cos(a)*R, z=Math.sin(a)*R;
+      if(i===GATE) continue;                                // emplacement de la porte
+      const w=new THREE.Mesh(new THREE.BoxGeometry(segW,H,5),logMat);
+      w.castShadow=w.receiveShadow=true; w.position.set(x,H/2,z); w.rotation.y=-(a+Math.PI/2); g.add(w);
+      // parapet incliné (pointes de rondins)
+      const cap=new THREE.Mesh(new THREE.BoxGeometry(segW,2.2,6.4),mat(0x6b4a28));
+      cap.castShadow=true; cap.position.set(x,H+0.9,z); cap.rotation.y=-(a+Math.PI/2); g.add(cap);
+      // contreforts obliques côté intérieur
+      if(i%3===0){
+        const st=new THREE.Mesh(new THREE.BoxGeometry(1.8,H*0.95,1.8),mat(COL.wood));
+        st.castShadow=true; st.position.set(Math.cos(a)*(R-7),H*0.42,Math.sin(a)*(R-7));
+        st.rotation.y=-(a+Math.PI/2); st.rotation.x=0.34; g.add(st);
+      }
+    }
+    // deux ligatures horizontales sur tout le pourtour (1 objet chacune)
+    [H*0.34,H*0.72].forEach(y=>{
+      const rg=new THREE.Mesh(new THREE.TorusGeometry(R+0.6,0.85,5,64),mat(COL.woodDark));
+      rg.rotation.x=Math.PI/2; rg.position.y=y; g.add(rg);
+    });
+    // chemin de ronde intérieur : un seul anneau plat
+    const walk=new THREE.Mesh(new THREE.RingGeometry(R-11,R-2.5,56),matT(0xffffff,TX.wood,10,1));
+    walk.rotation.x=-Math.PI/2; walk.position.y=H*0.72; walk.receiveShadow=true;
+    walk.material.side=THREE.DoubleSide; g.add(walk);
+    // tours de guet aux quatre points cardinaux
+    for(let k=0;k<4;k++){
+      const a=k*Math.PI/2+step/2, x=Math.cos(a)*R, z=Math.sin(a)*R;
+      const tw=new THREE.Mesh(new THREE.BoxGeometry(13,H+9,9),logMat);
+      tw.castShadow=tw.receiveShadow=true; tw.position.set(x,(H+9)/2,z); tw.rotation.y=-(a+Math.PI/2); g.add(tw);
+      const rf=cone(10,7,COL.thatchDark,4); rf.rotation.y=Math.PI/4;
+      rf.position.set(x,H+13,z); g.add(rf);
+      const bal=new THREE.Mesh(new THREE.BoxGeometry(15,1.4,11),mat(COL.wood));
+      bal.castShadow=true; bal.position.set(x,H+8.4,z); bal.rotation.y=-(a+Math.PI/2); g.add(bal);
+    }
+    // porte fortifiée : deux montants, linteau et double battant
+    const ga=GATE*step, gx=Math.cos(ga)*R, gz=Math.sin(ga)*R;
+    [-1,1].forEach(sd=>{
+      const px=Math.cos(ga)*R-Math.sin(ga)*sd*11, pz=Math.sin(ga)*R+Math.cos(ga)*sd*11;
+      const post=new THREE.Mesh(new THREE.BoxGeometry(7,H+7,7),logMat);
+      post.castShadow=true; post.position.set(px,(H+7)/2,pz); post.rotation.y=-(ga+Math.PI/2); g.add(post);
+      const tip=cone(5,5,COL.thatchDark,4); tip.rotation.y=Math.PI/4;
+      tip.position.set(px,H+9.5,pz); g.add(tip);
+    });
+    const lint=new THREE.Mesh(new THREE.BoxGeometry(26,3.4,6),mat(COL.woodDark));
+    lint.castShadow=true; lint.position.set(gx,H-1,gz); lint.rotation.y=-(ga+Math.PI/2); g.add(lint);
+    [-1,1].forEach(sd=>{
+      const dx=Math.cos(ga)*R-Math.sin(ga)*sd*5.2, dz=Math.sin(ga)*R+Math.cos(ga)*sd*5.2;
+      const door=new THREE.Mesh(new THREE.BoxGeometry(10,H-3,2.4),matT(0xc8a86a,TX.wood,1,2));
+      door.castShadow=true; door.position.set(dx,(H-3)/2,dz); door.rotation.y=-(ga+Math.PI/2); g.add(door);
+    });
     return g; },
   catapulte(){ const g=new THREE.Group();
     g.add(at(box(13,2.4,9,COL.wood),0,3,0));
@@ -2541,24 +2656,26 @@ function buildVillage(scene){
     const o=tuft(0.8+((i*13)%5)*0.14);
     o.position.set(Math.cos(a)*r,0,Math.sin(a)*r); o.rotation.y=a; scene.add(o);
   }
-  // --- habitants : chacun a un métier, se déplace vers des lieux d'intérêt,
-  //     discute avec les autres, puis va se reposer. ---
+  // --- habitants : chacun a un métier, un outil, un lieu de travail et des répliques ---
   const spots=[];
   const addSpot=(id,x,z,job)=>{ if(!id||owned.includes(id)) spots.push({x,z,job}); };
   addSpot(null,0,6,'feu');
   addSpot('ble',26,38,'moisson'); addSpot('forge',-44,6,'forge');
   addSpot('puits',28,-28,'eau');  addSpot('taverne',42,6,'boire');
-  addSpot('poule',-30,36,'poules'); addSpot('banquet',0,46,'banquet');
-  addSpot('entrainement',52,-28,'entrainement'); addSpot('camp',-56,-26,'garde');
-  addSpot('chaudron',-17,14,'potion'); addSpot('menhir',0,-42,'menhir');
-  if(spots.length<3){ spots.push({x:20,z:20,job:'balade'},{x:-20,z:18,job:'balade'}); }
+  addSpot('poule',-30,36,'poules'); addSpot('banquet',0,46,'boire');
+  addSpot('entrainement',52,-28,'garde'); addSpot('camp',-56,-26,'garde');
+  addSpot('chaudron',-17,14,'potion'); addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');
+  if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
   const n=Math.min(12,Math.floor(owned.length/2)+1+hutCount()), walkers=[];
   for(let i=0;i<n;i++){
     const p=person(i);
     const st=spots[i%spots.length];
+    const job=JOBS.find(j=>j.k===st.job)||JOBS[JOBS.length-1];
     p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
-    p.userData={ id:i, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
-                 timer:2+i*1.4, job:st.job, sp:7+((i*7)%5), talk:null };
+    const tl=toolMesh(job.tool);
+    if(tl&&p.userData.hand) p.userData.hand.add(tl);
+    p.userData={ ...p.userData, id:i, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
+                 timer:2+i*1.4, job, home:st, sp:7+((i*7)%5), talk:null, said:0 };
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
@@ -2578,6 +2695,7 @@ function makeSmoke(scene,g){
 }
 function v3dHost(){
   return '<div class="v3d" id="v3d"><canvas id="v3dc"></canvas>'
+    +'<div class="v3d-say" id="v3dsay"></div>'
     +'<div class="v3d-hint">'+t('👆 glisse pour tourner','👆 drag to rotate')+'</div>'
     +'<div class="v3d-ctl"><button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
     +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
@@ -2691,42 +2809,70 @@ function v3dInit(){
     if(note){ const k=(tt*0.5)%1; note.position.y=11+k*7; note.material.opacity=1-k; note.rotation.z=tt*2; }
     if(potion) potion.material.color.setHSL(0.28+Math.sin(tt*2)*0.05,0.75,0.6);
     if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
-    // --- comportements des habitants ---
+    // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
     built.walkers.forEach(p=>{
-      const u=p.userData;
+      const u=p.userData, ar=u.arms;
       u.timer-=dt;
       if(u.state==='walk'){
         const dx=u.tgt.x-p.position.x, dz=u.tgt.z-p.position.z, d=Math.hypot(dx,dz);
-        if(d<2.5){ u.state=Math.random()<0.3?'talk':'work'; u.timer=u.state==='talk'?4+Math.random()*4:6+Math.random()*8; }
-        else{
+        if(d<2.5){
+          u.state=u.talk?'talk':'work';
+          u.timer=u.state==='talk'?4+Math.random()*4:7+Math.random()*9;
+          if(Math.random()<0.5) villagerSay(p);
+        }else{
           p.position.x+=dx/d*u.sp*dt; p.position.z+=dz/d*u.sp*dt;
           p.rotation.y=Math.atan2(dx,dz);
           const sw=Math.sin(tt*8+u.id)*0.8;
-          if(p.userData.arms){ p.userData.arms[0].rotation.x=sw; p.userData.arms[1].rotation.x=-sw; }
+          if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; }
           p.position.y=Math.abs(Math.sin(tt*8+u.id))*0.45;
         }
       }else{
         p.position.y=0;
-        if(u.state==='work'){                       // gestes du métier
-          const w=Math.sin(tt*4+u.id);
-          if(p.userData.arms){ p.userData.arms[0].rotation.x=w*0.9; p.userData.arms[1].rotation.x=w*0.9; }
-          p.rotation.y+=Math.sin(tt*0.7+u.id)*0.004;
-        }else if(u.state==='talk'){                 // discussion : se font face et hochent la tête
+        if(u.state==='work'){
+          // geste propre au métier
+          const k=u.job.k;
+          if(k==='forge'||k==='bois'){                 // frappe régulière
+            const st=Math.max(0,Math.sin(tt*4+u.id));
+            if(ar){ ar[0].rotation.x=-st*2.1; ar[1].rotation.x=-st*0.5; }
+            p.position.y=st*0.25;
+          }else if(k==='moisson'){                     // fauche latérale
+            const sw=Math.sin(tt*2.6+u.id);
+            if(ar){ ar[0].rotation.x=-0.9; ar[1].rotation.x=-0.7; }
+            p.rotation.y+=sw*0.012;
+          }else if(k==='eau'||k==='poules'){           // se penche et se relève
+            const b=Math.abs(Math.sin(tt*1.8+u.id));
+            if(ar){ ar[0].rotation.x=-b*1.5; ar[1].rotation.x=-b*1.5; }
+            p.position.y=-b*0.5;
+          }else if(k==='boire'){                       // lève sa chope
+            const b=Math.max(0,Math.sin(tt*1.4+u.id));
+            if(ar){ ar[0].rotation.x=-b*2.4; ar[1].rotation.x=0; }
+          }else if(k==='garde'){                       // scrute l'horizon
+            p.rotation.y+=Math.sin(tt*0.5+u.id)*0.006;
+            if(ar){ ar[0].rotation.x=-0.3; ar[1].rotation.x=-0.3; }
+          }else if(k==='potion'){                      // touille le chaudron
+            const st=Math.sin(tt*3+u.id);
+            if(ar){ ar[0].rotation.x=-1.3+st*0.35; ar[1].rotation.x=-0.4; }
+          }else{                                       // conteur : gesticule
+            const g2=Math.sin(tt*2.2+u.id);
+            if(ar){ ar[0].rotation.x=g2*1.1; ar[1].rotation.x=-g2*1.1; }
+          }
+        }else if(u.state==='talk'){
           if(u.talk){ const o=u.talk;
             p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z); }
           const nod=Math.sin(tt*3+u.id*2);
-          if(p.userData.arms){ p.userData.arms[0].rotation.x=nod*0.35; p.userData.arms[1].rotation.x=-nod*0.2; }
+          if(ar){ ar[0].rotation.x=nod*0.35; ar[1].rotation.x=-nod*0.2; }
           p.position.y=Math.abs(Math.sin(tt*2.4+u.id))*0.18;
         }
-        if(u.timer<=0){                              // choisir la suite
-          const sp=built.spots.length?built.spots[Math.floor(Math.random()*built.spots.length)]:{x:0,z:0,job:'balade'};
-          // parfois, aller rejoindre un autre villageois pour discuter
-          if(Math.random()<0.35&&built.walkers.length>1){
-            let o=built.walkers[Math.floor(Math.random()*built.walkers.length)];
+        if(u.timer<=0){
+          if(Math.random()<0.4&&built.walkers.length>1){        // aller discuter
+            const o=built.walkers[Math.floor(Math.random()*built.walkers.length)];
             if(o!==p){ u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p; }
-            else { u.tgt.set(sp.x,0,sp.z); u.talk=null; u.job=sp.job; }
-          } else { u.tgt.set(sp.x+(Math.random()-0.5)*8,0,sp.z+(Math.random()-0.5)*8); u.talk=null; u.job=sp.job; }
+            else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
+          }else{                                                // retourner travailler
+            const h=Math.random()<0.7?u.home:built.spots[Math.floor(Math.random()*built.spots.length)];
+            u.tgt.set(h.x+(Math.random()-0.5)*8,0,h.z+(Math.random()-0.5)*8); u.talk=null;
+          }
           u.state='walk';
         }
       }
