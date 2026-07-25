@@ -3185,12 +3185,12 @@ function buildVillage(scene){
     // qu'il se détache du ciel et ne se confonde pas avec la tête
     const badge=new THREE.Group();
     const ring=new THREE.Mesh(new THREE.CircleGeometry(1.75,12),
-      new THREE.MeshBasicMaterial({color:0x1b2430}));
+      new THREE.MeshBasicMaterial({color:0x1b2430,transparent:true,opacity:0.85}));
     const dot=new THREE.Mesh(new THREE.CircleGeometry(1.3,12),
-      new THREE.MeshBasicMaterial({color:0xffffff}));
+      new THREE.MeshBasicMaterial({color:0xffffff,transparent:true}));
     dot.position.z=0.05; badge.add(ring); badge.add(dot);
-    badge.userData.dot=dot;
-    badge.position.set(0,13.4,0); badge.visible=false; p.add(badge);
+    badge.userData.dot=dot; badge.userData.ring=ring;
+    badge.position.set(0,13.4,0); badge.visible=false; badge.scale.setScalar(0.01); p.add(badge);
     if(job.k==='ferme'||job.k==='moisson'){
       fx=new THREE.Group();
       for(let b=0;b<3;b++) fx.add(at(cone(0.35,2.2,0x8ec44a,4),(b-1)*1.1,1.1,0));
@@ -3199,7 +3199,8 @@ function buildVillage(scene){
     p.userData={ ...p.userData, id:i, rec, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
                  timer:2+i*1.4, job, home:st, bed:homes[i%homes.length],
                  sp:7+((i*7)%5), talk:null, npc:1, fx, row:0,
-                 badge, near:null, seen:{}, cool:0, avoid:{} };
+                 badge, near:null, seen:{}, cool:0, avoid:{},
+                 v:0, step:0, waveT:0, turnT:2, speaking:false, clash:0 };
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
@@ -3207,8 +3208,21 @@ function buildVillage(scene){
 }
 /* ---- chaque habitant regarde autour de lui et réagit à ses voisins ---- */
 const BQ=new THREE.Quaternion();   // tampon réutilisé pour orienter les pastilles
+/* rotation douce vers une direction : personne ne pivote d'un bloc */
+function turnTo(p,tx,tz,dt,rate){
+  const want=Math.atan2(tx-p.position.x,tz-p.position.z);
+  let d=want-p.rotation.y;
+  while(d>Math.PI) d-=Math.PI*2;
+  while(d<-Math.PI) d+=Math.PI*2;
+  p.rotation.y+=d*Math.min(1,(rate||5)*dt);
+}
+const easeOut=x=>1-(1-x)*(1-x);
 const SEE=30;         // rayon de perception
 const TALK_D=13;      // distance à laquelle on s'aborde
+/* combien de personnes sont tournées vers le même interlocuteur */
+function groupSize(walkers,host){
+  return 1+walkers.filter(w=>w!==host&&w.userData.state==='talk'&&w.userData.talk===host).length;
+}
 function perceiveAll(walkers,now){
   const mode=routine();
   walkers.forEach(p=>{ p.userData.near=null; });
@@ -3222,6 +3236,12 @@ function perceiveAll(walkers,now){
       if(!ua.near||d<ua.nearD){ ua.near=B; ua.nearD=d; }
       if(!ub.near||d<ub.nearD){ ub.near=A; ub.nearD=d; }
       if(!ra||!rb) continue;
+      // --- salut de loin : un seul geste par rencontre, et on ne se resalue
+      // pas toutes les dix secondes quand on travaille côte à côte
+      if(d<17&&ua.state==='walk'&&(ua.seen[rb.id]||0)<now-40000&&!(ua.waveT>0)){
+        ua.seen[rb.id]=now; ua.waveT=1.1;
+        if(ub.state==='walk'&&Math.random()<0.6){ ub.seen[ra.id]=now; ub.waveT=1.1; }
+      }
       // --- 2. contagion d'humeur : à force de se côtoyer, on déteint l'un sur l'autre
       const prox=1-d/SEE, bond=(ra.bond&&ra.bond[rb.id])||0;
       const pull=0.012*prox*(1+Math.min(bond,20)/20);
@@ -3238,7 +3258,20 @@ function perceiveAll(walkers,now){
       // --- 4. assez près pour s'aborder ? Il faut que les DEUX en aient envie.
       if(d>TALK_D) continue;
       if(mode==='sleep') continue;
-      if(ua.state==='talk'||ub.state==='talk') continue;
+      // quelqu'un discute déjà : on peut se joindre au groupe si on en a envie
+      if(ua.state==='talk'||ub.state==='talk'){
+        const IN=ua.state==='talk'?A:B, OUT=ua.state==='talk'?B:A;
+        const ui=IN.userData, uo=OUT.userData, ri=ui.rec, ro=uo.rec;
+        const host=ui.talk||IN;                         // celui autour de qui le groupe se forme
+        if(uo.state!=='talk'&&d<TALK_D-2&&now>=(uo.cool||0)&&ri&&ro
+           &&groupSize(walkers,host)<3&&wantsToTalk(ro,ri,mode)&&Math.random()<0.5){
+          uo.state='talk'; uo.talk=host; uo.v=0;
+          uo.timer=Math.max(2.5,ui.timer); uo.cool=now+9000;
+          uo.speaking=false; uo.turnT=1.2+Math.random();
+          relate(ro,ri);
+        }
+        continue;
+      }
       if(now<(ua.cool||0)||now<(ub.cool||0)) continue;
       if(!wantsToTalk(ra,rb,mode)||!wantsToTalk(rb,ra,mode)) continue;
       engage(A,B,now,mode);
@@ -3249,13 +3282,20 @@ function perceiveAll(walkers,now){
 function engage(A,B,now,mode){
   const ua=A.userData, ub=B.userData, ra=ua.rec, rb=ub.rec;
   ua.state=ub.state='talk'; ua.talk=B; ub.talk=A;
-  ua.timer=ub.timer=4+Math.random()*4;
+  ua.timer=ub.timer=5+Math.random()*5;
   ua.cool=ub.cool=now+9000;
+  ua.v=ub.v=0;                                     // on s'arrête au lieu de glisser
+  ua.turnT=0.1; ub.turnT=0.1;                      // le premier qui parle est tiré au sort tout de suite
+  ua.speaking=Math.random()<0.5; ub.speaking=!ua.speaking;
+  ua.clash=ub.clash=0;
   const out=meetOutcome(ra,rb);
-  const col={love:0xff2d55, warm:0xffb300, chat:0x2f9dff, clash:0xff4500}[out];
-  [ua,ub].forEach(u=>{ if(u.badge){ u.badge.userData.dot.material.color.setHex(col);
-    u.badge.visible=true; u.badgeT=2.6; } });
+  // pastille réservée aux moments qui se voient de loin : coup de cœur et friction.
+  // Une conversation ordinaire se lit à la posture, pas à un marqueur flottant.
+  const col={love:0xff2d55, clash:0xff4500}[out];
+  if(col) [ua,ub].forEach(u=>{ if(u.badge){ u.badge.userData.dot.material.color.setHex(col);
+    u.badge.visible=true; u.badgeT=u.badgeMax=out==='love'?3.4:2.4; } });
   if(out==='clash'){
+    ua.clash=ub.clash=1;
     nudgeMood(ra,-0.22); nudgeMood(rb,-0.22);
     ua.avoid[rb.id]=now+45000; ub.avoid[ra.id]=now+45000;
     ua.timer=ub.timer=1.6;
@@ -3437,12 +3477,18 @@ function v3dInit(){
       const mo=u.rec?moodOf(u.rec):0.6, nrj=0.72+mo*0.56;
       if(u.badge&&u.badge.visible){
         u.badgeT-=dt;
-        u.badge.position.y=13.4+Math.sin(tt*4+u.id)*0.35;
+        // apparition et disparition en fondu : rien ne surgit d'un coup
+        const life=u.badgeMax||2.6, age=life-u.badgeT;
+        const k=Math.min(1,Math.min(age/0.35, Math.max(0,u.badgeT)/0.5));
+        u.badge.scale.setScalar(0.15+easeOut(k)*0.85);
+        u.badge.userData.dot.material.opacity=k;
+        u.badge.userData.ring.material.opacity=k*0.85;
+        u.badge.position.y=13.4+(1-k)*1.6+Math.sin(tt*2.4+u.id)*0.28;
         // le badge est enfant du villageois, qui pivote : on annule sa rotation
         // pour que le disque reste bien face au joueur
         p.getWorldQuaternion(BQ).invert();
         u.badge.quaternion.copy(BQ).multiply(cam.quaternion);
-        if(u.badgeT<=0) u.badge.visible=false;
+        if(u.badgeT<=-0.05) u.badge.visible=false;
       }
       if(u.state==='walk'){
         if(u.fx&&u.fx.visible) u.fx.visible=false;
@@ -3453,13 +3499,22 @@ function v3dInit(){
           u.timer=u.state==='talk'?4+Math.random()*4:7+Math.random()*9;
           if(Math.random()<0.5) villagerSay(p);
         }else{
-          p.position.x+=dx/d*u.sp*nrj*dt; p.position.z+=dz/d*u.sp*nrj*dt;
-          p.rotation.y=Math.atan2(dx,dz);
-          // en chemin, on salue d'un signe la personne qu'on croise
-          if(u.near&&u.nearD<16&&ar){ ar[1].rotation.x=-1.2; }
-          const sw=Math.sin(tt*8+u.id)*0.8;
+          // vitesse progressive : on démarre en douceur et on ralentit en arrivant
+          const want=u.sp*nrj*Math.min(1,Math.max(0.35,(d-2.5)/9));
+          u.v=(u.v||0)+(want-(u.v||0))*Math.min(1,3.2*dt);
+          p.position.x+=dx/d*u.v*dt; p.position.z+=dz/d*u.v*dt;
+          turnTo(p,u.tgt.x,u.tgt.z,dt,4.5);
+          const cad=Math.max(0.35,u.v/u.sp);
+          u.step=(u.step||0)+dt*8*cad;
+          const sw=Math.sin(u.step)*0.8*cad;
           if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; }
-          p.position.y=Math.abs(Math.sin(tt*8+u.id))*0.45;
+          p.position.y=Math.abs(Math.sin(u.step))*0.45*cad;
+          // salut de la main : un geste bref quand on croise quelqu'un, pas un bras figé
+          if(u.waveT>0){
+            u.waveT-=dt;
+            const w=Math.sin((1-u.waveT/1.1)*Math.PI)*Math.abs(Math.sin(tt*11));
+            if(ar) ar[1].rotation.x=-1.35*w;
+          }
         }
       }else{
         p.position.y=0;
@@ -3529,20 +3584,47 @@ function v3dInit(){
         }else if(u.state==='talk'){
           if(u.fx&&u.fx.visible) u.fx.visible=false;
           if(p.rotation.x) p.rotation.x=0;
-          if(u.talk){ const o=u.talk;
-            p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z);
-            // on se rapproche à distance de conversation, sans se marcher dessus
+          const o=u.talk;
+          if(o){
+            turnTo(p,o.position.x,o.position.z,dt,3.4);      // on se tourne progressivement
             const dd=Math.hypot(o.position.x-p.position.x,o.position.z-p.position.z);
-            if(dd>7.5){ p.position.x+=(o.position.x-p.position.x)/dd*3.2*dt;
-                        p.position.z+=(o.position.z-p.position.z)/dd*3.2*dt; }
+            if(dd>7.5){                                       // on finit de se rapprocher, en ralentissant
+              const sp=Math.min(3.4,(dd-7)*1.3);
+              p.position.x+=(o.position.x-p.position.x)/dd*sp*dt;
+              p.position.z+=(o.position.z-p.position.z)/dd*sp*dt;
+              u.step=(u.step||0)+dt*6;
+              p.position.y=Math.abs(Math.sin(u.step))*0.28;
+            }
           }
-          const heat=(u.badge&&u.badge.visible&&u.badge.userData.dot.material.color.getHex()===0xff4500)?2.2:1;
-          const nod=Math.sin(tt*3*heat+u.id*2);
-          if(ar){ ar[0].rotation.x=nod*0.35*heat; ar[1].rotation.x=-nod*0.2*heat; }
-          p.position.y=Math.abs(Math.sin(tt*2.4+u.id))*0.18;
+          const heat=u.clash?2.1:1;
+          // tour de parole : on ne gesticule pas tous les deux en même temps
+          u.turnT-=dt;
+          if(u.turnT<=0){ u.turnT=1.8+Math.random()*2.2;
+            if(o&&o.userData.talk===p){ u.speaking=!o.userData.speaking; o.userData.speaking=!u.speaking; }
+            else u.speaking=!u.speaking; }
+          if(ar){
+            if(u.speaking){                                   // celui qui parle : bras qui accompagnent le récit
+              const g1=Math.sin(tt*2.6*heat+u.id), g2=Math.sin(tt*3.4*heat+u.id*1.7);
+              ar[0].rotation.x=-0.45+g1*0.7*heat; ar[1].rotation.x=-0.3+g2*0.45*heat;
+            }else{                                            // celui qui écoute : bras bas, hochements
+              const nod=Math.sin(tt*1.6+u.id*2);
+              ar[0].rotation.x=nod*0.1; ar[1].rotation.x=-nod*0.06;
+              p.rotation.x=Math.max(0,Math.sin(tt*1.6+u.id*2))*0.09;
+            }
+          }
+          p.position.y=Math.abs(Math.sin(tt*(u.speaking?2.4:1.4)+u.id))*(u.speaking?0.2:0.1);
         }
         if(u.timer<=0){
           const mode=routine();
+          if(u.state==='talk'){                  // on se quitte : petit signe, pas de téléportation
+            u.waveT=u.clash?0:0.9; u.clash=0; u.speaking=false;
+            if(u.talk&&u.talk.userData.talk===p) u.talk.userData.talk=null;
+            // quand celui autour de qui le groupe s'était formé s'en va,
+            // les autres écourtent et se dispersent au lieu de le suivre
+            built.walkers.forEach(w=>{ if(w!==p&&w.userData.talk===p){
+              w.userData.talk=null; w.userData.timer=Math.min(w.userData.timer,0.6+Math.random()*0.9); }});
+            u.talk=null;
+          }
           const social=(mode==='social'||mode==='eat');
           const chatChance=social?0.75:(u.rec&&u.rec.tr==='bavard'?0.55:0.35);
           if(mode==='sleep'){                                   // rentrer se coucher
