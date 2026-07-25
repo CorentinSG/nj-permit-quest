@@ -362,9 +362,10 @@ html,body{overflow-x:hidden}
   opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .v3d-say.show{opacity:1;transform:translateY(0)}
 .v3d-say b{color:var(--bus)}
-.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#fff;opacity:.85;pointer-events:none;text-shadow:0 1px 3px #000}
+.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:10.5px;color:#fff;opacity:.85;
+  pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 178px);line-height:1.35}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
-.v3d-ctl button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
+.v3d-ctl button{width:34px;height:34px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
 .v3d-ctl button:active{transform:translateY(1px)}
 .v3mini{position:relative;flex:none;width:58px;height:52px}
 .v3mini canvas{display:block;width:58px;height:52px}
@@ -387,6 +388,24 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* jauge de bonheur individuelle */
+.happy{margin:2px 0 14px;padding:12px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2)}
+.happyhead{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--px);font-size:9px;
+  letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;gap:8px}
+.happyhead b{font-size:13px;color:var(--retro)}
+.happybar{height:12px;border-radius:99px;background:#0C1017;border:2px solid var(--edge);overflow:hidden}
+.happybar i{display:block;height:100%}
+.hsec{font-family:var(--px);font-size:8px;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);
+  margin:12px 0 6px;line-height:1.7}
+.hfact{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--edge)}
+.hfact:last-child{border-bottom:0}
+.hfact .hic{flex:none;font-size:16px;line-height:1.3}
+.hfact .htx{flex:1;min-width:0;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}
+.hfact .htx i{display:block;color:var(--bus);font-style:normal;margin-top:3px;font-size:12px}
+.hfact .hpt{flex:none;font-family:var(--px);font-size:9px;align-self:center}
+.hfact.bad .hpt{color:var(--stop)} .hfact.good .hpt{color:var(--exit)}
+.fkbar{display:block;height:6px;border-radius:99px;background:#0C1017;overflow:hidden;margin-top:6px}
+.fkbar i{display:block;height:100%}
 /* récapitulatif de butin en fin de session */
 .loot{margin-top:12px}
 .lootmult{
@@ -1059,6 +1078,8 @@ const SHOP=[
  prod:{food:3},d:'Son fermier cultive les terres : +3 🌾/h',de:'Its farmer works the land: +3 🌾/h'},
 {id:'bucheron',ic:'🪓',n:'Cabane du bûcheron',ne:'Woodcutter\'s cabin',p:150,stack:true,rate:1.2,rc:{wood:8,iron:4},
  prod:{wood:2},d:'Son bûcheron abat des arbres : +2 🪵/h',de:'Its woodcutter fells trees: +2 🪵/h'},
+{id:'chemin',ic:'🛤️',n:'Bout de chemin',ne:'Path section',p:12,stack:true,rate:1.04,rc:{wood:1},
+ d:'Un morceau de sentier à poser où tu veux',de:'A stretch of path to lay wherever you like'},
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
 {id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140,rc:{wood:22}},
@@ -2328,13 +2349,23 @@ function v3dStop(){
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
 function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
+const ZMIN=70, ZMAX=430;
+function v3dSetDist(d){ V3.dist=Math.max(ZMIN,Math.min(ZMAX,d)); V3.auto=false; }
+function v3dZoom(dir){ v3dSetDist(V3.dist*(dir>0?1.25:0.8)); SFX.click(); }
 /* bulle de dialogue : un villageois « parle » au-dessus de la scène */
 /* ce qu'un habitant a envie de dire MAINTENANT : son rêve, son amour, son
    mentor, la faim du village, César qui approche… le métier n'arrive qu'après. */
 function lineFor(rec,job){
   const L=[];                                   // [poids, fr, en]
   const push=(w,fr,en)=>L.push([w,fr,en]);
-  if(rec){
+  if(rec&&isChild(rec)){
+    const par=parentsOf(rec);
+    if(par.length) push(6,'Quand je serai grand, je ferai comme '+nameOf(par[0])+' !',
+                          'When I grow up, I want to be like '+nameOf(par[0])+'!');
+    const sib=childrenOf(par[0]||{}).filter(k=>k!==rec);
+    if(sib.length) push(4,'Attends-moi, '+nameOf(sib[0])+' !','Wait for me, '+nameOf(sib[0])+'!');
+    push(5,'Je grandis vite, tu as vu ?','I am growing fast, have you seen?');
+  }else if(rec){
     const d=dreamOf(rec), lv=loveOf(rec), mt=mentorOf(rec), st=studentsOf(rec), bf=bestFriend(rec);
     const m=moodOf(rec);
     if(d&&rec.dreamAt&&Date.now()-rec.dreamAt<6*36e5)
@@ -2364,7 +2395,7 @@ function villagerSay(p){
   const el=$('#v3dsay'); if(!el) return;
   const j=p.userData.job;
   const txt=lineFor(p.userData.rec,j);
-  const nm=p.userData.rec?p.userData.rec.name:t(j.n,j.ne);
+  const nm=p.userData.rec?nameOf(p.userData.rec):t(j.n,j.ne);
   el.innerHTML='<b>'+j.ic+' '+esc(nm)+'</b> <i style="color:var(--dim);font-style:normal">('+esc(t(j.n,j.ne))+')</i> — '+esc(txt);
   el.classList.add('show');
   clearTimeout(V3.sayT); V3.sayT=setTimeout(()=>el.classList.remove('show'),3200);
@@ -2777,8 +2808,9 @@ function syncPeople(){
       remember(np,'🏡 '+t('Est arrivé au village.','Arrived in the village.'),'🏡 Arrived in the village.');
       assignMentor(np);
     } });
-  S.people.forEach(r=>{ if(!r.dream) r.dream=pickDream(); if(r.mentor===undefined) assignMentor(r); });
-  healRivalries(); checkDreams();
+  S.people.forEach(r=>{ if(isChild(r)) return;
+    if(!r.dream) r.dream=pickDream(); if(r.mentor===undefined||r.mentor===null&&r.grown) assignMentor(r); });
+  healRivalries(); growChildren(); checkDreams();
   S.people=S.people.filter(p=>p.home==='founder'||keys.includes(p.home));
   // un habitant de hutte dont le métier n'a plus de bâtiment se reconvertit
   S.people.forEach(p=>{
@@ -2901,6 +2933,70 @@ function assignMentor(rec){
   }
 }
 function mentorOf(rec){ return rec.mentor?(S.people||[]).find(x=>x.id===rec.mentor):null; }
+/* ---------- familles ---------- */
+const CHILD_NAMES=[['Petit-Bonux','Lil\'Bonux'],['Minix','Minix'],['Bambinix','Bambinix'],['Marmottine','Marmottine'],
+ ['Piouix','Piouix'],['Galoupette','Galoupette'],['Roudoudix','Roudoudix'],['Frimousse','Frimousse'],
+ ['Titix','Titix'],['Bibix','Bibix'],['Pomponnette','Pomponnette'],['Cabochard','Cabochard'],
+ ['Ritournelle','Ritournelle'],['Turbulix','Turbulix'],['Câlinette','Câlinette'],['Pitchounix','Pitchounix']];
+const GROW_DAYS=3;                        // un enfant devient adulte en 3 jours réels
+function childrenOf(rec){ return (S.people||[]).filter(x=>x.parents&&x.parents.includes(rec.id)); }
+function parentsOf(rec){ return (rec.parents||[]).map(id=>(S.people||[]).find(x=>x.id===id)).filter(Boolean); }
+function isChild(rec){ return !!rec.parents&&!rec.grown; }
+function childAge(rec){ return Math.min(1,(Date.now()-rec.born)/(GROW_DAYS*864e5)); }
+function newChild(A,B){
+  const used=(S.people||[]).map(x=>x.name);
+  const free=CHILD_NAMES.filter(c=>!used.includes(c[0]));
+  const pool=free.length?free:CHILD_NAMES;
+  const nm=pool[Math.floor(Math.random()*pool.length)];
+  const TR=['curieux','bavard','reveur','travailleur','courageux','gourmand'];
+  return {id:'k'+Date.now().toString(36)+Math.floor(Math.random()*9999),
+    name:nm[0], nameEn:nm[1], f:Math.random()<0.5,
+    ci:Math.random()<0.5?A.ci:B.ci,
+    tr:TR[Math.floor(Math.random()*TR.length)],
+    bio:'Né'+(Math.random()<0.5?'':'e')+' ici, de '+A.name+' et '+B.name+'.',
+    bioe:'Born here, to '+A.name+' and '+B.name+'.',
+    home:A.home, job:'enfant', love:null, born:Date.now(), bond:{}, chats:0,
+    mood:0.8, mem:[], parents:[A.id,B.id], grown:0, mentor:null, dream:null};
+}
+/* un couple installé peut fonder une famille */
+function tryBaby(A,B){
+  if(!A||!B||A.love!==B.id) return false;
+  if(isChild(A)||isChild(B)) return false;
+  if((S.people||[]).length>=40) return false;
+  if(childrenOf(A).filter(k=>!k.grown).length>=2) return false;
+  if(Date.now()-(A.lastBaby||0)<12*36e5) return false;       // pas plus d'un enfant par demi-journée
+  if(Math.random()>=0.16) return false;
+  const k=newChild(A,B);
+  A.lastBaby=B.lastBaby=Date.now();
+  S.people.push(k);
+  nudgeMood(A,0.3); nudgeMood(B,0.3);
+  remember(A,'👶 '+t('Est devenu parent de ','Became a parent to ')+k.name+'.','👶 Became a parent to '+k.name+'.');
+  remember(B,'👶 '+t('Est devenu parent de ','Became a parent to ')+k.name+'.','👶 Became a parent to '+k.name+'.');
+  remember(k,'🍼 '+t('Est né au village.','Was born in the village.'),'🍼 Was born in the village.');
+  chron('👶 '+A.name+t(' et ',' and ')+B.name+t(' ont eu un enfant : ',' had a child: ')+k.name+' !',
+        '👶 '+A.name+' and '+B.name+' had a child: '+k.name+'!');
+  V3.saveSoon=1;
+  return true;
+}
+/* les enfants grandissent et finissent par prendre un métier */
+function growChildren(){
+  (S.people||[]).forEach(k=>{
+    if(!k.parents||k.grown) return;
+    if(childAge(k)<1) return;
+    k.grown=Date.now();
+    k.job=jobForBuilding(String(k.home||'hutte'));
+    k.dream=k.dream||pickDream();
+    if(k.mentor===undefined||k.mentor===null) assignMentor(k);
+    remember(k,'🌱 '+t('A grandi et pris un métier.','Grew up and took up a trade.'),'🌱 Grew up and took up a trade.');
+    const par=parentsOf(k);
+    par.forEach(pp=>{ nudgeMood(pp,0.15);
+      remember(pp,'🌱 '+k.name+t(' a grandi.',' has grown up.'),'🌱 '+k.name+' has grown up.'); });
+    chron('🌱 '+k.name+t(' a grandi : le voilà au travail.',' has grown up and joined the workforce.'),
+          '🌱 '+k.name+' has grown up and joined the workforce.');
+  });
+}
+/* le nom d'un enfant peut différer selon la langue */
+function nameOf(rec){ return (S.lang==='en'&&rec.nameEn)?rec.nameEn:rec.name; }
 function studentsOf(rec){ return (S.people||[]).filter(x=>x.mentor===rec.id); }
 /* le village réagit à TES résultats : c'est toi qui le fais vivre */
 function villageReact(kind,val){
@@ -2992,6 +3088,84 @@ function healRivalries(){
     }
   });
 }
+/* ---------- bonheur individuel ----------
+   L'humeur d'un habitant est la moyenne de ce qu'il ressent. On liste chaque
+   facteur, ce qu'il coûte ou rapporte, et ce que TU peux y faire. */
+function happinessOf(rec){
+  const f=[];                          // {ic, why, whye, fix, fixe, d} d = points (−/+)
+  const add=(ic,why,whye,fix,fixe,d)=>f.push({ic,why,whye,fix,fixe,d});
+  const res=S.res||{food:0,wood:0,iron:0};
+
+  // — la faim, avant tout
+  const bal=foodBalance();
+  if(res.food<=0)
+    add('🍽️','Il a le ventre vide.','They are going hungry.',
+        'Réponds juste ou construis une ferme / maison de chasseur.',
+        'Answer correctly, or build a farm / hunter\'s lodge.',-30);
+  else if(bal<0)
+    add('📉','Les réserves baissent : '+bal+' 🌾/h.','Stores are shrinking: '+bal+' 🌾/h.',
+        'Construis une ferme ou une maison de chasseur.','Build a farm or a hunter\'s lodge.',-12);
+
+  // — les besoins du village
+  const miss=NEEDS.filter(n2=>!needState(n2).ok);
+  if(miss.length)
+    add('🏺','Le village manque de '+miss.map(m=>t(m.n,m.ne)).join(', ')+'.',
+             'The village is short of '+miss.map(m=>m.ne).join(', ')+'.',
+        'Va chercher ces ressources : chaque bonne réponse en produit une.',
+        'Go get those resources: every correct answer produces one.',-6*miss.length);
+
+  // — la vie sociale
+  const bf=bestFriend(rec);
+  if(!bf||bf.n<6)
+    add('🫥','Il n\'a encore aucun véritable ami.','They have no real friend yet.',
+        'Laisse le village tourner : les rencontres se font toutes seules. Une taverne ou un banquet les accélère.',
+        'Let the village run: encounters happen on their own. A tavern or a banquet speeds them up.',-10);
+  else add('🤝','Il peut compter sur '+bf.p.name+'.','They can count on '+bf.p.name+'.','','',+8);
+
+  if(rec.rival){
+    const rv=(S.people||[]).find(x=>x.id===rec.rival);
+    add('⚔️','Il ne parle plus à '+((rv&&rv.name)||'quelqu\'un')+'.','They are not speaking to '+((rv&&rv.name)||'someone')+'.',
+        'Le temps fait son œuvre : ils finiront par se réconcilier.','Time heals it: they will make peace eventually.',-12);
+  }
+  const lv=loveOf(rec);
+  if(lv) add('💛','Il file le parfait amour avec '+lv.name+'.','They are in love with '+lv.name+'.','','',+12);
+
+  // — son rêve
+  const dr=dreamOf(rec);
+  if(dr&&!rec.dreamAt){
+    const it=dr.need?SHOP.find(x=>x.id===dr.need):null;
+    add('🌙','Son rêve n\'est pas réalisé : '+t(dr.fr,dr.en)+'.','Their dream is unfulfilled: '+dr.en+'.',
+        it?('Construis : '+t(it.n,it.ne)+' ('+priceOf(it)+' 🪙).'):'Continue à faire vivre le village.',
+        it?('Build: '+it.ne+' ('+priceOf(it)+' 🪙).'):'Keep the village going.',-8);
+  }else if(dr&&rec.dreamAt) add('✨','Son rêve s\'est réalisé.','Their dream came true.','','',+10);
+
+  // — le confort du village
+  if(!nOwned('taverne')&&!nOwned('banquet'))
+    add('🍺','Aucun endroit où se retrouver le soir.','Nowhere to gather in the evening.',
+        'Construis une taverne ou une table de banquet.','Build a tavern or a banquet table.',-8);
+  if(!nOwned('feu'))
+    add('🔥','Pas de feu au centre du village.','No fire at the heart of the village.',
+        'Construis un feu de camp.','Build a campfire.',-6);
+  if(nOwned('muraille')||nOwned('palissade')||nOwned('camp'))
+    add('🛡️','Il se sent en sécurité.','They feel safe.','','',+6);
+  else add('😨','Rien ne protège le village de César.','Nothing shields the village from Caesar.',
+        'Construis une palissade, une muraille ou un camp militaire.',
+        'Build a palisade, ramparts or a military camp.',-8);
+
+  // — sa famille
+  const kids=childrenOf(rec);
+  if(kids.length) add('👶','Il élève '+kids.length+' enfant'+(kids.length>1?'s':'')+'.',
+      'They are raising '+kids.length+' child'+(kids.length>1?'ren':'')+'.','','',+10);
+
+  // — son caractère colore tout
+  if(rec.tr==='grognon') add('😠','Il est grognon de nature.','They are grumpy by nature.',
+      'Rien à faire — c\'est lui.','Nothing to do — that is just them.',-6);
+  if(rec.tr==='travailleur'&&bal>=0) add('💪','Le travail avance, il est content.','Work is going well, they are pleased.','','',+5);
+
+  const raw=f.reduce((a,x)=>a+x.d,0);
+  const pct=Math.max(0,Math.min(100,Math.round(52+raw*0.8+(moodOf(rec)-0.5)*46)));
+  return {pct, factors:f.sort((a,b)=>a.d-b.d)};
+}
 function loveOf(p){ return p.love?(S.people||[]).find(x=>x.id===p.love):null; }
 function traitOf(k){ return TRAITS.find(x=>x.k===k)||TRAITS[0]; }
 function daysIn(p){ return Math.max(0,Math.floor((Date.now()-p.born)/864e5)); }
@@ -3026,6 +3200,9 @@ const JOBS=[
  {k:'bois',   ic:'🪵',need:null,     n:'Bûcheron',ne:'Woodcutter',tool:'hache',say:['Du bois pour l\'hiver.','Cet arbre fera l\'affaire.','Ça fend bien !'],saye:['Wood for winter.','This tree will do.','Splits nicely!']},
  {k:'poules', ic:'🐔',need:'poule',  n:'Éleveuse',ne:'Keeper', tool:'panier',say:['Trois œufs ce matin !','Mes poules sont grasses.','Venez, mes belles !'],saye:['Three eggs this morning!','My hens are plump.','Come on, girls!']},
  {k:'potion', ic:'⚗️',need:'chaudron',n:'Apprenti druide',ne:'Druid apprentice',tool:'louche',say:['La potion bouillonne !','Il manque du gui.','Ne goûte pas !'],saye:['The potion bubbles!','We need mistletoe.','Do not taste it!']},
+ {k:'enfant', ic:'🧒',need:null,  n:'Enfant',ne:'Child',tool:null,
+  say:['On joue à cache-cache ?','Papa dit que je suis trop petit.','J\'ai attrapé une grenouille !'],
+  saye:['Shall we play hide and seek?','Dad says I am too small.','I caught a frog!']},
  {k:'feu',    ic:'🔥',need:null,     n:'Conteur',ne:'Storyteller',tool:null,  say:['…et le sanglier fit trois bonds !','Écoutez cette histoire…','C\'était au temps de mon père.'],saye:['…and the boar leapt thrice!','Listen to this tale…','It was in my father\'s day.']}
 ];
 /* outil tenu en main */
@@ -3123,6 +3300,18 @@ const B3={
     const ax=box(.5,5,.5,COL.wood); ax.rotation.z=.7; g.add(at(ax,-9,4,6));
     g.add(at(box(2,1.8,.4,0xb9c2c8),-10.4,5.8,6));
     return g; },
+  chemin(){ const g=new THREE.Group();
+    const sl=new THREE.Mesh(new THREE.PlaneGeometry(26,13),matT(0xe8d8b8,TX.dirt,1.6,1));
+    sl.rotation.x=-Math.PI/2; sl.position.y=0.22; sl.receiveShadow=true; g.add(sl);
+    // galets de bordure, alternés, pour que le sentier se lise de loin
+    for(let i=0;i<7;i++){ const x=(i-3)*3.7;
+      [-6.2,6.2].forEach((z,k)=>{
+        const st=sph(0.75+((i+k)%3)*0.16,(i+k)%2?COL.stone:COL.stoneDark,0);
+        st.scale.y=0.55; st.position.set(x+((i+k)%2?0.8:-0.8),0.35,z); g.add(st); });
+    }
+    for(let i=0;i<5;i++){ const t2=tuft(0.45+((i*7)%3)*0.1);
+      t2.position.set((i-2)*5.4+2,0,i%2?7.6:-7.6); g.add(t2); }
+    return g; },
   menhir(){ const g=new THREE.Group(); const m=box(7,22,6,COL.stone);
     m.position.y=11; m.rotation.z=0.06; m.rotation.y=0.4; g.add(m); return g; },
   sanglier(){ const g=new THREE.Group();
@@ -3186,7 +3375,7 @@ const B3={
     g.userData.fw=true; return g; }
 };
 /* positions (x,z) dans la scène */
-const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[0,-48],
+const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[0,-48], chemin:[16,26],
   taverne:[47,3], ble:[31,34], banquet:[0,52], poule:[-34,34], forge:[-48,3],
   chaudron:[-19,16], druide:[-20,2], chef:[20,14], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
 
@@ -3356,7 +3545,8 @@ function buildVillage(scene){
     for(let i=0;i<n2;i++){
       const key=i?it.id+'#'+i:it.id;
       const base=P3[it.id]||[-33,-33];
-      const p=(S.vpos&&S.vpos[key])||(i?hutSpot(spiral+i):base);
+      let p=(S.vpos&&S.vpos[key])||(i?hutSpot(spiral+i):base);
+      p=resolveOverlap(p[0],p[1],footOf(key),key);      // rien ne se pose dans un autre bâtiment
       const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]); g.rotation.y=(i*0.7)%6.28;
       scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
     }
@@ -3364,8 +3554,9 @@ function buildVillage(scene){
   });
   SHOP.forEach(it=>{
     if(it.stack) return;   // déjà traités ci-dessus
-    const p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
+    let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     if(owned.includes(it.id)){
+      if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
       const g=B3[it.id](); g.position.set(p[0],0,p[1]); scene.add(g); anim.push(g);
       if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
     }else if(it.id!=='palissade'){
@@ -3374,6 +3565,7 @@ function buildVillage(scene){
       m.rotation.x=-Math.PI/2; m.position.set(p[0],0.25,p[1]); scene.add(m);
     }
   });
+  relaxVillage();          // plus rien ne se traverse
   // forêt + rochers
   const TR=[[8,96,1.1,0],[32,108,.9,1],[56,94,1.2,0],[80,112,1,1],[104,98,1.1,0],[128,114,.85,0],
             [152,100,1.15,1],[176,92,1,0],[200,110,1.2,0],[224,96,.9,1],[248,112,1.05,0],[272,94,1.15,0],
@@ -3459,6 +3651,8 @@ function buildVillage(scene){
   for(let i=0;i<n;i++){
     const rec=folk[i];
     const p=person(rec.ci);
+    // un enfant est plus petit et grandit vraiment au fil des jours
+    if(isChild(rec)) p.scale.setScalar(0.5+childAge(rec)*0.35);
     const job=JOBS.find(j=>j.k===rec.job)||JOBS[JOBS.length-1];
     const st=spots.find(x=>x.job===rec.job)||spots[i%spots.length];
     p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
@@ -3599,6 +3793,7 @@ function engage(A,B,now,mode){
   relate(ra,rb);
   if(out==='love'){
     nudgeMood(ra,0.2); nudgeMood(rb,0.2);
+    tryBaby(ra,rb);
     sayMeet(A,B,'💛 '+ra.name+t(' et ',' and ')+rb.name+t(' se retrouvent.',' meet up.'),
                 '💛 '+ra.name+' and '+rb.name+' meet up.');
   }else{
@@ -3638,8 +3833,10 @@ function makeSmoke(scene,g){
 function v3dHost(){
   return '<div class="v3d" id="v3d"><canvas id="v3dc"></canvas>'
     +'<div class="v3d-say" id="v3dsay"></div>'
-    +'<div class="v3d-hint">'+t('👆 glisse pour tourner','👆 drag to rotate')+'</div>'
-    +'<div class="v3d-ctl"><button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
+    +'<div class="v3d-hint">'+t('👆 glisse pour tourner · pince pour zoomer','👆 drag to rotate · pinch to zoom')+'</div>'
+    +'<div class="v3d-ctl"><button onclick="G.v3dZoom(-1)" aria-label="'+t('zoomer','zoom in')+'">＋</button>'
+    +'<button onclick="G.v3dZoom(1)" aria-label="'+t('dézoomer','zoom out')+'">－</button>'
+    +'<button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
     +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
 }
 function v3dInit(){
@@ -3705,7 +3902,7 @@ function v3dInit(){
     if(!V3.edit){ const npc=pickNpc(e); if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); return; } }
     if(V3.edit){
       const o=pickAt(e);
-      if(o){ V3.sel=o; V3.auto=false; host.classList.add('dragging');
+      if(o){ V3.sel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false; host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
              if(e.cancelable) e.preventDefault(); return; }
     }
@@ -3713,9 +3910,21 @@ function v3dInit(){
   const move=e=>{
     if(V3.sel){ const g=groundAt(e);
       if(g){ const r=Math.min(300,Math.hypot(g.x,g.z)), a=Math.atan2(g.z,g.x);
-        V3.sel.position.x=Math.cos(a)*r; V3.sel.position.z=Math.sin(a)*r;
-        if(V3.ring) V3.ring.position.set(V3.sel.position.x,0.4,V3.sel.position.z); }
+        const key=V3.sel.userData.pid, foot=footOf(key);
+        let tx=Math.cos(a)*r, tz=Math.sin(a)*r;
+        if(!NOCLIP[String(key).split('#')[0]]){
+          const f=resolveOverlap(tx,tz,foot,key,18); tx=f[0]; tz=f[1];
+          // si la place reste prise malgré tout, on refuse le pas : rien ne
+          // traverse jamais, le bâtiment reste à sa dernière position valide
+          if(overlaps(tx,tz,foot,key)){
+            const l=V3.selOk||[V3.sel.position.x,V3.sel.position.z];
+            tx=l[0]; tz=l[1];
+          }else V3.selOk=[tx,tz];
+        }
+        V3.sel.position.x=tx; V3.sel.position.z=tz;
+        if(V3.ring){ V3.ring.position.set(tx,0.4,tz); V3.ring.scale.setScalar(foot/5); } }
       if(e.cancelable) e.preventDefault(); return; }
+    if(V3.pinch) return;
     if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
     V3.rot+=(t0.clientX-V3.lx)*0.008;
     V3.tilt=Math.max(0.25,Math.min(1.35,V3.tilt-(t0.clientY-V3.ly)*0.005));
@@ -3726,6 +3935,21 @@ function v3dInit(){
       save(); V3.sel=null; if(V3.ring) V3.ring.visible=false;
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
     V3.drag=false; host.classList.remove('dragging'); };
+  // molette (ordinateur) et pincement à deux doigts (téléphone)
+  const wheel=e=>{ v3dSetDist(V3.dist*(e.deltaY>0?1.12:0.89)); if(e.cancelable) e.preventDefault(); };
+  const pinchD=e=>{ const a=e.touches[0], b2=e.touches[1];
+    return Math.hypot(a.clientX-b2.clientX, a.clientY-b2.clientY); };
+  const tstart=e=>{ if(e.touches&&e.touches.length===2){ V3.pinch=pinchD(e); V3.pinchD0=V3.dist;
+    V3.drag=false; V3.sel=null; if(e.cancelable) e.preventDefault(); } };
+  const tmove=e=>{ if(V3.pinch&&e.touches&&e.touches.length===2){
+    const d2=pinchD(e); if(d2>4) v3dSetDist(V3.pinchD0*(V3.pinch/d2));
+    if(e.cancelable) e.preventDefault(); } };
+  const tend=e=>{ if(!e.touches||e.touches.length<2) V3.pinch=0; };
+  host.addEventListener('wheel',wheel,{passive:false});
+  host.addEventListener('touchstart',tstart,{passive:false});
+  host.addEventListener('touchmove',tmove,{passive:false});
+  host.addEventListener('touchend',tend);
+  host.addEventListener('touchcancel',tend);
   host.addEventListener('pointerdown',down);
   host.addEventListener('pointermove',move,{passive:false});
   window.addEventListener('pointerup',up);
@@ -3743,7 +3967,7 @@ function v3dInit(){
       sun.shadow.needsUpdate=true; }
     const d=V3.dist;
     cam.position.set(Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55), 30+Math.sin(V3.tilt)*d*0.62, Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
-    cam.lookAt(0,8,4);
+    cam.lookAt(0,8*Math.min(1,V3.dist/200),4);
     // animations
     if(flame){ const s=1+Math.sin(tt*11)*0.16+Math.sin(tt*17)*0.08;
       flame.scale.set(s,1+Math.sin(tt*13)*0.2,s); flame.rotation.y=tt*2; }
@@ -3869,6 +4093,11 @@ function v3dInit(){
           }else if(k==='potion'){                      // touille le chaudron
             const st=Math.sin(tt*3+u.id);
             if(ar){ ar[0].rotation.x=-1.3+st*0.35; ar[1].rotation.x=-0.4; }
+          }else if(k==='enfant'){                      // un enfant saute et gigote
+            const g2=Math.sin(tt*4.5+u.id*2);
+            if(ar){ ar[0].rotation.x=-1.1+g2*0.9; ar[1].rotation.x=-1.1-g2*0.9; }
+            p.position.y=Math.abs(Math.sin(tt*3.6+u.id))*0.9;
+            p.rotation.y+=Math.sin(tt*0.9+u.id)*0.02;
           }else{                                       // conteur : gesticule
             const g2=Math.sin(tt*2.2+u.id);
             if(ar){ ar[0].rotation.x=g2*1.1; ar[1].rotation.x=-g2*1.1; }
@@ -3937,6 +4166,12 @@ function v3dInit(){
           }else if(social){                                     // veillée autour du feu / banquet
             const f=built.spots.find(x=>x.job==='feu')||u.home;
             u.tgt.set(f.x+(Math.random()-0.5)*16,0,f.z+(Math.random()-0.5)*16); u.talk=null;
+          }else if(u.rec&&isChild(u.rec)&&Math.random()<0.55){   // un enfant ne s'éloigne pas de ses parents
+            const par=parentsOf(u.rec).map(pp=>built.walkers.find(w=>w.userData.rec&&w.userData.rec.id===pp.id)).filter(Boolean);
+            const anchor=par.length?par[Math.floor(Math.random()*par.length)]:null;
+            if(anchor) u.tgt.set(anchor.position.x+(Math.random()-0.5)*18,0,anchor.position.z+(Math.random()-0.5)*18);
+            else u.tgt.set(u.home.x+(Math.random()-0.5)*20,0,u.home.z+(Math.random()-0.5)*20);
+            u.talk=null;
           }else if(u.followUp){                                 // entraîné au travail par un collègue
             u.tgt.set(u.followUp.x+(Math.random()-0.5)*10,0,u.followUp.z+(Math.random()-0.5)*10);
             u.talk=null; u.followUp=null;
@@ -4016,6 +4251,82 @@ function miniInit(){
   };
   MINI.raf=requestAnimationFrame(loop);
 }
+/* ---------- emprise au sol des bâtiments ----------
+   Rayon approximatif de chaque article : deux constructions ne peuvent plus
+   se traverser, on les repousse l'une hors de l'autre. */
+const FOOT={
+  feu:9, hutte:13, ble:22, poule:10, puits:9, chasseur:13, fermier:20, bucheron:12,
+  chemin:10, menhir:6, sanglier:8, forge:13, taverne:16, chaudron:7, banquet:14,
+  druide:5, chef:5, barde:5, chien:4, camp:14, entrainement:16, guerriers:9,
+  tour:9, catapulte:9, chefguerre:6
+};
+/* la muraille et la palissade sont des enceintes : pas d'emprise ponctuelle */
+const NOCLIP={muraille:1, palissade:1};
+function footOf(key){
+  const base=String(key).split('#')[0];
+  return FOOT[base]||10;
+}
+/* toutes les constructions posées, sauf celle qu'on déplace */
+function occupants(exceptKey){
+  const out=[];
+  Object.keys(V3.place||{}).forEach(k=>{
+    if(k===exceptKey||NOCLIP[String(k).split('#')[0]]) return;
+    const g=V3.place[k]; if(!g) return;
+    out.push({x:g.position.x, z:g.position.z, r:footOf(k)});
+  });
+  return out;
+}
+/* repousse (x,z) hors de tout ce qui est déjà posé ; renvoie la position libre */
+function resolveOverlap(x,z,r,exceptKey,iterations){
+  const others=occupants(exceptKey);
+  let px=x, pz=z;
+  for(let it=0;it<(iterations||12);it++){
+    let moved=false;
+    for(const o of others){
+      const dx=px-o.x, dz=pz-o.z;
+      const need=r+o.r;
+      let d=Math.hypot(dx,dz);
+      if(d>=need) continue;
+      if(d<0.001){ const a=Math.random()*Math.PI*2; px=o.x+Math.cos(a)*(need+0.4); pz=o.z+Math.sin(a)*(need+0.4); }
+      else{ const push=(need+0.4-d)/d; px+=dx*push; pz+=dz*push; }
+      moved=true;
+    }
+    if(!moved) break;
+  }
+  const R=Math.hypot(px,pz);
+  if(R>300){ px=px/R*300; pz=pz/R*300; }      // on reste dans la clairière
+  return [px,pz];
+}
+/* Passe de relaxation globale : résoudre les collisions une par une pendant la
+   construction ne suffit pas (dégager A de B peut le pousser dans C). On
+   relâche donc tout le village ensemble à la fin. */
+function relaxVillage(rounds){
+  const keys=Object.keys(V3.place||{}).filter(k=>!NOCLIP[String(k).split('#')[0]]);
+  const P=keys.map(k=>({k, g:V3.place[k], r:footOf(k)}));
+  for(let it=0;it<(rounds||24);it++){
+    let moved=false;
+    for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++){
+      const A=P[i], B=P[j], need=A.r+B.r;
+      let dx=A.g.position.x-B.g.position.x, dz=A.g.position.z-B.g.position.z;
+      let d=Math.hypot(dx,dz);
+      if(d>=need) continue;
+      if(d<0.001){ const a=(i*2.399+j)%6.283; dx=Math.cos(a); dz=Math.sin(a); d=1; }
+      // on écarte les deux à parts égales : personne n'a la priorité
+      const push=(need-d)/d/2;
+      A.g.position.x+=dx*push; A.g.position.z+=dz*push;
+      B.g.position.x-=dx*push; B.g.position.z-=dz*push;
+      moved=true;
+    }
+    // on garde tout le monde dans la clairière
+    P.forEach(o2=>{ const R=Math.hypot(o2.g.position.x,o2.g.position.z);
+      if(R>300){ o2.g.position.x=o2.g.position.x/R*300; o2.g.position.z=o2.g.position.z/R*300; moved=true; } });
+    if(!moved) break;
+  }
+}
+/* place libre trouvée ? (pour signaler visuellement un chevauchement) */
+function overlaps(x,z,r,exceptKey){
+  return occupants(exceptKey).some(o=>Math.hypot(x-o.x,z-o.z)<r+o.r-0.5);
+}
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
   collectProduction(); collectTribute();
@@ -4087,15 +4398,17 @@ function homeLabel(rec){
 function showPerson(rec,obj){
   const tr=traitOf(rec.tr), bf=bestFriend(rec), lv=loveOf(rec);
   const dr=dreamOf(rec), mt=mentorOf(rec), st=studentsOf(rec), mem=rec.mem||[];
+  const kids=childrenOf(rec), par=parentsOf(rec);
   const rv=rec.rival?(S.people||[]).find(x=>x.id===rec.rival):null;
   const job=obj&&obj.userData.job?obj.userData.job:null;
   const d=daysIn(rec);
   const mode=routine(), doing={work:t('au travail','at work'),eat:t('à table','eating'),
     social:t('à la veillée','at the evening gathering'),sleep:t('endormi','asleep')}[mode];
-  showOverlay(job?job.ic:'🧑', rec.name,
+  showOverlay(job?job.ic:'🧑', nameOf(rec),
     '<div style="text-align:left;font-size:13.5px;line-height:1.7">'
     +(job?'<b>'+t('Métier','Trade')+' :</b> '+esc(t(job.n,job.ne))+'<br>':'')
     +(rec.bio?'<i style="color:var(--dim)">« '+esc(t(rec.bio,rec.bioe))+' »</i><br><br>':'')
+    +happyHtml(rec)
     +'<b>'+t('Caractère','Character')+' :</b> '+esc(t(tr.n,tr.ne))+' — <i>'+esc(t(tr.d,tr.de))+'</i><br>'
     +'<b>'+t('Au village depuis','In the village for')+' :</b> '+(d?d+' '+t('jour'+(d>1?'s':''),'day'+(d>1?'s':'')):t('aujourd\'hui','today'))+'<br>'
     +'<b>'+t('Humeur','Mood')+' :</b> '+moodIcon(rec)+' '+esc(moodWord(rec))+'<br>'
@@ -4104,9 +4417,13 @@ function showPerson(rec,obj){
     +(lv?'<b>💛 '+t('En couple avec','In love with')+' :</b> '+esc(lv.name)+'<br>':'')
     +'<b>'+t('Loge à','Lives at')+' :</b> '+esc(homeLabel(rec))+'<br>'
     +'<b>'+t('En ce moment','Right now')+' :</b> '+doing+'<br>'
+    +(isChild(rec)?'<b>🧒 '+t('Grandit','Growing up')+' :</b> '+Math.round(childAge(rec)*100)+'%<br>':'')
     +(dr?'<b>'+(rec.dreamAt?'✨ '+t('Rêve réalisé','Dream fulfilled'):'🌙 '+t('Rêve','Dream'))+' :</b> '
         +'<i>'+esc(t(dr.fr,dr.en))+'</i>'+(rec.dreamAt?' ✔':'')+'<br>':'')
-    +(mt?'<b>🎓 '+t('Formé par','Trained by')+' :</b> '+esc(mt.name)+'<br>':'')
+    +(par.length?'<b>👪 '+t('Parents','Parents')+' :</b> '+esc(par.map(x=>nameOf(x)).join(' & '))+'<br>':'')
+    +(kids.length?'<b>👶 '+t('Enfants','Children')+' :</b> '
+       +kids.map(k=>esc(nameOf(k))+(k.grown?'':' <span style="color:var(--dim)">('+Math.round(childAge(k)*100)+'%)</span>')).join(', ')+'<br>':'')
+    +(mt?'<b>🎓 '+t('Formé par','Trained by')+' :</b> '+esc(nameOf(mt))+'<br>':'')
     +(st.length?'<b>🎓 '+t('Forme','Training')+' :</b> '+esc(st.map(x=>x.name).join(', '))+'<br>':'')
     +(rv?'<b>⚔️ '+t('Ne parle plus à','Not speaking to')+' :</b> '+esc(rv.name)+'<br>':'')
     +(mem.length?'<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--edge)">'
@@ -4115,6 +4432,30 @@ function showPerson(rec,obj){
       +'</div>':'')
     +'</div>');
 }
+/* jauge de bonheur d'un habitant : pourquoi il va bien ou mal, et quoi faire */
+function happyHtml(rec){
+  const H=happinessOf(rec);
+  const col=H.pct>=70?'linear-gradient(90deg,#155C33,#33B268)'
+           :H.pct>=40?'linear-gradient(90deg,#7A5A00,#E0A800)'
+                     :'linear-gradient(90deg,#7C1215,#E5383B)';
+  const bads=H.factors.filter(f=>f.d<0), goods=H.factors.filter(f=>f.d>0);
+  let h='<div class="happy"><div class="happyhead"><span>'+moodIcon(rec)+' '+t('Bonheur','Happiness')+'</span>'
+   +'<b>'+H.pct+'%</b></div>'
+   +'<div class="happybar"><i style="width:'+H.pct+'%;background:'+col+'"></i></div>';
+  if(bads.length){
+    h+='<div class="hsec">'+t('Ce qui ne va pas','What is wrong')+'</div>';
+    bads.forEach(f=>{ h+='<div class="hfact bad"><span class="hic">'+f.ic+'</span><span class="htx">'
+      +esc(t(f.why,f.whye))
+      +(f.fix?'<i>👉 '+esc(t(f.fix,f.fixe))+'</i>':'')
+      +'</span><span class="hpt">'+f.d+'</span></div>'; });
+  }else h+='<div class="hsec">'+t('Rien ne lui manque. 🎉','Nothing is missing. 🎉')+'</div>';
+  if(goods.length){
+    h+='<div class="hsec">'+t('Ce qui le rend heureux','What makes them happy')+'</div>';
+    goods.forEach(f=>{ h+='<div class="hfact good"><span class="hic">'+f.ic+'</span><span class="htx">'
+      +esc(t(f.why,f.whye))+'</span><span class="hpt">+'+f.d+'</span></div>'; });
+  }
+  return h+'</div>';
+}
 /* liste des habitants sous le village */
 function peopleHtml(){
   const list=S.people||[];
@@ -4122,10 +4463,11 @@ function peopleHtml(){
   let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">👥 '
    +t('LES HABITANTS','THE VILLAGERS')+' · '+list.length+'</div><div class="folk">';
   list.forEach(r=>{
-    const bf=bestFriend(r), tr=traitOf(r.tr);
+    const bf=bestFriend(r), tr=traitOf(r.tr), hp=happinessOf(r).pct;
     h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
-     +'<span class="fkn">'+esc(r.name)+'</span>'
-     +'<span class="fkt">'+moodIcon(r)+' '+esc(t(tr.n,tr.ne))+'</span>'
+     +'<span class="fkn">'+esc(nameOf(r))+'</span>'
+     +'<span class="fkt">'+moodIcon(r)+' '+esc(isChild(r)?t('enfant','child'):t(tr.n,tr.ne))+'</span>'
+     +'<span class="fkbar"><i style="width:'+hp+'%;background:'+(hp>=70?'#33B268':hp>=40?'#E0A800':'#E5383B')+'"></i></span>'
      +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name)
         :r.rival?'⚔️ '+esc(((S.people||[]).find(x=>x.id===r.rival)||{}).name||'')
         :(bf?'🤝 '+esc(bf.p.name):(dreamOf(r)?(r.dreamAt?'✨ ':'🌙 ')+esc(t(dreamOf(r).fr,dreamOf(r).en)):'—')))
@@ -4560,7 +4902,7 @@ document.addEventListener('keydown',e=>{
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
-  setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay};
+  setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay, v3dZoom};
 window.G=G;
 applyLang();
 touchDaily();
