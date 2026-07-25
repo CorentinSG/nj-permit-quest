@@ -465,11 +465,21 @@ html,body{overflow-x:hidden}
 
 /* ---------- level-up overlay ---------- */
 #overlay{
-  position:fixed;inset:0;z-index:90;display:none;place-items:center;
+  position:fixed;inset:0;z-index:90;display:none;justify-items:center;align-items:start;
   background:#0C1118E0;padding:20px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 #overlay.show{display:grid}
-.ov-card{background:var(--lane);border:4px solid var(--bus);border-radius:16px;padding:28px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 0 60px #FFC61A33;animation:ovIn .35s cubic-bezier(.2,1.4,.4,1)}
+/* margin:auto centre la carte quand elle tient, et la laisse défiler sinon —
+   avec place-items:center une fiche trop haute débordait par le haut et le
+   bouton de fermeture devenait inatteignable */
+.ov-card{position:relative;margin:auto;background:var(--lane);border:4px solid var(--bus);border-radius:16px;padding:28px 22px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 0 60px #FFC61A33;animation:ovIn .35s cubic-bezier(.2,1.4,.4,1)}
+/* croix toujours accessible, collée en haut de la carte pendant le défilement */
+.ov-x{position:sticky;top:0;float:right;margin:-14px -8px 0 0;z-index:2;
+  width:38px;height:38px;border-radius:10px;border:2px solid var(--edge);
+  background:var(--lane2);color:var(--retro);font-size:19px;line-height:1;
+  display:flex;align-items:center;justify-content:center}
+.ov-x:active{transform:translateY(2px)}
 @keyframes ovIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 .ov-card .oic{font-size:52px;display:block;margin-bottom:10px;filter:drop-shadow(0 4px 0 #000)}
 .ov-card h2{font-family:var(--px);font-size:15px;color:var(--bus);margin-bottom:10px;line-height:1.8}
@@ -1879,9 +1889,13 @@ function signReveal(q){
 
 /* ---------- overlay ---------- */
 function showOverlay(ic,title,html){
-  $('#overlay').innerHTML='<div class="ov-card"><span class="oic">'+ic+'</span><h2>'+esc(title)+'</h2><p>'+html+'</p>'
+  const ov=$('#overlay');
+  ov.innerHTML='<div class="ov-card">'
+   +'<button class="ov-x" onclick="G.hideOverlay()" aria-label="'+t('Fermer','Close')+'" title="'+t('Fermer','Close')+'">✕</button>'
+   +'<span class="oic">'+ic+'</span><h2>'+esc(title)+'</h2><p>'+html+'</p>'
    +'<button class="btn btn-bus" style="justify-content:center" onclick="G.hideOverlay()">'+t('CONTINUER','CONTINUE')+'</button></div>';
-  $('#overlay').classList.add('show');
+  ov.scrollTop=0;
+  ov.classList.add('show');
 }
 
 /* ============================================================
@@ -4881,6 +4895,8 @@ function resetAsk(){
 }
 function resetAll(){ const lang=S.lang; S=defaults(); S.lang=lang; save(); hideOverlay(); go('home'); toast(t('💾 Sauvegarde effacée. Nouveau départ !','💾 Save erased. Fresh start!')); }
 function hideOverlay(){ $('#overlay').classList.remove('show'); }
+/* toucher le fond noir ferme aussi : sur une longue fiche c'est le réflexe */
+$('#overlay').addEventListener('pointerdown',e=>{ if(e.target.id==='overlay') hideOverlay(); });
 
 /* ---------- clavier ---------- */
 document.addEventListener('keydown',e=>{
@@ -4891,7 +4907,9 @@ document.addEventListener('keydown',e=>{
     else if(CUR.screen==='exam') examAnswer(pos);
     else if(CUR.screen==='blitz'&&CUR.phase==='play'&&pos<CUR.opts.length) blitzAnswer(pos,{});
   }
-  if(e.key==='Escape'){ goHome(); return; }
+  if(e.key==='Escape'){
+    if($('#overlay').classList.contains('show')){ hideOverlay(); return; }
+    goHome(); return; }
   if(e.key==='Enter'){
     if(CUR.screen==='run'&&CUR.answered) next();
     else if(CUR.screen==='boss'&&CUR.answered) bossNext();
