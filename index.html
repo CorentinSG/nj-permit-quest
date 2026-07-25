@@ -2009,6 +2009,7 @@ function endRun(){
   if(c.ok===c.qs.length){ S.perfectRuns++; }
   save(); checkBadges();
   const stars=c.ok>=Math.ceil(c.qs.length*.9)?3:c.ok>=Math.ceil(c.qs.length*.8)?2:c.ok>=Math.ceil(c.qs.length*.6)?1:0;
+  villageReact('run',stars);
   if(stars>=2){ SFX.win(); confetti(stars===3?150:70); }
   const bonus=stars===3?40:stars===2?20:0;
   if(bonus) gainXp(bonus);
@@ -2133,6 +2134,7 @@ function bossNext(){
   c.i++; c.answered=false; c.picked=-1; c.order=null; render();
 }
 function bossWinHtml(w){
+  if(!CUR.reacted){ CUR.reacted=1; villageReact('boss',1); }
   if(CUR.arena) return arenaWinHtml(w);
   if(!CUR.rewarded){
     CUR.rewarded=true;
@@ -2219,10 +2221,41 @@ function v3dStop(){
 }
 function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
 /* bulle de dialogue : un villageois « parle » au-dessus de la scène */
+/* ce qu'un habitant a envie de dire MAINTENANT : son rêve, son amour, son
+   mentor, la faim du village, César qui approche… le métier n'arrive qu'après. */
+function lineFor(rec,job){
+  const L=[];                                   // [poids, fr, en]
+  const push=(w,fr,en)=>L.push([w,fr,en]);
+  if(rec){
+    const d=dreamOf(rec), lv=loveOf(rec), mt=mentorOf(rec), st=studentsOf(rec), bf=bestFriend(rec);
+    const m=moodOf(rec);
+    if(d&&rec.dreamAt&&Date.now()-rec.dreamAt<6*36e5)
+      push(9,'Je n\'y croyais plus : '+d.fr+'… merci, chef.','I had given up hope: '+d.en+'… thank you, chief.');
+    else if(d&&!rec.dreamAt)
+      push(4,'Un jour, '+d.fr+'. Un jour.','One day, '+d.en+'. One day.');
+    if(lv) push(5,'Tu as vu '+lv.name+' ce matin ? Moi oui.','Have you seen '+lv.name+' this morning? I have.');
+    if(mt) push(3,mt.name+' m\'a tout appris. Je lui dois bien ça.',mt.name+' taught me everything. I owe them that much.');
+    if(st.length) push(3,'Je forme '+st[0].name+'. Ça rentre, doucement.','I\'m training '+st[0].name+'. It\'s sinking in, slowly.');
+    if(bf&&bf.n>=10) push(3,'Avec '+bf.p.name+', on se comprend sans parler.','With '+bf.p.name+', we understand each other without a word.');
+    if(m<0.3) push(6,'Rien ne va aujourd\'hui. Rien.','Nothing is right today. Nothing.');
+    else if(m>0.85) push(4,'Quelle journée ! Tout me réussit.','What a day! Everything is going my way.');
+    if((S.res&&S.res.food===0)) push(8,'Il n\'y a plus rien à manger, chef…','There is nothing left to eat, chief…');
+    const dj=daysToExam();
+    if(dj!==null&&dj>=0&&dj<=3) push(7,'Plus que '+dj+' jour'+(dj>1?'s':'')+' avant César. Tu es prêt ?','Only '+dj+' day'+(dj>1?'s':'')+' until Caesar. Are you ready?');
+    const dd=daysIn(rec);
+    if(dd>=7&&dd%7===0) push(3,'Déjà '+dd+' jours que je suis ici. Le temps file.','Already '+dd+' days here. Time flies.');
+  }
+  const jl=t(job.say,job.saye);
+  push(10,null,null);                            // repli : la réplique de métier
+  const tot=L.reduce((a,x)=>a+x[0],0);
+  let r=Math.random()*tot;
+  for(const x of L){ r-=x[0]; if(r<=0) return x[1]===null?jl[Math.floor(Math.random()*jl.length)]:t(x[1],x[2]); }
+  return jl[0];
+}
 function villagerSay(p){
   const el=$('#v3dsay'); if(!el) return;
-  const j=p.userData.job, lines=t(j.say,j.saye);
-  const txt=lines[Math.floor(Math.random()*lines.length)];
+  const j=p.userData.job;
+  const txt=lineFor(p.userData.rec,j);
   const nm=p.userData.rec?p.userData.rec.name:t(j.n,j.ne);
   el.innerHTML='<b>'+j.ic+' '+esc(nm)+'</b> <i style="color:var(--dim);font-style:normal">('+esc(t(j.n,j.ne))+')</i> — '+esc(txt);
   el.classList.add('show');
@@ -2595,6 +2628,13 @@ function jobForBuilding(id){
   if(base==='hutte'){ const pool=hutJobPool(); return pool[Math.floor(Math.random()*pool.length)]; }
   return HOUSED[base]||'bois';
 }
+/* on évite que trois habitants partagent le même rêve */
+function pickDream(){
+  const taken=(S.people||[]).map(x=>x.dream);
+  const free=DREAMS.filter(d=>!taken.includes(d.k));
+  const pool=free.length?free:DREAMS;
+  return pool[Math.floor(Math.random()*pool.length)].k;
+}
 function newPerson(i,home,jobK){
   const used=(S.people||[]).map(x=>x.name);
   const free=ROSTER.filter(r=>!used.includes(r.n)&&r.n!=='Vercingétorix');
@@ -2603,7 +2643,7 @@ function newPerson(i,home,jobK){
   return {id:'p'+Date.now().toString(36)+i+Math.floor(Math.random()*999), name:pick.n, f:!!pick.f,
           ci:Math.floor(Math.random()*8), tr:pick.tr, bio:pick.bio, bioe:pick.bioe,
           home:home||null, job:jobK||'feu', love:null, born:Date.now(), bond:{}, chats:0,
-          mood:0.55+Math.random()*0.25};
+          mood:0.55+Math.random()*0.25, mem:[]};
 }
 /* la population découle des bâtiments : 1 fondateur + 1 habitant par bâtiment habité */
 function housingKeys(){
@@ -2622,7 +2662,15 @@ function syncPeople(){
   if(!S.people.length){ const r=ROSTER[0], f=newPerson(0,'founder','feu');
     f.name=r.n; f.tr=r.tr; f.f=!!r.f; f.bio=r.bio; f.bioe=r.bioe; S.people.push(f); }
   keys.forEach(k=>{ if(k==='founder') return;
-    if(!S.people.some(p=>p.home===k)) S.people.push(newPerson(S.people.length,k,jobForBuilding(k))); });
+    if(!S.people.some(p=>p.home===k)){
+      const np=newPerson(S.people.length,k,jobForBuilding(k));
+      S.people.push(np);
+      np.dream=pickDream();
+      remember(np,'🏡 '+t('Est arrivé au village.','Arrived in the village.'),'🏡 Arrived in the village.');
+      assignMentor(np);
+    } });
+  S.people.forEach(r=>{ if(!r.dream) r.dream=pickDream(); if(r.mentor===undefined) assignMentor(r); });
+  healRivalries(); checkDreams();
   S.people=S.people.filter(p=>p.home==='founder'||keys.includes(p.home));
   // un habitant de hutte dont le métier n'a plus de bâtiment se reconvertit
   S.people.forEach(p=>{
@@ -2642,12 +2690,19 @@ function relate(A,B){
   A.bond[B.id]=(A.bond[B.id]||0)+1; B.bond[A.id]=(B.bond[A.id]||0)+1;
   A.chats++; B.chats++;
   const n=A.bond[B.id];
-  if(n===6) chron(A.name+' et '+B.name+' sont devenus amis.',A.name+' and '+B.name+' became friends.');
-  if(n===14) chron(A.name+' et '+B.name+' sont désormais inséparables.',A.name+' and '+B.name+' are now inseparable.');
+  if(n===6){ chron(A.name+' et '+B.name+' sont devenus amis.',A.name+' and '+B.name+' became friends.');
+    remember(A,'🤝 '+t('Est devenu ami avec ','Became friends with ')+B.name+'.','🤝 Became friends with '+B.name+'.');
+    remember(B,'🤝 '+t('Est devenu ami avec ','Became friends with ')+A.name+'.','🤝 Became friends with '+A.name+'.'); }
+  if(n===14){ chron(A.name+' et '+B.name+' sont désormais inséparables.',A.name+' and '+B.name+' are now inseparable.');
+    remember(A,'💫 '+t('Inséparable de ','Inseparable from ')+B.name+'.','💫 Inseparable from '+B.name+'.');
+    remember(B,'💫 '+t('Inséparable de ','Inseparable from ')+A.name+'.','💫 Inseparable from '+A.name+'.'); }
   // coup de foudre : lien fort, pas déjà en couple, et sexes différents
   if(n>=20&&!A.love&&!B.love&&A.f!==B.f&&Math.random()<0.35){
     A.love=B.id; B.love=A.id;
     chron('💛 '+A.name+' et '+B.name+' filent le parfait amour !','💛 '+A.name+' and '+B.name+' have fallen in love!');
+    remember(A,'💛 '+t('Est tombé amoureux de ','Fell in love with ')+B.name+'.','💛 Fell in love with '+B.name+'.');
+    remember(B,'💛 '+t('Est tombé amoureux de ','Fell in love with ')+A.name+'.','💛 Fell in love with '+A.name+'.');
+    checkDreams();
   }
   // petite dispute
   if(n>8&&Math.random()<0.045){
@@ -2659,8 +2714,105 @@ function relate(A,B){
     const w=why[Math.floor(Math.random()*why.length)];
     chron('⚡ '+A.name+' s\'est disputé avec '+B.name+' pour '+w[0]+'.',
           '⚡ '+A.name+' argued with '+B.name+' over '+w[1]+'.');
+    noteClash(A,B);
     if(A.love===B.id&&Math.random()<0.4){ A.love=null; B.love=null;
-      chron('💔 '+A.name+' et '+B.name+' se sont séparés…','💔 '+A.name+' and '+B.name+' have broken up…'); }
+      chron('💔 '+A.name+' et '+B.name+' se sont séparés…','💔 '+A.name+' and '+B.name+' have broken up…');
+      remember(A,'💔 '+t('S\'est séparé de ','Broke up with ')+B.name+'.','💔 Broke up with '+B.name+'.');
+      remember(B,'💔 '+t('S\'est séparé de ','Broke up with ')+A.name+'.','💔 Broke up with '+A.name+'.'); }
+  }
+  V3.saveSoon=1;
+}
+/* ============================================================
+   VIE INTÉRIEURE : chaque habitant a un rêve, une mémoire et un mentor.
+   ============================================================ */
+/* rêves : soit un bâtiment à voir sortir de terre, soit un cap à franchir */
+const DREAMS=[
+ {k:'taverne', need:'taverne', fr:'boire une vraie cervoise sous un toit',      en:'drinking real ale under a roof'},
+ {k:'forge',   need:'forge',   fr:'entendre le marteau sonner au village',      en:'hearing the hammer ring in the village'},
+ {k:'ble',     need:'ble',     fr:'voir un champ de blé onduler ici',           en:'seeing a wheat field ripple here'},
+ {k:'puits',   need:'puits',   fr:'ne plus descendre à la rivière pour l\'eau', en:'never walking to the river for water again'},
+ {k:'chaudron',need:'chaudron',fr:'goûter la potion du druide, une fois',       en:'tasting the druid\'s potion, just once'},
+ {k:'banquet', need:'banquet', fr:'un banquet où tout le village tient',        en:'a banquet big enough for the whole village'},
+ {k:'muraille',need:'muraille',fr:'dormir derrière de vraies murailles',        en:'sleeping behind real ramparts'},
+ {k:'menhir',  need:'menhir',  fr:'un menhir dressé, comme au pays',            en:'a standing menhir, like back home'},
+ {k:'poule',   need:'poule',   fr:'un œuf frais chaque matin',                  en:'a fresh egg every morning'},
+ {k:'chasseur',need:'chasseur',fr:'du sanglier à toutes les tablées',           en:'boar at every table'},
+ {k:'camp',    need:'camp',    fr:'voir le village capable de se défendre',     en:'seeing the village able to defend itself'},
+ {k:'amis',    goal:'friends3',fr:'se faire trois vrais amis ici',              en:'making three real friends here'},
+ {k:'foule',   goal:'pop12',   fr:'un village de douze feux au moins',          en:'a village of at least twelve hearths'},
+ {k:'amour',   goal:'love',    fr:'trouver quelqu\'un à aimer',                 en:'finding someone to love'},
+ {k:'examen',  goal:'exam',    fr:'te voir décrocher ce fichu permis',          en:'seeing you land that blasted licence'},
+ {k:'prospere',goal:'happy',   fr:'un village qui ne manque plus de rien',      en:'a village that wants for nothing'}
+];
+function dreamOf(rec){ return DREAMS.find(d=>d.k===(rec&&rec.dream))||null; }
+function dreamDone(rec){
+  const d=dreamOf(rec); if(!d) return false;
+  if(d.need) return nOwned(d.need)>0;
+  if(d.goal==='friends3') return Object.values(rec.bond||{}).filter(v=>v>=6).length>=3;
+  if(d.goal==='pop12')    return (S.people||[]).length>=12;
+  if(d.goal==='love')     return !!rec.love;
+  if(d.goal==='exam')     return !!S.examPassed;
+  if(d.goal==='happy')    return villageHappy()>=100;
+  return false;
+}
+/* un rêve accompli marque durablement l'habitant */
+function checkDreams(){
+  (S.people||[]).forEach(r=>{
+    if(!r.dream||r.dreamAt) return;
+    if(!dreamDone(r)) return;
+    r.dreamAt=Date.now(); nudgeMood(r,0.35);
+    const d=dreamOf(r);
+    remember(r,'✨ '+t('A enfin vu '+d.fr+'.','Finally saw '+d.en+'.'),
+                '✨ Finally saw '+d.en+'.');
+    chron('✨ '+r.name+t(' réalise son rêve : ',' fulfils a dream: ')+d.fr+'.',
+          '✨ '+r.name+' fulfils a dream: '+d.en+'.');
+  });
+}
+/* mémoire : les 6 moments qui ont compté pour cet habitant */
+function remember(rec,fr,en){
+  rec.mem=rec.mem||[];
+  // on ne réécrit pas deux fois le même souvenir (amitié perdue puis retrouvée)
+  if(rec.mem.some(m=>m.fr===fr)) return;
+  rec.mem.unshift({t:Date.now(),fr,en});
+  if(rec.mem.length>6) rec.mem.length=6;
+}
+/* un nouvel arrivant se met dans les pas d'un ancien du même métier */
+function assignMentor(rec){
+  if(rec.mentor!==undefined) return;
+  const olds=(S.people||[]).filter(x=>x!==rec&&x.job===rec.job
+    &&(x.born<rec.born||(x.born===rec.born&&x.id<rec.id)));
+  const m=olds.sort((a,b)=>(a.born-b.born)||(a.id-b.id))[0];
+  rec.mentor=m?m.id:null;
+  if(m){
+    rec.bond[m.id]=(rec.bond[m.id]||0)+3; m.bond[rec.id]=(m.bond[rec.id]||0)+3;
+    remember(rec,'🎓 '+t('Formé par ','Trained by ')+m.name+'.','🎓 Trained by '+m.name+'.');
+    remember(m,'🎓 '+t('A pris ','Took ')+rec.name+t(' sous son aile.',' under their wing.'),
+                '🎓 Took '+rec.name+' under their wing.');
+    chron('🎓 '+m.name+t(' apprend le métier à ',' is teaching the trade to ')+rec.name+'.',
+          '🎓 '+m.name+' is teaching the trade to '+rec.name+'.');
+  }
+}
+function mentorOf(rec){ return rec.mentor?(S.people||[]).find(x=>x.id===rec.mentor):null; }
+function studentsOf(rec){ return (S.people||[]).filter(x=>x.mentor===rec.id); }
+/* le village réagit à TES résultats : c'est toi qui le fais vivre */
+function villageReact(kind,val){
+  const P=S.people||[]; if(!P.length) return;
+  if(kind==='exam'){
+    if(val>=0.9){ P.forEach(r=>nudgeMood(r,0.22));
+      chron('🎉 '+t('Le village a fêté ton score écrasant à l\'examen blanc.','The village celebrated your crushing mock-exam score.'),
+            '🎉 The village celebrated your crushing mock-exam score.'); }
+    else if(val>=0.8){ P.forEach(r=>nudgeMood(r,0.12));
+      chron('🍺 '+t('Ton examen blanc réussi a valu une tournée générale.','Your passed mock exam earned a round for everyone.'),
+            '🍺 Your passed mock exam earned a round for everyone.'); }
+    else{ P.forEach(r=>nudgeMood(r,-0.1));
+      chron('😟 '+t('Ton examen blanc raté a jeté un froid au village.','Your failed mock exam cast a chill over the village.'),
+            '😟 Your failed mock exam cast a chill over the village.'); }
+  }else if(kind==='run'){
+    P.forEach(r=>nudgeMood(r,val>=3?0.09:val>=2?0.04:-0.05));
+  }else if(kind==='boss'){
+    P.forEach(r=>nudgeMood(r,0.15));
+    chron('⚔️ '+t('Ta victoire a fait le tour du village.','Your victory went round the village.'),
+          '⚔️ Your victory went round the village.');
   }
   V3.saveSoon=1;
 }
@@ -2682,7 +2834,9 @@ function wantsToTalk(A,B,mode){
   if(!A||!B) return false;
   let w=CHATTINESS[A.tr]!=null?CHATTINESS[A.tr]:0.5;
   const bond=(A.bond&&A.bond[B.id])||0;
+  if(A.rival===B.id) return false;           // une rancune tenace : on ne s'adresse plus la parole
   if(A.love===B.id) w+=0.45;                 // on ne rate jamais l'occasion de croiser son amour
+  else if(A.mentor===B.id||B.mentor===A.id) w+=0.25;   // maître et élève se cherchent
   else if(bond>=14) w+=0.3;
   else if(bond>=6)  w+=0.18;
   else if(bond===0) w-=0.05;                 // un inconnu, on hésite un peu
@@ -2700,6 +2854,35 @@ function meetOutcome(A,B){
   const risk=0.05+grump*0.09+Math.max(0,0.5-Math.min(moodOf(A),moodOf(B)))*0.3-(bond>=14?0.06:0);
   if(Math.random()<risk) return 'clash';
   return bond>=6?'warm':'chat';
+}
+/* une brouille de plus. Trois accrochages sans que l'amitié n'ait pris,
+   et les deux cessent tout simplement de s'adresser la parole. */
+function noteClash(A,B){
+  if(!A||!B) return;
+  A.rows=(A.rows||0)+1; B.rows=(B.rows||0)+1;
+  const bond=(A.bond&&A.bond[B.id])||0;
+  if(A.rival===B.id||A.love===B.id||bond>=12) return;
+  if(Math.min(A.rows,B.rows)<3) return;
+  A.rival=B.id; B.rival=A.id; A.rivalAt=B.rivalAt=Date.now();
+  remember(A,'⚔️ '+t('Ne parle plus à ','No longer speaks to ')+B.name+'.','⚔️ No longer speaks to '+B.name+'.');
+  remember(B,'⚔️ '+t('Ne parle plus à ','No longer speaks to ')+A.name+'.','⚔️ No longer speaks to '+A.name+'.');
+  chron('⚔️ '+A.name+t(' et ',' and ')+B.name+t(' ne se parlent plus.',' are no longer on speaking terms.'),
+        '⚔️ '+A.name+' and '+B.name+' are no longer on speaking terms.');
+}
+/* le temps apaise : une rancune finit par se dissoudre au bout de quelques jours */
+function healRivalries(){
+  (S.people||[]).forEach(A=>{
+    if(!A.rival) return;
+    const B=(S.people||[]).find(x=>x.id===A.rival);
+    if(!B){ A.rival=null; return; }
+    if(Date.now()-(A.rivalAt||A.born)>3*864e5&&Math.random()<0.35){
+      A.rival=null; B.rival=null; A.rows=B.rows=0;
+      chron('🕊️ '+A.name+t(' et ',' and ')+B.name+t(' se sont réconciliés.',' have made peace.'),
+            '🕊️ '+A.name+' and '+B.name+' have made peace.');
+      remember(A,'🕊️ '+t('S\'est réconcilié avec ','Made peace with ')+B.name+'.','🕊️ Made peace with '+B.name+'.');
+      remember(B,'🕊️ '+t('S\'est réconcilié avec ','Made peace with ')+A.name+'.','🕊️ Made peace with '+A.name+'.');
+    }
+  });
 }
 function loveOf(p){ return p.love?(S.people||[]).find(x=>x.id===p.love):null; }
 function traitOf(k){ return TRAITS.find(x=>x.k===k)||TRAITS[0]; }
@@ -3296,6 +3479,7 @@ function engage(A,B,now,mode){
     u.badge.visible=true; u.badgeT=u.badgeMax=out==='love'?3.4:2.4; } });
   if(out==='clash'){
     ua.clash=ub.clash=1;
+    noteClash(ra,rb);
     nudgeMood(ra,-0.22); nudgeMood(rb,-0.22);
     ua.avoid[rb.id]=now+45000; ub.avoid[ra.id]=now+45000;
     ua.timer=ub.timer=1.6;
@@ -3794,6 +3978,8 @@ function homeLabel(rec){
 }
 function showPerson(rec,obj){
   const tr=traitOf(rec.tr), bf=bestFriend(rec), lv=loveOf(rec);
+  const dr=dreamOf(rec), mt=mentorOf(rec), st=studentsOf(rec), mem=rec.mem||[];
+  const rv=rec.rival?(S.people||[]).find(x=>x.id===rec.rival):null;
   const job=obj&&obj.userData.job?obj.userData.job:null;
   const d=daysIn(rec);
   const mode=routine(), doing={work:t('au travail','at work'),eat:t('à table','eating'),
@@ -3809,7 +3995,16 @@ function showPerson(rec,obj){
     +'<b>'+t('Meilleur ami','Best friend')+' :</b> '+(bf?esc(bf.p.name)+' <span style="color:var(--dim)">('+bf.n+' '+t('échanges','talks')+')</span>':t('personne encore…','nobody yet…'))+'<br>'
     +(lv?'<b>💛 '+t('En couple avec','In love with')+' :</b> '+esc(lv.name)+'<br>':'')
     +'<b>'+t('Loge à','Lives at')+' :</b> '+esc(homeLabel(rec))+'<br>'
-    +'<b>'+t('En ce moment','Right now')+' :</b> '+doing
+    +'<b>'+t('En ce moment','Right now')+' :</b> '+doing+'<br>'
+    +(dr?'<b>'+(rec.dreamAt?'✨ '+t('Rêve réalisé','Dream fulfilled'):'🌙 '+t('Rêve','Dream'))+' :</b> '
+        +'<i>'+esc(t(dr.fr,dr.en))+'</i>'+(rec.dreamAt?' ✔':'')+'<br>':'')
+    +(mt?'<b>🎓 '+t('Formé par','Trained by')+' :</b> '+esc(mt.name)+'<br>':'')
+    +(st.length?'<b>🎓 '+t('Forme','Training')+' :</b> '+esc(st.map(x=>x.name).join(', '))+'<br>':'')
+    +(rv?'<b>⚔️ '+t('Ne parle plus à','Not speaking to')+' :</b> '+esc(rv.name)+'<br>':'')
+    +(mem.length?'<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--edge)">'
+        +'<b>'+t('Ce qui l\'a marqué','What marked them')+'</b><br>'
+        +mem.map(m=>'<span style="color:var(--dim)">· '+esc(t(m.fr,m.en))+'</span>').join('<br>')
+      +'</div>':'')
     +'</div>');
 }
 /* liste des habitants sous le village */
@@ -3823,7 +4018,10 @@ function peopleHtml(){
     h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
      +'<span class="fkn">'+esc(r.name)+'</span>'
      +'<span class="fkt">'+moodIcon(r)+' '+esc(t(tr.n,tr.ne))+'</span>'
-     +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name):(bf?'🤝 '+esc(bf.p.name):'—'))+'</span></button>';
+     +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name)
+        :r.rival?'⚔️ '+esc(((S.people||[]).find(x=>x.id===r.rival)||{}).name||'')
+        :(bf?'🤝 '+esc(bf.p.name):(dreamOf(r)?(r.dreamAt?'✨ ':'🌙 ')+esc(t(dreamOf(r).fr,dreamOf(r).en)):'—')))
+      +'</span></button>';
   });
   return h+'</div><p class="small" style="margin-top:8px">'
    +t('Touche un villageois dans la scène 3D (hors mode déplacement) pour voir sa fiche. Chaque nouvelle hutte fait venir un habitant.',
@@ -3876,6 +4074,7 @@ function buy(id){
     syncPeople();
     arrival=(S.people||[]).find(p=>!before.includes(p.id))||null;
   }
+  checkDreams();
   save(); checkBadges();
   SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
   if(arrival){
@@ -4098,6 +4297,7 @@ function examAnswer(pos){
     else if(c.mode==='eclair'){ if(score>S.examEclairBest) S.examEclairBest=score; }
     else{ if(score>S.examBest) S.examBest=score; if(pass) S.examPassed=true; }
     gainCoins(score+(pass?50:0));
+    villageReact('exam',score/c.qs.length); checkDreams();
     save(); checkBadges();
     gainXp(score*2+(pass?(c.mode==='full'?200:100):0));
     go('examEnd',{score, answers:c.answers, mode:c.mode, need:c.need, total:c.qs.length});
