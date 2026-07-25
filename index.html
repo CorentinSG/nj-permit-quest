@@ -255,7 +255,10 @@ html,body{overflow-x:hidden}
 .timer{font-family:var(--px);font-size:22px;color:var(--bus);font-variant-numeric:tabular-nums}
 .timer.low{color:var(--stop);animation:pulse .5s infinite}
 .blitzscore{font-family:var(--px);font-size:14px;color:var(--retro)}
-.drillp{font-size:18px;font-weight:700;line-height:1.45;text-wrap:balance;min-height:80px;display:flex;align-items:center;overflow-wrap:anywhere}
+.drillp{font-size:18px;font-weight:700;line-height:1.45;text-wrap:balance;min-height:80px;
+  display:flex;align-items:center;overflow-wrap:anywhere}
+/* un seul enfant flex : sinon chaque <b> devient un item et les espaces sautent */
+.drillp>span{display:block;width:100%}
 .drillp b{color:var(--bus)}
 .opts.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .opts.grid2 .opt{justify-content:center;text-align:center;font-family:var(--mono);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;padding:16px 8px}
@@ -384,6 +387,20 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* récapitulatif de butin en fin de session */
+.loot{margin-top:12px}
+.lootmult{
+  font-family:var(--px);font-size:9px;letter-spacing:.5px;text-align:center;
+  padding:10px 8px;border-radius:9px;border:2px dashed var(--edge);
+  color:var(--dim);margin:2px 0 12px;line-height:1.7;overflow-wrap:anywhere;
+}
+.lootmult.on{border-color:var(--zone);border-style:solid;background:#2A1A00;color:var(--zone)}
+.lootrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--edge)}
+.lootrow:last-of-type{border-bottom:0}
+.lootrow .lic{font-size:20px;flex:none;line-height:1}
+.lootrow .lnm{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
+.lootrow .lval{font-family:var(--px);font-size:12px;color:var(--exit);flex:none}
+.lootrow .lbon{font-size:11px;color:var(--zone);flex:none;min-width:56px;text-align:right}
 /* marquer une question comme difficile, même quand on a eu bon */
 .flagrow{display:flex;justify-content:flex-end;margin-top:10px}
 .flagbtn{
@@ -1856,6 +1873,12 @@ function stopTimers(){ if(blitzTimer){ clearInterval(blitzTimer); blitzTimer=0; 
 function go(screen,params){
   stopTimers();
   CUR={screen, ...(params||{})};
+  // point de départ du butin : on comparera à l'arrivée
+  if(screen==='run'||screen==='boss'||screen==='exam'){
+    S.res=S.res||{food:0,wood:0,iron:0};
+    CUR.res0={food:S.res.food||0, wood:S.res.wood||0, iron:S.res.iron||0};
+    CUR.coins0=S.coins;
+  }
   render();
   scrollTo({top:0});
 }
@@ -2021,6 +2044,64 @@ function next(){
   if(c.i+1<c.qs.length){ c.i++; c.answered=false; c.picked=-1; c.order=null; render(); }
   else endRun();
 }
+/* Multiplicateur de butin : il ne compte QUE si le combo tient encore à la
+   fin de la série. Une faute en dernière question et tout retombe à ×1. */
+function lootMult(combo){
+  if(combo>=10) return 4;
+  if(combo>=9)  return 3;
+  if(combo>=7)  return 2.5;
+  if(combo>=5)  return 2;
+  if(combo>=3)  return 1.5;
+  return 1;
+}
+const LOOT_STEPS=[[3,1.5],[5,2],[7,2.5],[9,3],[10,4]];
+/* ce que la session a rapporté, bonus de combo compris */
+function sessionLoot(c,combo){
+  const base={}, bonus={};
+  const r0=c.res0||{food:0,wood:0,iron:0};
+  let anyBase=0;
+  ['food','wood','iron'].forEach(k=>{
+    const g=Math.max(0,((S.res&&S.res[k])||0)-(r0[k]||0));
+    base[k]=g; anyBase+=g;
+  });
+  const mult=lootMult(combo||0);
+  ['food','wood','iron'].forEach(k=>{ bonus[k]=Math.round(base[k]*(mult-1)); });
+  const coins=Math.max(0,S.coins-(c.coins0||0));
+  return {base, bonus, mult, coins, any:anyBase>0||coins>0};
+}
+/* on verse le bonus et on rend le récapitulatif */
+function lootHtml(c,combo){
+  if(c._loot!==undefined) return c._loot;      // le bilan peut être re-rendu : on ne verse qu'une fois
+  const L=sessionLoot(c,combo);
+  if(!L.any){ c._loot=''; return ''; }
+  ['food','wood','iron'].forEach(k=>{ if(L.bonus[k]) S.res[k]=(S.res[k]||0)+L.bonus[k]; });
+  save();
+  const IC={food:'🌾',wood:'🪵',iron:'⚙️'}, NM={food:t('Nourriture','Food'),wood:t('Bois','Wood'),iron:t('Fer','Iron')};
+  let rows='';
+  ['food','wood','iron'].forEach(k=>{
+    if(!L.base[k]&&!L.bonus[k]) return;
+    rows+='<div class="lootrow"><span class="lic">'+IC[k]+'</span><span class="lnm">'+NM[k]+'</span>'
+      +'<span class="lval">+'+(L.base[k]+L.bonus[k])+'</span>'
+      +(L.bonus[k]?'<span class="lbon">'+t('dont +','incl. +')+L.bonus[k]+'</span>':'<span class="lbon"></span>')
+      +'</div>';
+  });
+  if(L.coins) rows+='<div class="lootrow"><span class="lic">🪙</span><span class="lnm">'+t('Sesterces','Sesterces')
+      +'</span><span class="lval">+'+L.coins+'</span><span class="lbon"></span></div>';
+  const nxt=LOOT_STEPS.find(x=>x[0]>(combo||0));
+  const html='<div class="panel loot"><div class="eyebrow">'+t('BUTIN DE LA SESSION','SESSION LOOT')+'</div>'
+   +'<div class="lootmult'+(L.mult>1?' on':'')+'">'
+     +(L.mult>1
+       ? '🔥 '+t('COMBO ×'+combo+' TENU → BUTIN ×'+L.mult,'COMBO ×'+combo+' HELD → LOOT ×'+L.mult)
+       : t('Combo perdu en route → butin ×1','Combo broken along the way → loot ×1'))
+   +'</div>'
+   +rows
+   +'<p class="small" style="margin-top:10px">'
+   +(nxt?t('Termine la prochaine série avec '+nxt[0]+' bonnes réponses d\'affilée pour un butin ×'+nxt[1]+'.',
+           'Finish the next run on a '+nxt[0]+'-answer streak for ×'+nxt[1]+' loot.')
+        :t('Multiplicateur maximum atteint. Impeccable.','Maximum multiplier reached. Flawless.'))
+   +'</p></div>';
+  c._loot=html; return html;
+}
 function endRun(){
   const c=CUR;
   S.runsDone++;
@@ -2040,7 +2121,7 @@ function endRun(){
    +'<div class="bigscore '+(c.ok>=8?'ok':'ko')+'">'+c.ok+'/'+c.qs.length+'</div>'
    +(m!==null?'<p class="small">'+t('Maîtrise de la zone','Zone mastery')+' : <b style="color:var(--exit)">'+m+'%</b>'+(m>=80?t(' — le boss t\'attend ! ',' — the boss awaits! ')+(w?w.bossIc:''):'')+'</p>':'')
    +(bonus?'<p class="small">'+t('Bonus étoiles','Star bonus')+' : <b style="color:var(--bus)">+'+bonus+' XP</b></p>':'')
-   +'<div class="menu" style="margin-top:16px">'
+   +'</div>'+lootHtml(c,c.combo)+'<div class="panel"><div class="menu">'
    +(c.wid?'<button class="btn btn-exit" onclick="G.startRun(\''+c.wid+'\')"><span class="ic">🔁</span>'+t('ENCORE ×10','AGAIN ×10')+'</button>':'')
    +(c.wid&&m>=80&&!S.bossWins[c.wid]?'<button class="btn btn-stop" onclick="G.startBoss(\''+c.wid+'\')"><span class="ic">'+(w?w.bossIc:'👊')+'</span>'+t('DÉFIER LE BOSS','CHALLENGE THE BOSS')+'</button>':'')
    +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte','Map')+'</button>'
@@ -2165,7 +2246,7 @@ function bossWinHtml(w){
    +'<div class="stamp ok">K.O. !</div>'
    +'<p style="margin-bottom:6px"><b>'+esc(wboss(w))+'</b> '+t('mord la poussière.','bites the dust.')+'</p>'
    +'<p class="small">+150 XP · '+t('Zone « '+esc(wn(w))+' » conquise 👑','Zone "'+esc(wn(w))+'" conquered 👑')+'</p>'
-   +'<div class="menu" style="margin-top:16px">'
+   +'</div>'+lootHtml(CUR,CUR.combo)+'<div class="panel"><div class="menu">'
    +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte du NJ','NJ Map')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
    +'</div></div>';
@@ -2175,7 +2256,7 @@ function bossLoseHtml(w){
    +'<div style="font-size:56px">'+w.bossIc+'</div>'
    +'<div class="stamp ko">'+t('DÉFAITE…','DEFEAT…')+'</div>'
    +'<p class="small">'+esc(wboss(w))+' '+t('ricane. Révise la zone et reviens le corriger.','sneers. Review the zone and come back to fix it.')+'</p>'
-   +'<div class="menu" style="margin-top:16px">'
+   +'</div>'+lootHtml(CUR,CUR.combo)+'<div class="panel"><div class="menu">'
    +'<button class="btn btn-exit" onclick="G.startRun(\''+w.id+'\')"><span class="ic">📖</span>'+t('Réviser ×10','Review ×10')+'</button>'
    +'<button class="btn btn-stop" onclick="G.startBoss(\''+w.id+'\')"><span class="ic">🔁</span>'+t('Revanche','Rematch')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span>'+t('Carte','Map')+'</button>'
@@ -4258,7 +4339,7 @@ function scrBlitz(){
   const d=c.deck[c.di];
   return '<div class="blitzhead"><div class="timer'+(c.t<=10?' low':'')+'" id="timer">'+c.t+'s</div>'
    +'<div class="blitzscore">🏆 '+c.score+(c.streak>=3?' <span style="color:var(--zone)">🔥'+c.streak+'</span>':'')+'</div></div>'
-   +'<div class="qcard"><div class="drillp">'+dp(d)+'</div>'
+   +'<div class="qcard"><div class="drillp"><span>'+dp(d)+'</span></div>'
    +'<div class="opts grid2">'
    +c.opts.map((o,i)=>'<button class="opt" onclick="G.blitzAnswer('+i+',event)"><span>'+esc(dshow(o))+'</span></button>').join('')
    +'</div></div>';
@@ -4359,7 +4440,8 @@ function examAnswer(pos){
     villageReact('exam',score/c.qs.length); checkDreams();
     save(); checkBadges();
     gainXp(score*2+(pass?(c.mode==='full'?200:100):0));
-    go('examEnd',{score, answers:c.answers, mode:c.mode, need:c.need, total:c.qs.length});
+    go('examEnd',{score, answers:c.answers, mode:c.mode, need:c.need, total:c.qs.length,
+      res0:c.res0, coins0:c.coins0});
   }
 }
 function scrExamEnd(){
@@ -4378,7 +4460,7 @@ function scrExamEnd(){
    +(wrong.length?'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span>'+t('Venger mes '+wrong.length+' erreurs','Avenge my '+wrong.length+' mistakes')+'</button>':'')
    +'<button class="btn btn-shield" onclick="G.startExam(\''+(c.mode||'full')+'\')"><span class="ic">🎓</span>'+t('Nouvel examen','New exam')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'exams\')"><span class="ic">🚪</span>'+t('Salle d\'examen','Exam room')+'</button>'
-   +'</div></div>';
+   +'</div></div>'+lootHtml(c,0);
   if(wrong.length){
     html+='<div class="panel"><div class="eyebrow">'+t('TES ERREURS DU JOUR','YOUR MISTAKES')+'</div>';
     wrong.forEach(a=>{
