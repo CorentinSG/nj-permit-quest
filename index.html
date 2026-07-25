@@ -1076,6 +1076,10 @@ const LEVELS=[
 /* ---------------- BOUTIQUE / VILLAGE GAULOIS ---------------- */
 const SHOP=[
 /* --- village --- */
+/* le moins cher d'abord : on trace ses allées pour trois fois rien */
+{id:'chemin',ic:'🛤️',n:'Bout de chemin',ne:'Path section',p:12,stack:true,rate:1.04,rc:{wood:1},
+ d:'Un morceau de sentier à poser où tu veux — pose-le, puis déplace-le',
+ de:'A stretch of path to lay wherever you like — buy it, then drag it'},
 {id:'feu',ic:'🔥',n:'Feu de camp',ne:'Campfire',p:60,rc:{wood:4}},
 {id:'hutte',ic:'🛖',n:'Hutte',ne:'Hut',p:80,stack:true,rate:1.22,rc:{wood:10},
  d:'Chaque hutte fait venir un villageois',de:'Each hut brings in a new villager'},
@@ -1088,8 +1092,6 @@ const SHOP=[
  prod:{food:3},d:'Son fermier cultive les terres : +3 🌾/h',de:'Its farmer works the land: +3 🌾/h'},
 {id:'bucheron',ic:'🪓',n:'Cabane du bûcheron',ne:'Woodcutter\'s cabin',p:150,stack:true,rate:1.2,rc:{wood:8,iron:4},
  prod:{wood:2},d:'Son bûcheron abat des arbres : +2 🪵/h',de:'Its woodcutter fells trees: +2 🪵/h'},
-{id:'chemin',ic:'🛤️',n:'Bout de chemin',ne:'Path section',p:12,stack:true,rate:1.04,rc:{wood:1},
- d:'Un morceau de sentier à poser où tu veux',de:'A stretch of path to lay wherever you like'},
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
 {id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140,rc:{wood:22}},
@@ -3553,18 +3555,25 @@ function buildVillage(scene){
   // emplacements automatiques des huttes : spirale qui s'éloigne du centre
   const hutSpot=i=>{ const a=2.399*i+0.7, r=52+Math.sqrt(i)*26;
     return [Math.cos(a)*r, Math.sin(a)*r*0.92]; };
+  // les dalles de chemin sont de la décoration au sol : elles se posent bien en
+  // vue, collées les unes aux autres, pour former tout de suite un sentier
+  const POFF=[0,1,-1,2,-2,3];
+  const pathSpot=i=>{ const row=Math.floor(i/6), col=i%6;
+    return [POFF[col]*27, 34+row*15]; };
   let spiral=0;
   SHOP.filter(x=>x.stack).forEach(it=>{
     const n2=nOwned(it.id);
     for(let i=0;i<n2;i++){
       const key=i?it.id+'#'+i:it.id;
       const base=P3[it.id]||[-33,-33];
-      let p=(S.vpos&&S.vpos[key])||(i?hutSpot(spiral+i):base);
-      p=resolveOverlap(p[0],p[1],footOf(key),key);      // rien ne se pose dans un autre bâtiment
-      const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]); g.rotation.y=(i*0.7)%6.28;
+      let p=(S.vpos&&S.vpos[key])||(it.id==='chemin'?pathSpot(i):(i?hutSpot(spiral+i):base));
+      // un chemin est à plat sur le sol : il ne bute contre rien et rien ne le repousse
+      if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(key),key);
+      const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]);
+      g.rotation.y=it.id==='chemin'?0:(i*0.7)%6.28;      // un sentier reste aligné
       scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
     }
-    spiral+=n2;
+    if(it.id!=='chemin') spiral+=n2;
   });
   SHOP.forEach(it=>{
     if(it.stack) return;   // déjà traités ci-dessus
@@ -4274,8 +4283,9 @@ const FOOT={
   druide:5, chef:5, barde:5, chien:4, camp:14, entrainement:16, guerriers:9,
   tour:9, catapulte:9, chefguerre:6
 };
-/* la muraille et la palissade sont des enceintes : pas d'emprise ponctuelle */
-const NOCLIP={muraille:1, palissade:1};
+/* enceintes et dallage : pas d'emprise au sol. Un chemin est à plat, on doit
+   pouvoir le glisser sous un bâtiment ou coller deux dalles bout à bout. */
+const NOCLIP={muraille:1, palissade:1, chemin:1};
 function footOf(key){
   const base=String(key).split('#')[0];
   return FOOT[base]||10;
@@ -4546,6 +4556,9 @@ function buy(id){
     chron(arrival.name+' est arrivé au village ('+where+').',arrival.name+' arrived in the village ('+where+').');
     toast(it.ic+' <b>'+esc(arrival.name)+'</b> '+t('s\'installe : ','moves in: ')+esc(where)
       +'<br><i style="color:var(--dim)">« '+esc(t(arrival.bio||'',arrival.bioe||''))+' »</i>');
+  }else if(it.id==='chemin'){
+    toast(it.ic+' '+t('Dalle posée au centre du village — touche <b>DÉPLACER</b> pour la glisser où tu veux.',
+                      'Slab laid at the centre of the village — tap <b>MOVE</b> to drag it wherever you like.'));
   }else{
     toast(it.ic+' '+t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!'));
   }
