@@ -247,76 +247,18 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .gtable td:last-child{text-align:right;font-family:var(--mono);font-weight:700;color:var(--bus);font-variant-numeric:tabular-nums}
 .gtable tr:last-child td{border-bottom:none}
 
-/* ---------- village 3D ---------- */
-.v3d{position:relative;height:320px;margin-bottom:12px;border:3px solid #7BAE3F;border-radius:14px;overflow:hidden;
-  background:linear-gradient(#0B1729 0%,#16233A 26%,#24351A 26%,#1A2711 100%);
-  touch-action:none;cursor:grab;box-shadow:0 5px 0 #00000066}
+/* ---------- village 3D (WebGL) ---------- */
+.v3d{position:relative;height:330px;margin-bottom:12px;border:3px solid #6E9A38;border-radius:14px;overflow:hidden;
+  background:#9FD4EA;touch-action:none;cursor:grab;box-shadow:0 5px 0 #00000066}
 .v3d.dragging{cursor:grabbing}
-.v3d-cam{position:absolute;inset:0;perspective:760px;perspective-origin:50% 44%}
-.v3d-world{position:absolute;left:50%;top:60%;width:0;height:0;transform-style:preserve-3d;
-  transform:scale(1.22) rotateX(var(--tilt,56deg)) rotateZ(var(--rot,-26deg))}
-.g-obj{position:absolute;transform-style:preserve-3d}
-.g-face{position:absolute;left:50%;top:50%;backface-visibility:visible}
-.g-tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-.g-ground{position:absolute;left:50%;top:50%;width:290px;height:290px;margin:-145px 0 0 -145px;border-radius:34px;
-  background:radial-gradient(circle at 38% 32%,#43642A,#31501E 62%,#26401A);
-  box-shadow:0 0 0 3px #1D3312,0 0 46px #000 inset}
-.g-path{background:#7A6647;border-radius:11px;opacity:.75}
-.g-bill{position:absolute;left:50%;top:50%;transform-origin:50% 100%;line-height:1;white-space:nowrap;
-  filter:drop-shadow(0 3px 2px rgba(0,0,0,.55));pointer-events:none}
-.g-plot{position:absolute;left:50%;top:50%;border:2px dashed rgba(123,174,63,.45);border-radius:7px}
-.g-glow{border-radius:50%;background:radial-gradient(circle,rgba(255,168,40,.55),rgba(255,120,20,0) 70%);animation:v3glow 1.6s ease-in-out infinite}
-/* --- animations des sprites (à l'intérieur du billboard) --- */
-.g-bill i{display:inline-block;transform-origin:50% 90%}
-@keyframes v3glow{0%,100%{opacity:.55;transform:translateZ(.8px) scale(1)}50%{opacity:.9;transform:translateZ(.8px) scale(1.18)}}
-@keyframes v3fire{0%,100%{transform:scale(1) rotate(-3deg)}35%{transform:scale(1.14,.94) rotate(4deg)}70%{transform:scale(.93,1.12) rotate(-2deg)}}
-.g-bill i.fire{animation:v3fire .55s ease-in-out infinite}
-@keyframes v3sm{0%{opacity:0;transform:translateY(0) scale(.45)}18%{opacity:.6}100%{opacity:0;transform:translateY(-34px) scale(1.5)}}
-.g-bill i.sm{animation:v3sm 2.6s linear infinite;opacity:0}
-@keyframes v3sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
-.g-bill i.sway{animation:v3sway 2.4s ease-in-out infinite}
-@keyframes v3peck{0%,100%{transform:translateY(0) rotate(0)}45%{transform:translateY(3px) rotate(16deg)}}
-.g-bill i.peck{animation:v3peck 1.7s ease-in-out infinite}
-@keyframes v3trot{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(-2px) scaleX(.94)}}
-.g-bill i.trot{animation:v3trot 1.1s ease-in-out infinite}
-@keyframes v3hammer{0%,100%{transform:rotate(-16deg)}45%{transform:rotate(22deg)}}
-.g-bill i.hammer{animation:v3hammer .7s ease-in-out infinite}
-@keyframes v3spark{0%,100%{opacity:0;transform:scale(.5)}20%{opacity:1;transform:scale(1.2)}60%{opacity:0;transform:scale(.7) translateY(-6px)}}
-.g-bill i.spark{animation:v3spark .7s linear infinite}
-@keyframes v3hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
-.g-bill i.hop{animation:v3hop 1s ease-in-out infinite}
-@keyframes v3note{0%{opacity:0;transform:translateY(2px) rotate(-8deg)}25%{opacity:1}100%{opacity:0;transform:translateY(-16px) rotate(10deg)}}
-.g-bill i.note{animation:v3note 2.2s ease-out infinite}
-@keyframes v3swing{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
-.g-bill i.swing{animation:v3swing 2.8s ease-in-out infinite}
-@keyframes v3bubble{0%,100%{transform:scale(1)}50%{transform:scale(1.1,.92)}}
-.g-bill i.bubble{animation:v3bubble 1.4s ease-in-out infinite}
-@keyframes v3idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
-.g-bill i.idle{animation:v3idle 2.2s ease-in-out infinite}
-@keyframes v3work{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-2px)}}
-.g-bill i.work{animation:v3work 1.2s ease-in-out infinite}
-@keyframes v3walk{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-3px) rotate(4deg)}}
-.g-bill i.walk{animation:v3walk .62s ease-in-out infinite}
-@keyframes v3boom{0%,100%{opacity:.75;transform:scale(.9)}50%{opacity:1;transform:scale(1.25)}}
-.g-bill i.boom{animation:v3boom 1.5s ease-in-out infinite}
-
-/* --- miniatures 3D de la boutique --- */
-@property --rot{syntax:'<angle>';inherits:true;initial-value:0deg}
-@property --tilt{syntax:'<angle>';inherits:true;initial-value:56deg}
-@keyframes v3spin{from{--rot:0deg}to{--rot:360deg}}
-.v3mini{position:relative;flex:none;width:58px;height:50px;perspective:320px;overflow:hidden}
-.v3mini .mw{position:absolute;left:50%;top:64%;width:0;height:0;transform-style:preserve-3d;--tilt:58deg;
-  transform:scale(var(--ms,.7)) rotateX(58deg) rotateZ(var(--rot));animation:v3spin 18s linear infinite}
-.shoprow:nth-child(odd) .mw{animation-duration:22s}
-.shoprow.got .v3mini{opacity:.85}
-@media (prefers-reduced-motion: reduce){
-  .v3mini .mw{animation:none;--rot:-28deg}
-  .g-bill i,.g-glow{animation:none!important}
-}
-.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#CFE3B5;opacity:.75;pointer-events:none;text-shadow:0 1px 2px #000}
+.v3d canvas{display:block;width:100%;height:100%}
+.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#fff;opacity:.85;pointer-events:none;text-shadow:0 1px 3px #000}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
 .v3d-ctl button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
 .v3d-ctl button:active{transform:translateY(1px)}
+.v3mini{position:relative;flex:none;width:58px;height:52px}
+.v3mini canvas{display:block;width:58px;height:52px}
+.shoprow.got .v3mini{opacity:.8}
 
 /* ---------- village gaulois ---------- */
 .vpanel{background:linear-gradient(#12253F 0%,#12253F 26%,#1E2A12 26%,#243617 100%);border-color:#7BAE3F}
@@ -421,6 +363,7 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="overlay" role="dialog" aria-modal="true"></div>
 <div id="toast" role="status"></div>
+<script src="three.min.js"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1470,7 +1413,7 @@ function render(){
     badges:scrBadges, settings:scrSettings}[CUR.screen]||scrHome;
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
-  if(CUR.screen==='village') v3dInit();
+  if(CUR.screen==='village'){ v3dInit(); miniInit(); }
 }
 
 /* ---------- accueil ---------- */
@@ -1789,181 +1732,395 @@ function arenaWinHtml(w){
 }
 
 /* ============================================================
-   VILLAGE 3D — CSS 3D pur, zéro dépendance
-   Repère : X droite, Y profondeur, Z hauteur.
+   VILLAGE 3D — moteur WebGL (Three.js r149, vendorisé)
+   Rendu stylisé : soleil directionnel + ombres douces, brouillard,
+   géométrie low-poly générée à la volée.
    ============================================================ */
-let V3D={raf:0, rot:-26, tilt:58, drag:false, auto:true, lx:0, ly:0, el:null};
-function v3dStop(){ if(V3D.raf){ cancelAnimationFrame(V3D.raf); V3D.raf=0; } V3D.el=null; }
-const V3SH=[.70,.86,1,.80];   // luminosité des 4 murs (N, E, S, O)
+let V3={ready:false, raf:0, ren:null, scene:null, cam:null, host:null,
+        rot:-0.55, tilt:0.72, dist:180, drag:false, auto:true, lx:0, ly:0,
+        mixers:[], t0:0, minis:[]};
 
-function g3obj(x,y,inner,rz){
-  return '<div class="g-obj" style="transform:translate3d('+x+'px,'+y+'px,0)'+(rz?' rotateZ('+rz+'deg)':'')+'">'+inner+'</div>';
+function v3dStop(){
+  if(V3.raf){ cancelAnimationFrame(V3.raf); V3.raf=0; }
+  if(typeof miniStop==='function') miniStop();
+  if(V3.ren){ V3.ren.dispose(); V3.ren.forceContextLoss&&V3.ren.forceContextLoss(); V3.ren=null; }
+  V3.scene=null; V3.host=null; V3.mixers=[];
 }
-function g3box(w,d,h,col,z){
-  z=z||0; let s='';
-  for(let k=0;k<4;k++){
-    const fw=(k%2===0)?w:d, off=((k%2===0)?d:w)/2;
-    s+='<div class="g-face" style="width:'+fw+'px;height:'+h+'px;margin-left:'+(-fw/2)+'px;margin-top:'+(-h/2)
-      +'px;background:'+col+';filter:brightness('+V3SH[k]+');transform:translateZ('+(z+h/2)+'px) rotateZ('+(k*90)+'deg) translateY('+(-off)+'px) rotateX(90deg)"></div>';
-  }
-  s+='<div class="g-face" style="width:'+w+'px;height:'+d+'px;margin-left:'+(-w/2)+'px;margin-top:'+(-d/2)
-    +'px;background:'+col+';filter:brightness(1.2);transform:translateZ('+(z+h)+'px)"></div>';
-  return s;
-}
-function g3pyr(b,ph,z,col){
-  const half=b/2, slant=Math.sqrt(ph*ph+half*half), th=90-Math.atan2(half,ph)*180/Math.PI;
-  let s='';
-  for(let k=0;k<4;k++){
-    s+='<div class="g-face g-tri" style="width:'+b+'px;height:'+slant+'px;margin-left:'+(-half)+'px;margin-top:'+(-slant)
-      +'px;background:'+col+';filter:brightness('+V3SH[k]+');transform:translateZ('+z+'px) rotateZ('+(k*90)+'deg) translateY('+(-half)+'px) rotateX('+th+'deg)"></div>';
-  }
-  return s;
-}
-// cls : classe d'animation appliquée au contenu (à l'intérieur du billboard,
-// pour ne pas écraser la contre-rotation qui garde le sprite face caméra)
-function g3bill(em,size,z,cls,delay){
-  const inner=cls?'<i class="'+cls+'"'+(delay?' style="animation-delay:'+delay+'s"':'')+'>'+em+'</i>':em;
-  return '<div class="g-bill" style="font-size:'+size+'px;margin-left:'+(-size/2)+'px;margin-top:'+(-size)
-    +'px;transform:translateZ('+(z||0)+'px) rotateZ(calc(-1 * var(--rot))) rotateX(calc(-1 * var(--tilt)))">'+inner+'</div>';
-}
-// panache de fumée : plusieurs bouffées décalées qui montent et se dissipent
-function g3smoke(n,size,z,x,y){
-  let s='';
-  for(let i=0;i<n;i++) s+=g3obj(x||0,y||0,g3bill('☁️',size,z,'sm',i*(2.6/n)));
-  return s;
-}
-function g3disc(r,col,z){
-  return '<div class="g-face" style="width:'+(r*2)+'px;height:'+(r*2)+'px;margin-left:'+(-r)+'px;margin-top:'+(-r)
-    +'px;border-radius:50%;background:'+col+';transform:translateZ('+(z==null?0.5:z)+'px)"></div>';
-}
-function g3shadow(r){ return g3disc(r,'rgba(0,0,0,.34)',0.4); }
-function g3door(d,h){ // porte sur le mur sud
-  return '<div class="g-face" style="width:9px;height:'+h+'px;margin-left:-4.5px;margin-top:'+(-h/2)
-    +'px;background:#3E2F1B;transform:translateZ('+(h/2)+'px) rotateZ(180deg) translateY('+(-(d/2+0.3))+'px) rotateX(90deg)"></div>';
-}
-/* constructeurs par élément de boutique (avec animations) */
-const V3B={
-  feu:     ()=>g3disc(13,'#3A3026',0.6)+'<div class="g-face g-glow" style="width:46px;height:46px;margin-left:-23px;margin-top:-23px;transform:translateZ(0.8px)"></div>'
-                +g3bill('🔥',26,1,'fire')+g3smoke(3,11,22,0,-2),
-  hutte:   ()=>g3shadow(21)+g3box(30,30,18,'#C9A66B')+g3door(30,12)+g3pyr(44,21,18,'#8A6B33')+g3smoke(2,10,40,4,-4),
-  ble:     ()=>'<div class="g-face" style="width:64px;height:46px;margin-left:-32px;margin-top:-23px;border-radius:6px;background:#6E7A24;transform:translateZ(0.5px)"></div>'
-                +g3bill('🌾',15,0,'sway')+g3obj(-20,-12,g3bill('🌾',14,0,'sway',.4))+g3obj(19,-13,g3bill('🌾',14,0,'sway',.9))
-                +g3obj(-18,13,g3bill('🌾',14,0,'sway',1.3))+g3obj(20,12,g3bill('🌾',14,0,'sway',.7)),
-  poule:   ()=>g3shadow(13)+g3box(16,14,9,'#A8672E')+g3pyr(22,9,9,'#75481F')
-                +g3obj(13,6,g3bill('🐔',13,0,'peck'))+g3obj(-11,10,g3bill('🐤',10,0,'peck',.8)),
-  puits:   ()=>g3shadow(12)+g3box(16,16,10,'#8A9099')+g3box(3,3,13,'#6B5433',10)
-                +g3disc(6,'#2A4A6B',10.6)+g3pyr(22,9,23,'#7A5C28'),
-  menhir:  ()=>g3shadow(10)+g3box(13,11,36,'#9AA2AA'),
-  sanglier:()=>g3bill('🐗',19,0,'trot')+g3obj(17,9,g3bill('🐗',15,0,'trot',.9)),
-  palissade:()=>{ let s=''; for(let i=0;i<20;i++){ const a=i/20*Math.PI*2;
-                  s+=g3obj(Math.cos(a)*114, Math.sin(a)*114, g3box(7,7,17,'#6B5433')); } return s; },
-  forge:   ()=>g3shadow(18)+g3box(26,22,15,'#6E5C4A')+g3pyr(32,12,15,'#463A2D')
-                +g3bill('⚒️',15,20,'hammer')+g3bill('✨',11,17,'spark')+g3smoke(3,12,34,9,-7),
-  chien:   ()=>g3bill('🐶',17,0,'hop'),
-  barde:   ()=>g3obj(0,7,g3box(6,6,14,'#5A4327'))+g3bill('🎶',17,0,'note')+g3obj(9,-3,g3bill('🎵',11,14,'note',.7)),
-  taverne: ()=>g3shadow(24)+g3box(38,28,21,'#C9A66B')+g3door(28,13)+g3pyr(50,20,21,'#7A5C28')
-                +g3bill('🍺',16,44,'swing')+g3smoke(2,10,44,-9,-6),
-  chaudron:()=>g3disc(13,'#2F2A22',0.6)+g3box(15,15,8,'#3B3B44')+g3bill('⚗️',18,9,'bubble')
-                +g3obj(0,0,g3bill('🫧',10,20,'sm',.5))+g3obj(4,-3,g3bill('🫧',9,20,'sm',1.4)),
-  druide:  ()=>g3bill('🧙',20,0,'idle'),
-  chef:    ()=>g3bill('👑',18,7,'idle')+g3obj(0,4,g3bill('🛡️',16,0,'idle',.5)),
-  banquet: ()=>g3shadow(30)+g3box(62,18,8,'#B07C46')+g3bill('🍗',16,9,'idle')+g3obj(-20,0,g3bill('🍗',14,9,'idle',.6))
-                +g3obj(21,0,g3bill('🍖',14,9,'idle',1.1))+g3obj(0,-16,g3bill('🎆',22,26,'boom'))
-                +g3obj(-26,-14,g3bill('🎉',15,20,'boom',.9))+g3obj(26,-13,g3bill('✨',14,22,'boom',1.7))
+function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
+
+/* ---------- palette stylisée ---------- */
+const COL={
+  grass:0x5d9a28, grassDark:0x44701f, dirt:0xc09758, dirtDark:0xa37c40,
+  wall:0xdfc493, wallDark:0xc9ac78, beam:0x6b4a28, wood:0x8a6236, woodDark:0x6b4a28,
+  thatch:0xc28e3c, thatchDark:0x9d6f2c, stone:0x9aa3a8, stoneDark:0x7d858a,
+  leaf:0x4f9128, leaf2:0x66ab34, leaf3:0x3c7a20, water:0x3f7fa8, fire:0xff8c1a,
+  skin:0xf0c9a0, cloth:[0xc0463c,0x3f6fb0,0x8a5aa8,0xd08a2a,0x4a9a6a,0xb0503a,0x5a6ab0,0xc07a3a]
 };
-/* ---- habitants : villageois qui déambulent + villageois postés ---- */
-const V3PEOPLE=['🧔','👩','🧑‍🌾','👦','👧','🧓','👨‍🦰','👩‍🦱'];
-function villagersHtml(){
-  const owned=S.village, n=Math.min(8, Math.floor(owned.length/2)+1);
-  let css='', html='';
-  for(let i=0;i<n;i++){
-    const r=34+((i*17)%56), dur=(16+i*3.5).toFixed(1), dir=(i%2?-1:1);
-    let k='@keyframes v3walk'+i+'{';
-    for(let s=0;s<=10;s++){
-      const a=(s/10)*Math.PI*2*dir + i*0.9;
-      k+=Math.round(s/10*100)+'%{transform:translate3d('+(Math.cos(a)*r).toFixed(1)+'px,'+(Math.sin(a)*r*0.8+6).toFixed(1)+'px,0)}';
-    }
-    css+=k+'}';
-    html+='<div class="g-obj" style="animation:v3walk'+i+' '+dur+'s linear infinite">'
-      +g3bill(V3PEOPLE[i%V3PEOPLE.length],17,0,'walk',i*0.3)+'</div>';
-  }
-  // villageois postés à leur poste de travail
-  if(owned.includes('forge'))   html+=g3obj(-62,16,g3bill('🧑‍🏭',16,0,'work'));
-  if(owned.includes('ble'))     html+=g3obj(36,60,g3bill('🧑‍🌾',16,0,'work',.6));
-  if(owned.includes('taverne')) html+=g3obj(60,16,g3bill('🧑‍🍳',16,0,'idle',.3));
-  if(owned.includes('poule'))   html+=g3obj(-40,62,g3bill('👵',16,0,'idle',.9));
-  return {css, html};
-}
-/* emplacements (x,y) dans le village */
-const V3POS={
-  palissade:[0,0], feu:[0,10], puits:[52,-52], hutte:[-53,-53], menhir:[0,-78],
-  taverne:[76,4], ble:[50,54], banquet:[0,84], poule:[-54,54], forge:[-78,4],
-  chaudron:[-30,26], druide:[-32,2], chef:[32,22], barde:[36,-20], chien:[12,38], sanglier:[-16,52]
-};
-function village3dHtml(){
-  const owned=S.village;
-  let sc='<div class="g-ground"></div>'
-    +'<div class="g-face g-path" style="width:150px;height:22px;margin-left:-75px;margin-top:-11px;transform:translateZ(0.3px) rotateZ(24deg)"></div>';
-  SHOP.forEach(it=>{
-    const p=V3POS[it.id]||[0,0];
-    if(owned.includes(it.id)) sc+=g3obj(p[0],p[1],V3B[it.id]());
-    else if(it.id!=='palissade') sc+='<div class="g-plot" style="width:24px;height:24px;margin-left:-12px;margin-top:-12px;transform:translate3d('+p[0]+'px,'+p[1]+'px,0.4px)"></div>';
+function mat(c,ro){ return new THREE.MeshLambertMaterial({color:c}); }
+
+/* ---------- briques de construction ---------- */
+function box(w,h,d,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
+function cyl(rt,rb,h,c,seg){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||8),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
+function cone(r,h,c,seg){ const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg||4),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
+function sph(r,c,d){ const m=new THREE.Mesh(new THREE.IcosahedronGeometry(r,d==null?0:d),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
+function at(o,x,y,z){ o.position.set(x,y,z); return o; }
+
+/* maison : murs + poutres + toit de chaume pyramidal */
+function house(w,d,h,rh,thatchC){
+  const g=new THREE.Group();
+  const b=box(w,h,d,COL.wall); b.position.y=h/2; g.add(b);
+  // poutres d'angle et ceinture
+  const bw=1.4;
+  [[-w/2,-d/2],[w/2,-d/2],[-w/2,d/2],[w/2,d/2]].forEach(p=>{
+    g.add(at(box(bw*1.6,h,bw*1.6,COL.beam),p[0],h/2,p[1]));
   });
-  const vil=villagersHtml(); sc+=vil.html;
-  return '<style>'+vil.css+'</style>'
-    +'<div class="v3d" id="v3d"><div class="v3d-cam"><div class="v3d-world" id="v3dw" style="--rot:'+V3D.rot+'deg;--tilt:'+V3D.tilt+'deg">'
-    +sc+'</div></div>'
-    +'<div class="v3d-hint">'+t('👆 glisse pour tourner','👆 drag to rotate')+'</div>'
-    +'<div class="v3d-ctl"><button onclick="G.v3dTurn(-30)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
-    +'<button onclick="G.v3dTurn(30)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
+  g.add(at(box(w+1,bw*1.6,d+1,COL.beam),0,h-1,0));
+  g.add(at(box(w+1,bw*1.6,d+1,COL.beam),0,1,0));
+  // porte + fenêtre lumineuse
+  g.add(at(box(w*0.26,h*0.6,1,COL.woodDark),0,h*0.3,d/2+0.3));
+  const win=new THREE.Mesh(new THREE.PlaneGeometry(w*0.2,h*0.24),
+    new THREE.MeshBasicMaterial({color:0xffd88a}));
+  g.add(at(win,-w*0.28,h*0.62,d/2+0.35));
+  // avant-toit + toit
+  g.add(at(box(w+5,1.6,d+5,COL.thatchDark),0,h+0.8,0));
+  const r=cone(Math.max(w,d)*0.86,rh,thatchC||COL.thatch,4);
+  r.rotation.y=Math.PI/4; g.add(at(r,0,h+1.6+rh/2,0));
+  return g;
 }
-/* ---- miniatures 3D de la boutique (rotation auto via @property) ---- */
-const V3MINI={
-  palissade:()=>g3obj(-15,2,g3box(7,7,17,'#6B5433'))+g3obj(0,0,g3box(7,7,17,'#6B5433'))+g3obj(15,2,g3box(7,7,17,'#6B5433')),
-  ble:()=>'<div class="g-face" style="width:38px;height:30px;margin-left:-19px;margin-top:-15px;border-radius:5px;background:#6E7A24;transform:translateZ(0.5px)"></div>'
-          +g3bill('🌾',15,0,'sway')+g3obj(-12,-7,g3bill('🌾',13,0,'sway',.6)),
-  banquet:()=>g3box(46,16,8,'#B07C46')+g3bill('🍗',15,9,'idle')+g3obj(-15,0,g3bill('🍖',13,9,'idle',.7)),
-  sanglier:()=>g3bill('🐗',22,0,'trot'),
-  feu:()=>g3disc(12,'#3A3026',0.6)+g3bill('🔥',24,1,'fire')+g3smoke(2,10,20)
+/* arbre feuillu ou sapin */
+function tree(s,pine){
+  const g=new THREE.Group(), th=9*s;
+  g.add(at(cyl(1.5*s,2.2*s,th,COL.wood,6),0,th/2,0));
+  if(pine){
+    for(let i=0;i<3;i++) g.add(at(cone(8*s-i*2*s,9*s-i*1.2*s,i%2?COL.leaf3:COL.leaf,7),0,th*0.7+i*5.2*s,0));
+  }else{
+    const c=[COL.leaf,COL.leaf2,COL.leaf3][Math.floor(s*7)%3];
+    g.add(at(sph(7.5*s,c,1),0,th+5.5*s,0));
+    g.add(at(sph(5*s,c,0),3*s,th+3*s,2*s));
+    g.add(at(sph(4.5*s,c,0),-3.4*s,th+3.6*s,-1.6*s));
+  }
+  return g;
+}
+/* petit villageois low-poly qui marche */
+function person(colorIdx){
+  const g=new THREE.Group();
+  const c=COL.cloth[colorIdx%COL.cloth.length];
+  const body=cyl(2.1,2.9,6.4,c,7); g.add(at(body,0,3.2,0));
+  g.add(at(sph(2.2,COL.skin,0),0,7.6,0));
+  const la=at(cyl(.7,.7,3.6,c,5),-2.5,3.8,0), ra=at(cyl(.7,.7,3.6,c,5),2.5,3.8,0);
+  g.add(la); g.add(ra); g.userData.arms=[la,ra];
+  return g;
+}
+function animal(kind){
+  const g=new THREE.Group();
+  if(kind==='boar'){
+    g.add(at(sph(3.1,0x6b5240,0),0,3.2,0));
+    g.add(at(sph(1.9,0x574234,0),0,2.8,3.2));
+    [[-1.6,1.6],[1.6,1.6],[-1.6,-1.6],[1.6,-1.6]].forEach(p=>g.add(at(box(.9,2.4,.9,0x3f3128),p[0],1.2,p[1])));
+  }else{ // poule
+    g.add(at(sph(1.7,0xf2ead8,0),0,2,0));
+    g.add(at(sph(1,0xf2ead8,0),0,3.3,1.2));
+    g.add(at(cone(.5,1,0xd94b2a,5),0,3.3,2.1));
+  }
+  return g;
+}
+/* ---------- constructeurs par article de boutique ---------- */
+const B3={
+  feu(){ const g=new THREE.Group();
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; g.add(at(box(2.6,1.6,2.6,COL.stone),Math.cos(a)*5,0.8,Math.sin(a)*5)); }
+    for(let i=0;i<4;i++){ const l=at(cyl(.5,.7,7,COL.woodDark,5),0,3,0); l.rotation.z=(i%2?1:-1)*0.5; l.rotation.y=i*0.9; g.add(l); }
+    const fm=new THREE.MeshBasicMaterial({color:COL.fire});
+    const f=new THREE.Mesh(new THREE.ConeGeometry(2.6,7,6),fm); f.position.y=5.4; f.name='flame'; g.add(f);
+    const pl=new THREE.PointLight(0xff9a3c,1.5,70); pl.position.y=7; pl.name='firelight'; g.add(pl);
+    g.userData.smoke={x:0,y:9,z:0,n:3}; return g; },
+  hutte(){ const g=house(17,17,11,13); g.add(at(box(3,6,3,COL.stone),4,20,3));
+    g.userData.smoke={x:4,y:24,z:3,n:3}; return g; },
+  ble(){ const g=new THREE.Group();
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(38,28),mat(0xc2ae44));
+    f.rotation.x=-Math.PI/2; f.position.y=.3; f.receiveShadow=true; g.add(f);
+    for(let i=0;i<26;i++){ const x=(i%7-3)*5.2+(i%2)*1.6, z=(Math.floor(i/7)-1.5)*6.4;
+      const s=at(cyl(.35,.5,6,0xd8c452,4),x,3,z); s.name='wheat'; s.userData.p=i*0.4; g.add(s); }
+    return g; },
+  poule(){ const g=house(10,9,5.5,6,COL.thatchDark);
+    const a=at(animal('hen'),7,0,4); a.name='walker'; a.userData.p=0; g.add(a);
+    g.add(at(animal('hen'),-6,0,6)); return g; },
+  puits(){ const g=new THREE.Group();
+    g.add(at(cyl(6,6.6,6,COL.stone,10),0,3,0));
+    const w=new THREE.Mesh(new THREE.CircleGeometry(5,12),mat(COL.water));
+    w.rotation.x=-Math.PI/2; g.add(at(w,0,6.1,0));
+    g.add(at(box(1.4,13,1.4,COL.wood),-5,9.5,0)); g.add(at(box(1.4,13,1.4,COL.wood),5,9.5,0));
+    const r=cone(9,6,COL.thatchDark,4); r.rotation.y=Math.PI/4; g.add(at(r,0,19,0));
+    g.add(at(cyl(.5,.5,10,COL.woodDark,6).rotateZ(Math.PI/2),0,15.6,0)); return g; },
+  menhir(){ const g=new THREE.Group(); const m=box(7,22,6,COL.stone);
+    m.position.y=11; m.rotation.z=0.06; m.rotation.y=0.4; g.add(m); return g; },
+  sanglier(){ const g=new THREE.Group();
+    const a=at(animal('boar'),0,0,0); a.name='walker'; a.userData.p=0; g.add(a);
+    const b=at(animal('boar'),9,0,5); b.scale.setScalar(.8); g.add(b); return g; },
+  palissade(){ const g=new THREE.Group();
+    for(let i=0;i<34;i++){ const a=i/34*Math.PI*2, r=80;
+      const p=at(cyl(1.5,1.9,10+(i%3),COL.wood,6),Math.cos(a)*r,5,Math.sin(a)*r);
+      const tip=at(cone(1.9,2.6,COL.woodDark,6),Math.cos(a)*r,10.5+(i%3),Math.sin(a)*r);
+      g.add(p); g.add(tip); }
+    return g; },
+  forge(){ const g=house(15,13,9,8,COL.thatchDark);
+    g.add(at(cyl(2.4,3,10,COL.stone,7),5,5,-4));
+    const e=new THREE.Mesh(new THREE.IcosahedronGeometry(1.8,0),new THREE.MeshBasicMaterial({color:0xff7a20}));
+    e.name='ember'; g.add(at(e,-4,3,6));
+    g.userData.smoke={x:5,y:11,z:-4,n:4}; return g; },
+  chien(){ const g=new THREE.Group();
+    g.add(at(sph(2,0xc99a5a,0),0,2.6,0)); g.add(at(sph(1.4,0xb98a4a,0),0,3.6,2));
+    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(p=>g.add(at(box(.7,1.8,.7,0xa87a3a),p[0],.9,p[1])));
+    g.name='hopper'; return g; },
+  barde(){ const g=new THREE.Group();
+    g.add(at(cyl(1.4,1.8,13,COL.wood,6),0,6.5,0));
+    const p=person(2); p.position.y=0; p.name='bardp'; g.add(p);
+    const n=new THREE.Mesh(new THREE.TorusGeometry(1.1,.35,6,10),new THREE.MeshBasicMaterial({color:0xffe08a}));
+    n.name='note'; g.add(at(n,2.6,11,0)); return g; },
+  taverne(){ const g=house(23,17,13,15);
+    g.add(at(box(3,7,3,COL.stone),-8,22,-5));
+    const s=new THREE.Mesh(new THREE.BoxGeometry(7,4.5,.6),mat(0xd8a24a));
+    s.name='sign'; g.add(at(s,0,17,10));
+    g.userData.smoke={x:-8,y:26,z:-5,n:3}; return g; },
+  chaudron(){ const g=new THREE.Group();
+    for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; g.add(at(box(2,1.4,2,COL.stone),Math.cos(a)*5,.7,Math.sin(a)*5)); }
+    g.add(at(cyl(3.4,2.6,4.4,0x3a3a44,10),0,3.4,0));
+    const p=new THREE.Mesh(new THREE.CircleGeometry(3.1,12),new THREE.MeshBasicMaterial({color:0x8ef07a}));
+    p.rotation.x=-Math.PI/2; p.name='potion'; g.add(at(p,0,5.7,0));
+    g.userData.smoke={x:0,y:7,z:0,n:3,green:1}; return g; },
+  druide(){ const g=new THREE.Group(); const p=person(4);
+    p.scale.setScalar(1.15); g.add(p);
+    g.add(at(cone(2.6,4,0xf2f2ea,7),0,9.6,0));
+    g.add(at(cyl(.5,.5,12,COL.wood,5),2.8,6,0)); g.name='hopper'; return g; },
+  chef(){ const g=new THREE.Group(); const p=person(0); p.scale.setScalar(1.2); g.add(p);
+    const sh=new THREE.Mesh(new THREE.CylinderGeometry(4,4,.8,12),mat(0xc0a030));
+    g.add(at(sh,0,.5,0)); p.position.y=.9;
+    const cr=new THREE.Mesh(new THREE.CylinderGeometry(2,2,1.4,8),new THREE.MeshBasicMaterial({color:0xffd24a}));
+    g.add(at(cr,0,10.6,0)); return g; },
+  banquet(){ const g=new THREE.Group();
+    g.add(at(box(40,1.6,12,0xc79155),0,7,0));
+    [[-17,0],[17,0]].forEach(p=>g.add(at(box(2.4,7,10,COL.wood),p[0],3.5,p[1])));
+    [[0,-9],[0,9]].forEach(p=>g.add(at(box(38,1.4,3.4,0xa9763f),p[0],4.4,p[1])));
+    for(let i=0;i<5;i++) g.add(at(sph(1.9,[0xd06a3a,0xe8c05a,0xc04a3a,0xd8a24a,0xb85a2a][i],0),(i-2)*7.5,8.6,0));
+    for(let i=0;i<6;i++){ const p=person(i+1), a=i/6*Math.PI*2;
+      g.add(at(p,Math.cos(a)*15,0,Math.sin(a)*11)); p.lookAt(0,4,0); }
+    g.userData.fw=true; return g; }
 };
-const V3MS={feu:.9,hutte:.62,ble:.72,poule:.85,puits:.85,menhir:.72,sanglier:1,palissade:.85,forge:.72,
-  chien:1,barde:.95,taverne:.52,chaudron:.95,druide:1,chef:1,banquet:.6};
-function mini3d(id){
-  const f=V3MINI[id]||V3B[id];
-  return '<span class="v3mini"><span class="mw" style="--ms:'+(V3MS[id]||.7)+'">'
-    +g3disc(21,'rgba(60,92,36,.55)',0)+f()+'</span></span>';
-}
+/* positions (x,z) dans la scène */
+const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[0,-48],
+  taverne:[47,3], ble:[31,34], banquet:[0,52], poule:[-34,34], forge:[-48,3],
+  chaudron:[-19,16], druide:[-20,2], chef:[20,14], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
 
-function v3dApply(){
-  if(!V3D.el) return;
-  V3D.el.style.setProperty('--rot', V3D.rot.toFixed(1)+'deg');
-  V3D.el.style.setProperty('--tilt', V3D.tilt.toFixed(1)+'deg');
+/* ---------- construction de la scène ---------- */
+function buildVillage(scene){
+  const owned=S.village;
+  // sol
+  const gGeo=new THREE.CircleGeometry(190,48);
+  const ground=new THREE.Mesh(gGeo,mat(COL.grass));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+  // taches d'herbe + place centrale + chemins
+  const patch=(r,x,z,c,s)=>{ const m=new THREE.Mesh(new THREE.CircleGeometry(r,18),mat(c));
+    m.rotation.x=-Math.PI/2; m.position.set(x,0.12,z); m.scale.z=s||1; m.receiveShadow=true; scene.add(m); };
+  patch(30,-46,-30,COL.grassDark,.8); patch(26,52,28,COL.grassDark,.9); patch(22,-20,52,COL.grassDark,1);
+  patch(26,0,4,COL.dirt,.9);
+  const path=(w,l,x,z,ry)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,l),mat(COL.dirtDark));
+    m.rotation.x=-Math.PI/2; m.rotation.z=ry; m.position.set(x,0.16,z); m.receiveShadow=true; scene.add(m); };
+  path(11,86,-18,-16,0.5); path(10,72,26,14,-0.75); path(9,60,-6,34,0.15);
+  // articles achetés
+  const anim=[];
+  SHOP.forEach(it=>{
+    const p=P3[it.id]||[0,0];
+    if(owned.includes(it.id)){
+      const g=B3[it.id](); g.position.set(p[0],0,p[1]); scene.add(g); anim.push(g);
+    }else if(it.id!=='palissade'){
+      const m=new THREE.Mesh(new THREE.RingGeometry(4,5.2,12),
+        new THREE.MeshBasicMaterial({color:0xcfe8a0,transparent:true,opacity:.45,side:THREE.DoubleSide}));
+      m.rotation.x=-Math.PI/2; m.position.set(p[0],0.25,p[1]); scene.add(m);
+    }
+  });
+  // forêt + rochers
+  const TR=[[8,96,1.1,0],[32,108,.9,1],[56,94,1.2,0],[80,112,1,1],[104,98,1.1,0],[128,114,.85,0],
+            [152,100,1.15,1],[176,92,1,0],[200,110,1.2,0],[224,96,.9,1],[248,112,1.05,0],[272,94,1.15,0],
+            [296,108,.9,1],[320,98,1.1,0],[344,114,1,0],[16,138,.9,1],[100,142,.95,0],[190,140,.9,0],
+            [268,144,1,1],[330,136,.95,0],[60,150,.85,1],[230,152,.9,0]];
+  TR.forEach(t=>{ const a=t[0]*Math.PI/180, o=tree(t[2],t[3]);
+    o.position.set(Math.cos(a)*t[1],0,Math.sin(a)*t[1]); o.rotation.y=a; scene.add(o); });
+  [[-58,-56,1],[62,-52,.8],[-70,30,.9],[64,58,1],[0,-72,.85]].forEach(r=>{
+    const m=sph(3.4*r[2],COL.stoneDark,0); m.position.set(r[0],1.6*r[2],r[1]);
+    m.scale.y=.7; m.rotation.y=r[0]; scene.add(m); });
+  // buissons
+  [[-62,-14,1],[58,-18,.9],[-30,58,1],[44,-46,.85],[-52,46,.95]].forEach(b=>{
+    const g=new THREE.Group(); g.add(at(sph(3.6*b[2],COL.leaf2,0),0,2.4,0));
+    g.add(at(sph(2.6*b[2],COL.leaf,0),2.4,1.6,1)); g.position.set(b[0],0,b[1]); scene.add(g); });
+
+  // villageois qui déambulent (nombre lié à la taille du village)
+  const n=Math.min(8,Math.floor(owned.length/2)+1), walkers=[];
+  for(let i=0;i<n;i++){
+    const p=person(i), r=22+((i*13)%34);
+    p.userData={r, sp:(0.16+i*0.035)*(i%2?-1:1), ph:i*0.9};
+    scene.add(p); walkers.push(p);
+  }
+  // villageois postés
+  if(owned.includes('forge'))   { const p=person(5); p.position.set(-40,0,10); p.rotation.y=-0.6; scene.add(p); }
+  if(owned.includes('ble'))     { const p=person(3); p.position.set(22,0,40); p.rotation.y=2.2; scene.add(p); }
+  if(owned.includes('taverne')) { const p=person(6); p.position.set(40,0,14); p.rotation.y=-2; scene.add(p); }
+  if(owned.includes('poule'))   { const p=person(7); p.position.set(-26,0,40); p.rotation.y=1; scene.add(p); }
+  return {anim, walkers};
 }
-function v3dTurn(d){ V3D.auto=false; V3D.rot+=d; v3dApply(); }
+/* fumée : petites sphères qui montent en boucle */
+function makeSmoke(scene,g){
+  const d=g.userData.smoke; if(!d) return [];
+  const out=[], m=new THREE.MeshLambertMaterial({color:d.green?0x9ae87a:0xdcdcdc,transparent:true,opacity:.6});
+  for(let i=0;i<d.n;i++){
+    const s=new THREE.Mesh(new THREE.IcosahedronGeometry(1.6,0),m.clone());
+    s.position.set(g.position.x+d.x,d.y,g.position.z+d.z);
+    s.userData={base:d.y,off:i/d.n,x:g.position.x+d.x,z:g.position.z+d.z};
+    scene.add(s); out.push(s);
+  }
+  return out;
+}
+function v3dHost(){
+  return '<div class="v3d" id="v3d"><canvas id="v3dc"></canvas>'
+    +'<div class="v3d-hint">'+t('👆 glisse pour tourner','👆 drag to rotate')+'</div>'
+    +'<div class="v3d-ctl"><button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
+    +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
+}
 function v3dInit(){
-  const stage=$('#v3d'); V3D.el=$('#v3dw');
-  if(!stage||!V3D.el) return;
-  v3dApply();
-  const down=e=>{ V3D.drag=true; V3D.auto=false; const t0=e.touches?e.touches[0]:e; V3D.lx=t0.clientX; V3D.ly=t0.clientY; stage.classList.add('dragging'); };
-  const move=e=>{ if(!V3D.drag) return; const t0=e.touches?e.touches[0]:e;
-    V3D.rot+=(t0.clientX-V3D.lx)*0.45;
-    V3D.tilt=Math.max(24,Math.min(80,V3D.tilt+(t0.clientY-V3D.ly)*0.25));
-    V3D.lx=t0.clientX; V3D.ly=t0.clientY; v3dApply(); if(e.cancelable) e.preventDefault(); };
-  const up=()=>{ V3D.drag=false; stage.classList.remove('dragging'); };
-  stage.addEventListener('pointerdown',down);
-  stage.addEventListener('pointermove',move,{passive:false});
-  window.addEventListener('pointerup',up);
-  stage.addEventListener('pointercancel',up);
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches) V3D.auto=false;
-  const loop=()=>{ if(!V3D.el) return; if(V3D.auto&&!V3D.drag){ V3D.rot+=0.16; v3dApply(); } V3D.raf=requestAnimationFrame(loop); };
-  v3dStop(); V3D.el=$('#v3dw'); V3D.raf=requestAnimationFrame(loop);
-}
+  const host=$('#v3d'), cv=$('#v3dc');
+  if(!host||!cv||typeof THREE==='undefined') return;
+  // couleurs authorées en sRGB : sans ça, double conversion gamma = tout délavé
+  THREE.ColorManagement.enabled=true;
+  v3dStop(); V3.host=host;
+  const W=host.clientWidth, H=host.clientHeight;
+  const ren=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});
+  ren.setPixelRatio(Math.min(devicePixelRatio,2)); ren.setSize(W,H,false);
+  ren.shadowMap.enabled=true; ren.shadowMap.type=THREE.PCFSoftShadowMap;
+  ren.outputEncoding=THREE.sRGBEncoding;
+  ren.toneMapping=THREE.ACESFilmicToneMapping; ren.toneMappingExposure=0.42;
+  V3.ren=ren;
+  const scene=new THREE.Scene(); V3.scene=scene;
+  scene.background=new THREE.Color(0x9fd4ea);
+  scene.fog=new THREE.Fog(0xa8d4e8,240,520);
+  const cam=new THREE.PerspectiveCamera(38,W/H,1,900); V3.cam=cam;
+  // lumières : soleil chaud + ciel/sol + appoint froid
+  const sun=new THREE.DirectionalLight(0xffeec0,1.15);
+  sun.position.set(-80,130,70); sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);
+  const sc=sun.shadow.camera; sc.left=-150;sc.right=150;sc.top=150;sc.bottom=-150;sc.near=10;sc.far=340;
+  sun.shadow.bias=-0.0012; scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x9fc8ee,0x2f5618,0.5));
+  const fill=new THREE.DirectionalLight(0xa8c8f0,0.14); fill.position.set(90,60,-70); scene.add(fill);
 
+  const built=buildVillage(scene);
+  let smoke=[]; built.anim.forEach(g=>{ smoke=smoke.concat(makeSmoke(scene,g)); });
+  const flame=scene.getObjectByName('flame'), flight=scene.getObjectByName('firelight');
+  const wheat=[]; scene.traverse(o=>{ if(o.name==='wheat') wheat.push(o); });
+  const hoppers=[]; scene.traverse(o=>{ if(o.name==='hopper') hoppers.push(o); });
+  const sign=scene.getObjectByName('sign'), note=scene.getObjectByName('note'),
+        potion=scene.getObjectByName('potion'), ember=scene.getObjectByName('ember');
+
+  // interaction
+  const down=e=>{ V3.drag=true; V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
+  const move=e=>{ if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
+    V3.rot+=(t0.clientX-V3.lx)*0.008;
+    V3.tilt=Math.max(0.25,Math.min(1.35,V3.tilt-(t0.clientY-V3.ly)*0.005));
+    V3.lx=t0.clientX; V3.ly=t0.clientY; if(e.cancelable) e.preventDefault(); };
+  const up=()=>{ V3.drag=false; host.classList.remove('dragging'); };
+  host.addEventListener('pointerdown',down);
+  host.addEventListener('pointermove',move,{passive:false});
+  window.addEventListener('pointerup',up);
+  host.addEventListener('pointercancel',up);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) V3.auto=false;
+
+  V3.t0=performance.now();
+  const loop=()=>{
+    if(!V3.ren) return;
+    const now=performance.now(), tt=(now-V3.t0)/1000;
+    if(V3.auto&&!V3.drag) V3.rot+=0.0022;
+    const d=V3.dist;
+    cam.position.set(Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55), 30+Math.sin(V3.tilt)*d*0.62, Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
+    cam.lookAt(0,8,4);
+    // animations
+    if(flame){ const s=1+Math.sin(tt*11)*0.16+Math.sin(tt*17)*0.08;
+      flame.scale.set(s,1+Math.sin(tt*13)*0.2,s); flame.rotation.y=tt*2; }
+    if(flight) flight.intensity=1.3+Math.sin(tt*12)*0.35;
+    smoke.forEach(s=>{ const u=s.userData, k=((tt*0.35+u.off)%1);
+      s.position.set(u.x+Math.sin(k*6+u.off*9)*3, u.base+k*26, u.z+Math.cos(k*5+u.off*7)*2.4);
+      const sc=0.5+k*1.7; s.scale.setScalar(sc); s.material.opacity=0.55*(1-k); });
+    wheat.forEach(w=>{ w.rotation.z=Math.sin(tt*1.7+w.userData.p)*0.16; });
+    hoppers.forEach(h=>{ h.position.y=Math.abs(Math.sin(tt*3.4))*1.6; });
+    if(sign) sign.rotation.z=Math.sin(tt*1.6)*0.14;
+    if(note){ const k=(tt*0.5)%1; note.position.y=11+k*7; note.material.opacity=1-k; note.rotation.z=tt*2; }
+    if(potion) potion.material.color.setHSL(0.28+Math.sin(tt*2)*0.05,0.75,0.6);
+    if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
+    built.walkers.forEach(p=>{
+      const u=p.userData, a=tt*u.sp+u.ph;
+      p.position.set(Math.cos(a)*u.r, 0, Math.sin(a)*u.r);
+      p.rotation.y=-a+(u.sp>0?Math.PI/2:-Math.PI/2);
+      const sw=Math.sin(tt*7+u.ph)*0.7;
+      if(u.arms||p.userData.arms){ const ar=p.userData.arms; if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; } }
+      p.position.y=Math.abs(Math.sin(tt*7+u.ph))*0.5;
+    });
+    scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
+    ren.render(scene,cam);
+    V3.raf=requestAnimationFrame(loop);
+  };
+  loop();
+}
+/* ---------- miniatures 3D de la boutique ----------
+   Un SEUL contexte WebGL partagé : on rend chaque article hors écran puis on
+   recopie l'image dans un canvas 2D. (17 contextes = le navigateur en tue un.) */
+let MINI={ren:null, raf:0, items:[]};
+function miniStop(){
+  if(MINI.raf){ cancelAnimationFrame(MINI.raf); MINI.raf=0; }
+  if(MINI.ren){ MINI.ren.dispose(); MINI.ren.forceContextLoss&&MINI.ren.forceContextLoss(); MINI.ren=null; }
+  MINI.items=[];
+}
+function mini3d(id){ return '<span class="v3mini"><canvas class="v3mc" data-id="'+id+'"></canvas></span>'; }
+function miniInit(){
+  miniStop();
+  const cvs=Array.prototype.slice.call(document.querySelectorAll('.v3mc'));
+  if(!cvs.length||typeof THREE==='undefined') return;
+  const W=58,H=52,DPR=Math.min(devicePixelRatio||1,2);
+  const off=document.createElement('canvas');
+  const ren=new THREE.WebGLRenderer({canvas:off,antialias:true,alpha:true});
+  ren.setPixelRatio(DPR); ren.setSize(W,H,false); MINI.ren=ren;
+  cvs.forEach((cv,i)=>{
+    const id=cv.dataset.id; if(!B3[id]) return;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    const ctx=cv.getContext('2d');
+    const sc=new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xdff0ff,0x4a7a2a,1.05));
+    const dl=new THREE.DirectionalLight(0xfff2d0,1.15); dl.position.set(-30,50,30); sc.add(dl);
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(id==='palissade'?26:19,20),mat(COL.grass));
+    disc.rotation.x=-Math.PI/2; sc.add(disc);
+    const g=B3[id](); sc.add(g);
+    const bb=new THREE.Box3().setFromObject(g), sz=new THREE.Vector3(), ctr=new THREE.Vector3();
+    bb.getSize(sz); bb.getCenter(ctr);
+    const rad=Math.max(sz.x,sz.z,sz.y*1.1)*0.62+9;
+    const cam=new THREE.PerspectiveCamera(34,W/H,1,500);
+    MINI.items.push({ctx,sc,cam,ctr,rad,a:0.6+i*0.5,cw:cv.width,ch:cv.height});
+  });
+  const drawOne=it=>{
+    it.cam.position.set(Math.sin(it.a)*it.rad*2.2, it.rad*1.5, Math.cos(it.a)*it.rad*2.2);
+    it.cam.lookAt(it.ctr.x,it.ctr.y*0.6,it.ctr.z);
+    ren.render(it.sc,it.cam);
+    it.ctx.clearRect(0,0,it.cw,it.ch);
+    it.ctx.drawImage(off,0,0,it.cw,it.ch);
+  };
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ MINI.items.forEach(drawOne); return; }
+  let last=0;
+  const loop=ts=>{
+    if(!MINI.ren) return;
+    if(ts-last>33){ last=ts; MINI.items.forEach(it=>{ it.a+=0.02; drawOne(it); }); }
+    MINI.raf=requestAnimationFrame(loop);
+  };
+  MINI.raf=requestAnimationFrame(loop);
+}
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
   const owned=S.village;
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
-   +village3dHtml()
+   +v3dHost()
    +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
