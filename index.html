@@ -3042,13 +3042,38 @@ function buildVillage(scene){
   }
   // --- habitants : chacun a un métier, un outil, un lieu de travail et des répliques ---
   const spots=[];
+  // poste de travail calé sur le bâtiment RÉEL (le joueur peut le déplacer) :
+  // on convertit l'offset local (dx,dz) en coordonnées monde via la rotation du groupe.
+  const spotOn=(key,dx,dz,job)=>{
+    const g=V3.place&&V3.place[key]; if(!g) return null;
+    const c=Math.cos(g.rotation.y), si=Math.sin(g.rotation.y);
+    return {x:g.position.x+dx*c+dz*si, z:g.position.z-dx*si+dz*c, job, at:key};
+  };
   const addSpot=(id,x,z,job)=>{ if(!id||owned.includes(id)) spots.push({x,z,job}); };
+  // un poste PAR bâtiment empilable : chaque fermier cultive SON champ
+  const addAll=(id,dx,dz,job)=>{
+    let found=0;
+    Object.keys(V3.place||{}).forEach(k=>{
+      if(k!==id&&k.indexOf(id+'#')!==0) return;
+      const sp=spotOn(k,dx,dz,job); if(sp){ spots.push(sp); found++; }
+    });
+    return found;
+  };
   addSpot(null,0,6,'feu');
-  addSpot('ble',26,38,'moisson'); addSpot('forge',-44,6,'forge');
-  addSpot('puits',28,-28,'eau');  addSpot('taverne',42,6,'boire');
-  addSpot('poule',-30,36,'poules'); addSpot('banquet',0,46,'boire');
+  // champs & ateliers : le paysan est DANS le blé, le forgeron DEVANT son enclume
+  if(!addAll('ble',0,0,'moisson')) addSpot('ble',26,38,'moisson');
+  if(!addAll('forge',-5,9,'forge')) addSpot('forge',-44,6,'forge');
+  if(!addAll('fermier',0,15,'ferme')&&owned.includes('ble')) addAll('ble',0,-6,'ferme');
+  addAll('chasseur',0,13,'chasse');
+  addAll('bucheron',-9,7,'bois');
+  if(!addAll('puits',0,8,'eau')) addSpot('puits',28,-28,'eau');
+  if(!addAll('taverne',0,13,'boire')) addSpot('taverne',42,6,'boire');
+  if(!addAll('poule',0,8,'poules')) addSpot('poule',-30,36,'poules');
+  addSpot('banquet',0,46,'boire');
   addSpot('entrainement',52,-28,'garde'); addSpot('camp',-56,-26,'garde');
-  addSpot('chaudron',-17,14,'potion'); addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');
+  if(!addAll('chaudron',0,7,'potion')) addSpot('chaudron',-17,14,'potion');
+  addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');   // lisière de forêt
+  spots.push({x:-96,z:86,job:'chasse'},{x:104,z:-84,job:'chasse'});  // terrains de chasse
   if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
   const folk=syncPeople();
   const n=Math.min(16,folk.length), walkers=[];
@@ -3066,9 +3091,20 @@ function buildVillage(scene){
     p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
     const tl=toolMesh(job.tool);
     if(tl&&p.userData.hand) p.userData.hand.add(tl);
+    // effet lié au geste : étincelles de forge / d'abattage, pousse semée par le fermier
+    let fx=null;
+    if(job.k==='forge'||job.k==='bois'){
+      fx=new THREE.Mesh(new THREE.IcosahedronGeometry(0.9,0),
+        new THREE.MeshBasicMaterial({color:job.k==='forge'?0xffb020:0xe8dcc0}));
+      fx.position.set(2.9,1.2,2.4); fx.visible=false; p.add(fx);
+    }else if(job.k==='ferme'||job.k==='moisson'){
+      fx=new THREE.Group();
+      for(let b=0;b<3;b++) fx.add(at(cone(0.35,2.2,0x8ec44a,4),(b-1)*1.1,1.1,0));
+      fx.position.set(0,0,3.4); fx.visible=false; p.add(fx);
+    }
     p.userData={ ...p.userData, id:i, rec, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
                  timer:2+i*1.4, job, home:st, bed:homes[i%homes.length],
-                 sp:7+((i*7)%5), talk:null, npc:1 };
+                 sp:7+((i*7)%5), talk:null, npc:1, fx, row:0 };
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
@@ -3122,7 +3158,7 @@ function v3dInit(){
   const fill=new THREE.DirectionalLight(0xa8c8f0,0.14); fill.position.set(90,60,-70); scene.add(fill);
 
   const stars=makeStars(); scene.add(stars);
-  const built=buildVillage(scene);
+  const built=buildVillage(scene); V3.built=built;
   // anneau qui suit l'objet en cours de déplacement
   const ring=new THREE.Mesh(new THREE.RingGeometry(7,9.5,24),
     new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85,side:THREE.DoubleSide}));
@@ -3214,6 +3250,8 @@ function v3dInit(){
       const u=p.userData, ar=u.arms;
       u.timer-=dt;
       if(u.state==='walk'){
+        if(u.fx&&u.fx.visible) u.fx.visible=false;
+        if(p.rotation.x) p.rotation.x=0;
         const dx=u.tgt.x-p.position.x, dz=u.tgt.z-p.position.z, d=Math.hypot(dx,dz);
         if(d<2.5){
           u.state=u.talk?'talk':'work';
@@ -3230,18 +3268,50 @@ function v3dInit(){
         p.position.y=0;
         if(u.state==='work'&&routine()==='sleep'){
           if(ar){ ar[0].rotation.x=0; ar[1].rotation.x=0; }
+          if(u.fx) u.fx.visible=false;
           p.position.y=-1.2;                       // accroupi/endormi près de sa hutte
         }else if(u.state==='work'){
           // geste propre au métier
           const k=u.job.k;
-          if(k==='forge'||k==='bois'){                 // frappe régulière
-            const st=Math.max(0,Math.sin(tt*4+u.id));
+          if(k==='forge'||k==='bois'){                 // frappe régulière + gerbe d'étincelles
+            const ph=tt*4+u.id, st=Math.max(0,Math.sin(ph));
             if(ar){ ar[0].rotation.x=-st*2.1; ar[1].rotation.x=-st*0.5; }
             p.position.y=st*0.25;
-          }else if(k==='moisson'){                     // fauche latérale
-            const sw=Math.sin(tt*2.6+u.id);
-            if(ar){ ar[0].rotation.x=-0.9; ar[1].rotation.x=-0.7; }
-            p.rotation.y+=sw*0.012;
+            if(u.fx){ const hit=Math.sin(ph)<-0.55;   // juste après l'impact
+              u.fx.visible=hit;
+              if(hit) u.fx.scale.setScalar(0.5+Math.abs(Math.cos(ph*3))*0.8); }
+          }else if(k==='moisson'){                     // fauche : balayage large, on avance dans le blé
+            const sw=Math.sin(tt*2.2+u.id);
+            if(ar){ ar[0].rotation.x=-0.55-sw*0.55; ar[1].rotation.x=-0.35-sw*0.4; }
+            p.rotation.y+=sw*0.02;
+            p.position.x+=Math.sin(p.rotation.y)*sw*0.05;
+            p.position.z+=Math.cos(p.rotation.y)*sw*0.05;
+            if(u.fx){ u.fx.visible=sw>0.75; }          // gerbe coupée
+          }else if(k==='ferme'){                       // labour : penché sur le sillon, avance pas à pas
+            const ph=tt*1.5+u.id, b=Math.abs(Math.sin(ph));
+            if(ar){ ar[0].rotation.x=-1.15-b*0.5; ar[1].rotation.x=-1.0-b*0.4; }
+            p.position.y=-b*0.85;                      // se plie en deux sur la terre
+            p.rotation.x=b*0.28;
+            if(Math.sin(ph)<0&&Math.sin(ph-dt*1.5)>=0){   // fin de geste : un pas dans le sillon
+              u.row=(u.row+1)%8;
+              p.position.x+=Math.sin(p.rotation.y)*2.2;
+              p.position.z+=Math.cos(p.rotation.y)*2.2;
+              if(u.row===0) p.rotation.y+=Math.PI;      // demi-tour en bout de sillon
+            }
+            if(u.fx){ u.fx.visible=b>0.8; u.fx.scale.setScalar(0.6+b*0.5); }  // plant repiqué
+          }else if(k==='chasse'){                      // guette, bande l'arc, décoche
+            const ph=(tt*0.55+u.id*0.7)%1;
+            if(ph<0.55){                               // à l'affût : scrute lentement
+              p.rotation.y+=Math.sin(tt*0.7+u.id)*0.009;
+              if(ar){ ar[0].rotation.x=-0.35; ar[1].rotation.x=-0.25; }
+            }else if(ph<0.9){                          // arc bandé
+              const dr=(ph-0.55)/0.35;
+              if(ar){ ar[0].rotation.x=-1.55; ar[1].rotation.x=-1.1-dr*0.7; }
+              p.position.y=0;
+            }else{                                     // décoche + recul
+              if(ar){ ar[0].rotation.x=-1.55; ar[1].rotation.x=-1.55; }
+              p.position.y=0.2;
+            }
           }else if(k==='eau'||k==='poules'){           // se penche et se relève
             const b=Math.abs(Math.sin(tt*1.8+u.id));
             if(ar){ ar[0].rotation.x=-b*1.5; ar[1].rotation.x=-b*1.5; }
@@ -3260,6 +3330,8 @@ function v3dInit(){
             if(ar){ ar[0].rotation.x=g2*1.1; ar[1].rotation.x=-g2*1.1; }
           }
         }else if(u.state==='talk'){
+          if(u.fx&&u.fx.visible) u.fx.visible=false;
+          if(p.rotation.x) p.rotation.x=0;
           if(u.talk){ const o=u.talk;
             p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z); }
           const nod=Math.sin(tt*3+u.id*2);
@@ -3282,8 +3354,10 @@ function v3dInit(){
           }else if(social){                                     // veillée autour du feu / banquet
             const f=built.spots.find(x=>x.job==='feu')||u.home;
             u.tgt.set(f.x+(Math.random()-0.5)*16,0,f.z+(Math.random()-0.5)*16); u.talk=null;
-          }else{                                                // retourner travailler
-            const h=Math.random()<0.75?u.home:built.spots[Math.floor(Math.random()*built.spots.length)];
+          }else{                                                // retourner travailler à SON poste
+            const mine=built.spots.filter(x=>x.job===u.job.k);
+            const h=mine.length?(Math.random()<0.8?u.home:mine[Math.floor(Math.random()*mine.length)])
+                              :(Math.random()<0.75?u.home:built.spots[Math.floor(Math.random()*built.spots.length)]);
             u.tgt.set(h.x+(Math.random()-0.5)*8,0,h.z+(Math.random()-0.5)*8); u.talk=null;
           }
           u.state='walk';
