@@ -282,7 +282,12 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 
 
 /* ---------- besoins du village ---------- */
-.needrow{display:flex;align-items:center;gap:9px;padding:6px 0}
+.needbk{background:#0000004d;border:2px solid var(--edge);border-radius:10px;padding:9px 10px;margin-bottom:8px}
+.needbk.ok{border-color:var(--exitD)}
+.needinfo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.needinfo span{font-size:11.5px;color:var(--dim);line-height:1.45}
+.needinfo .sbuy{font-size:8px;padding:7px 9px;flex:none}
+.needrow{display:flex;align-items:center;gap:9px;padding:0}
 .needrow .nic{font-size:19px;width:24px;text-align:center;flex:none}
 .needrow .nbar{flex:1;height:12px;background:#000A;border:2px solid var(--edge);border-radius:7px;overflow:hidden}
 .needrow .nbar i{display:block;height:100%;transition:width .4s}
@@ -1356,39 +1361,57 @@ function gainCoins(n){ S.coins+=n; S.coinsTotal+=n; }
    Les besoins montent avec la taille du village : il faut continuer à
    réviser pour nourrir, chauffer et armer les habitants. */
 const NEEDS=[
- {k:'food',ic:'🌾',n:'Nourriture',ne:'Food',per:2.2},
- {k:'wood',ic:'🪵',n:'Bois',ne:'Wood',per:1.5},
- {k:'iron',ic:'⚙️',n:'Fer',ne:'Iron',per:1.1}
+ {k:'food',ic:'🌾',n:'Nourriture',ne:'Food',per:2.2,
+  src:'Missions de campagne',srce:'Campaign missions',go:"G.go('worlds')",btn:'Mission',btne:'Mission'},
+ {k:'wood',ic:'🪵',n:'Bois',ne:'Wood',per:1.5,
+  src:'Blitz 60 s',srce:'60s Blitz',go:"G.go('blitz',{phase:'intro'})",btn:'Blitz',btne:'Blitz'},
+ {k:'iron',ic:'⚙️',n:'Fer',ne:'Fer',per:1.1,
+  src:'Boss & Arène',srce:'Bosses & Arena',go:"G.startArena()",btn:'Arène',btne:'Arena'}
 ];
-function gainRes(){
+/* une bonne réponse produit la ressource liée à l'activité en cours */
+function gainRes(kind){
   S.res=S.res||{food:0,wood:0,iron:0};
-  const k=NEEDS[Math.floor(Math.random()*NEEDS.length)].k;
-  S.res[k]=(S.res[k]||0)+1;
+  if(!kind){                     // examens : on remplit ce qui manque le plus
+    let worst=NEEDS[0], wp=2;
+    NEEDS.forEach(n=>{ const st=needState(n); if(st.pct<wp){ wp=st.pct; worst=n; } });
+    kind=worst.k;
+  }
+  S.res[kind]=(S.res[kind]||0)+1;
 }
 function popCount(){ return Math.min(8,Math.floor(S.village.length/2)+1)
   + SHOP.filter(i=>i.cat==='army'&&S.village.includes(i.id)).length*2; }
 function needOf(n){ return Math.round(popCount()*n.per); }
 function needState(n){
   const have=(S.res&&S.res[n.k])||0, want=needOf(n);
-  return {have, want, pct:want?Math.min(100,Math.round(have/want*100)):100, ok:have>=want};
+  return {have, want, miss:Math.max(0,want-have), pct:want?Math.min(100,Math.round(have/want*100)):100, ok:have>=want};
 }
 function villageHappy(){
   const a=NEEDS.map(needState);
   return Math.round(a.reduce((s2,x)=>s2+x.pct,0)/a.length);
 }
+function allNeedsMet(){ return NEEDS.every(n=>needState(n).ok); }
 function needsHtml(){
-  const pop=popCount(), hap=villageHappy();
+  const pop=popCount(), met=allNeedsMet();
   let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
-   +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>';
+   +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>'
+   +'<p class="small" style="margin:0 0 10px">'
+   +t('Chaque <b>bonne réponse</b> produit une ressource. Le type dépend de <b>l\'activité</b> que tu joues :',
+      'Every <b>correct answer</b> produces a resource. Which one depends on the <b>activity</b> you play:')+'</p>';
   NEEDS.forEach(n=>{ const st=needState(n);
-    h+='<div class="needrow"><span class="nic">'+n.ic+'</span>'
+    h+='<div class="needbk'+(st.ok?' ok':'')+'">'
+     +'<div class="needrow"><span class="nic">'+n.ic+'</span>'
      +'<span class="nbar"><i style="width:'+st.pct+'%;background:'+(st.ok?'linear-gradient(90deg,#155C33,#33B268)':'linear-gradient(90deg,#7C1215,#E5383B)')+'"></i></span>'
-     +'<span class="nval'+(st.ok?' ok':'')+'">'+st.have+'/'+st.want+'</span></div>';
+     +'<span class="nval'+(st.ok?' ok':'')+'">'+st.have+'/'+st.want+'</span></div>'
+     +'<div class="needinfo"><span>'+esc(t(n.n,n.ne))+' — '+t('vient de','comes from')+' <b>'+esc(t(n.src,n.srce))+'</b>'
+     +(st.ok?' · <b style="color:var(--exit)">'+t('comblé ✔','met ✔')+'</b>'
+            :' · <b style="color:var(--stop)">'+t('il manque '+st.miss,'need '+st.miss+' more')+'</b>')+'</span>'
+     +(st.ok?'':'<button class="sbuy" onclick="'+n.go+'">'+esc(t(n.btn,n.btne))+' →</button>')+'</div></div>';
   });
-  h+='<p class="small" style="margin-top:8px">'+(hap>=100
-      ?t('😄 Le village est comblé — tout le monde travaille de bon cœur.','😄 The village is thriving — everyone works happily.')
-      :hap>=60?t('🙂 Ça tient, mais les réserves baissent. Réponds juste pour ravitailler.','🙂 Holding on, but stocks are dropping. Answer correctly to restock.')
-      :t('😟 Le village manque de tout ! Chaque bonne réponse rapporte une ressource.','😟 The village lacks everything! Every correct answer brings in a resource.'))+'</p></div>';
+  h+='<p class="small" style="margin-top:10px;line-height:1.6">'+(met
+      ?t('😄 <b>Tous les besoins sont comblés !</b> Le village prospère : tu gagnes <b>+1 🪙 bonus</b> à chaque bonne réponse.',
+         '😄 <b>All needs are met!</b> The village thrives: you earn <b>+1 bonus 🪙</b> on every correct answer.')
+      :t('Comble les trois jauges pour débloquer le <b>bonus de prospérité</b> (+1 🪙 par bonne réponse). Les besoins montent quand le village s\'agrandit.',
+         'Fill all three bars to unlock the <b>prosperity bonus</b> (+1 🪙 per correct answer). Needs grow as the village grows.'))+'</p></div>';
   return h;
 }
 function gainXp(n,ev){
@@ -1480,7 +1503,9 @@ function errorPool(){
 function recordAnswer(qi,good){
   const s=qstat(qi);
   const wasError=s.box===1&&s.ko>0;
-  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++; gainCoins(2); gainRes(); }
+  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++;
+    gainCoins(2+(allNeedsMet()?1:0));
+    gainRes(CUR.screen==='run'?'food':CUR.screen==='boss'?'iron':null); }
   else{ s.ko++; s.box=1; }
   if(good){
     S.totalOk++; touchDaily(); S.daily.ok++;
@@ -2950,6 +2975,7 @@ function blitzAnswer(i,ev){
   const good=c.opts[i]===d.a;
   if(good){
     c.score++; c.streak++;
+    gainRes('wood'); gainCoins(allNeedsMet()?1:0);
     SFX.ok(); gainXp(4,ev);
     if(c.streak%5===0){ gainXp(20); toast(t('🔥 Série de '+c.streak+' ! <b>+20 XP</b>','🔥 Streak of '+c.streak+'! <b>+20 XP</b>')); }
   }else{
