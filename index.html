@@ -2064,7 +2064,7 @@ function sessionLoot(c,combo){
     const g=Math.max(0,((S.res&&S.res[k])||0)-(r0[k]||0));
     base[k]=g; anyBase+=g;
   });
-  const mult=lootMult(combo||0);
+  const mult=combo===null?1:lootMult(combo||0);
   ['food','wood','iron'].forEach(k=>{ bonus[k]=Math.round(base[k]*(mult-1)); });
   const coins=Math.max(0,S.coins-(c.coins0||0));
   return {base, bonus, mult, coins, any:anyBase>0||coins>0};
@@ -2073,7 +2073,6 @@ function sessionLoot(c,combo){
 function lootHtml(c,combo){
   if(c._loot!==undefined) return c._loot;      // le bilan peut être re-rendu : on ne verse qu'une fois
   const L=sessionLoot(c,combo);
-  if(!L.any){ c._loot=''; return ''; }
   ['food','wood','iron'].forEach(k=>{ if(L.bonus[k]) S.res[k]=(S.res[k]||0)+L.bonus[k]; });
   save();
   const IC={food:'🌾',wood:'🪵',iron:'⚙️'}, NM={food:t('Nourriture','Food'),wood:t('Bois','Wood'),iron:t('Fer','Iron')};
@@ -2087,17 +2086,26 @@ function lootHtml(c,combo){
   });
   if(L.coins) rows+='<div class="lootrow"><span class="lic">🪙</span><span class="lnm">'+t('Sesterces','Sesterces')
       +'</span><span class="lval">+'+L.coins+'</span><span class="lbon"></span></div>';
-  const nxt=LOOT_STEPS.find(x=>x[0]>(combo||0));
+  // session blanche : on le dit au lieu de masquer le panneau
+  if(!rows) rows='<div class="lootrow"><span class="lic">🕳️</span><span class="lnm">'
+      +t('Aucune ressource — il faut des bonnes réponses.','No resources — you need correct answers.')
+      +'</span><span class="lval">+0</span><span class="lbon"></span></div>';
+  const nxt=combo===null?null:LOOT_STEPS.find(x=>x[0]>(combo||0));
   const html='<div class="panel loot"><div class="eyebrow">'+t('BUTIN DE LA SESSION','SESSION LOOT')+'</div>'
    +'<div class="lootmult'+(L.mult>1?' on':'')+'">'
-     +(L.mult>1
+     +(combo===null ? t('Butin de l\'épreuve','Loot from this test')
+       : L.mult>1
        ? '🔥 '+t('COMBO ×'+combo+' TENU → BUTIN ×'+L.mult,'COMBO ×'+combo+' HELD → LOOT ×'+L.mult)
+       : c.deck ? t('Aucune série en cours au coup de sifflet → butin ×1','No streak running at the buzzer → loot ×1')
        : t('Combo perdu en route → butin ×1','Combo broken along the way → loot ×1'))
    +'</div>'
    +rows
    +'<p class="small" style="margin-top:10px">'
-   +(nxt?t('Termine la prochaine série avec '+nxt[0]+' bonnes réponses d\'affilée pour un butin ×'+nxt[1]+'.',
-           'Finish the next run on a '+nxt[0]+'-answer streak for ×'+nxt[1]+' loot.')
+   +(combo===null
+      ? t('Les examens blancs ne comptent pas de combo — le butin y est toujours ×1.',
+          'Mock exams have no streak — loot is always ×1 there.')
+      : nxt?t('Termine la prochaine série avec '+nxt[0]+' bonnes réponses d\'affilée pour un butin ×'+nxt[1]+'.',
+             'Finish the next run on a '+nxt[0]+'-answer streak for ×'+nxt[1]+' loot.')
         :t('Multiplicateur maximum atteint. Impeccable.','Maximum multiplier reached. Flawless.'))
    +'</p></div>';
   c._loot=html; return html;
@@ -2297,7 +2305,7 @@ function arenaWinHtml(w){
    +'<div style="font-size:56px">🏆</div>'
    +'<div class="stamp ok">'+t('CHAMPION !','CHAMPION!')+'</div>'
    +'<p class="small">'+t('Tournoi remporté : 3 boss au tapis avec '+c.hearts+' ❤️ restants.<br><b>+200 XP · +100 🪙</b>','Tournament won: 3 bosses floored with '+c.hearts+' ❤️ left.<br><b>+200 XP · +100 🪙</b>')+'</p>'
-   +'<div class="menu" style="margin-top:14px">'
+   +'</div>'+lootHtml(c,c.combo)+'<div class="panel"><div class="menu">'
    +'<button class="btn btn-stop" onclick="G.startArena()"><span class="ic">🏟️</span>'+t('NOUVEAU TOURNOI','NEW TOURNAMENT')+'</button>'
    +'<button class="btn btn-bus" onclick="G.go(\'village\')"><span class="ic">🛖</span>'+t('Dépenser au village','Spend in the village')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'home\')"><span class="ic">🏠</span>'+t('QG','HQ')+'</button>'
@@ -4330,7 +4338,7 @@ function scrBlitz(){
      +'<div class="eyebrow">'+t('TEMPS ÉCOULÉ','TIME\'S UP')+'</div>'
      +'<div class="bigscore '+(c.score>=15?'ok':'ko')+'">'+c.score+'</div>'
      +(nb?'<div class="stamp ok" style="font-size:13px">'+t('NOUVEAU RECORD !','NEW BEST!')+'</div>':'<p class="small">'+t('Record : ','Best: ')+S.blitzBest+'</p>')
-     +'<div class="menu" style="margin-top:14px">'
+     +'</div>'+lootHtml(c,c.streak)+'<div class="panel"><div class="menu">'
      +'<button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">🔁 '+t('ENCORE','AGAIN')+'</button>'
      +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.go(\'home\')">🏠 '+t('QG','HQ')+'</button>'
      +'</div></div>';
@@ -4347,7 +4355,9 @@ function scrBlitz(){
 function startBlitz(){
   stopTimers();
   const deck=shuffle(DRILLS);
-  CUR={screen:'blitz', phase:'play', deck, di:0, t:60, score:0, streak:0};
+  S.res=S.res||{food:0,wood:0,iron:0};
+  CUR={screen:'blitz', phase:'play', deck, di:0, t:60, score:0, streak:0,
+       res0:{food:S.res.food||0, wood:S.res.wood||0, iron:S.res.iron||0}, coins0:S.coins};
   nextDrill();
   render();
 }
@@ -4460,7 +4470,7 @@ function scrExamEnd(){
    +(wrong.length?'<button class="btn btn-stop" onclick="G.startErrors()"><span class="ic">🩹</span>'+t('Venger mes '+wrong.length+' erreurs','Avenge my '+wrong.length+' mistakes')+'</button>':'')
    +'<button class="btn btn-shield" onclick="G.startExam(\''+(c.mode||'full')+'\')"><span class="ic">🎓</span>'+t('Nouvel examen','New exam')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'exams\')"><span class="ic">🚪</span>'+t('Salle d\'examen','Exam room')+'</button>'
-   +'</div></div>'+lootHtml(c,0);
+   +'</div></div>'+lootHtml(c,null);
   if(wrong.length){
     html+='<div class="panel"><div class="eyebrow">'+t('TES ERREURS DU JOUR','YOUR MISTAKES')+'</div>';
     wrong.forEach(a=>{
