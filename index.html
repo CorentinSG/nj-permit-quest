@@ -2602,7 +2602,8 @@ function newPerson(i,home,jobK){
     :{n:'Villageois '+(used.length+1),f:Math.random()<.5?1:0,tr:'travailleur',bio:'Arrivé récemment.',bioe:'Newly arrived.'};
   return {id:'p'+Date.now().toString(36)+i+Math.floor(Math.random()*999), name:pick.n, f:!!pick.f,
           ci:Math.floor(Math.random()*8), tr:pick.tr, bio:pick.bio, bioe:pick.bioe,
-          home:home||null, job:jobK||'feu', love:null, born:Date.now(), bond:{}, chats:0};
+          home:home||null, job:jobK||'feu', love:null, born:Date.now(), bond:{}, chats:0,
+          mood:0.55+Math.random()*0.25};
 }
 /* la population découle des bâtiments : 1 fondateur + 1 habitant par bâtiment habité */
 function housingKeys(){
@@ -2662,6 +2663,43 @@ function relate(A,B){
       chron('💔 '+A.name+' et '+B.name+' se sont séparés…','💔 '+A.name+' and '+B.name+' have broken up…'); }
   }
   V3.saveSoon=1;
+}
+/* ============================================================
+   CONSCIENCE SOCIALE : chaque habitant perçoit ses voisins, décide s'il a
+   envie de leur parler, et son humeur déteint sur eux.
+   ============================================================ */
+/* humeur : 0 = maussade, 1 = ravi. Persistée sur la fiche de l'habitant. */
+function moodOf(rec){ const m=rec&&rec.mood; return (typeof m==='number'&&isFinite(m))?Math.max(0,Math.min(1,m)):0.6; }
+function nudgeMood(rec,d){ if(rec) rec.mood=Math.max(0,Math.min(1,moodOf(rec)+d)); }
+function moodIcon(rec){ const m=moodOf(rec); return m>0.78?'😄':m>0.58?'🙂':m>0.38?'😐':m>0.2?'😕':'😠'; }
+function moodWord(rec){ const m=moodOf(rec);
+  return m>0.78?t('rayonnant','beaming'):m>0.58?t('de bonne humeur','in good spirits')
+        :m>0.38?t('neutre','neutral'):m>0.2?t('maussade','glum'):t('de très mauvais poil','in a foul mood'); }
+
+/* envie de discuter : caractère d'abord, puis liens, humeur et contexte */
+const CHATTINESS={bavard:0.9, curieux:0.75, gourmand:0.6, reveur:0.5, courageux:0.5, travailleur:0.28, grognon:0.22};
+function wantsToTalk(A,B,mode){
+  if(!A||!B) return false;
+  let w=CHATTINESS[A.tr]!=null?CHATTINESS[A.tr]:0.5;
+  const bond=(A.bond&&A.bond[B.id])||0;
+  if(A.love===B.id) w+=0.45;                 // on ne rate jamais l'occasion de croiser son amour
+  else if(bond>=14) w+=0.3;
+  else if(bond>=6)  w+=0.18;
+  else if(bond===0) w-=0.05;                 // un inconnu, on hésite un peu
+  w+=(moodOf(A)-0.5)*0.35;                   // de mauvaise humeur, on parle moins
+  if(mode==='social'||mode==='eat') w+=0.3;  // à la veillée, tout le monde se parle
+  else if(mode==='work') w-=0.22;            // en pleine tâche, on décline plus souvent
+  if(A.tr==='travailleur'&&mode==='work') w-=0.2;
+  return Math.random()<Math.max(0.02,Math.min(0.95,w));
+}
+/* réaction d'une rencontre : influence mutuelle */
+function meetOutcome(A,B){
+  const bond=(A.bond&&A.bond[B.id])||0;
+  if(A.love===B.id||B.love===A.id) return 'love';
+  const grump=(A.tr==='grognon')+(B.tr==='grognon');
+  const risk=0.05+grump*0.09+Math.max(0,0.5-Math.min(moodOf(A),moodOf(B)))*0.3-(bond>=14?0.06:0);
+  if(Math.random()<risk) return 'clash';
+  return bond>=6?'warm':'chat';
 }
 function loveOf(p){ return p.love?(S.people||[]).find(x=>x.id===p.love):null; }
 function traitOf(k){ return TRAITS.find(x=>x.k===k)||TRAITS[0]; }
@@ -3141,18 +3179,117 @@ function buildVillage(scene){
       fx=new THREE.Mesh(new THREE.IcosahedronGeometry(0.9,0),
         new THREE.MeshBasicMaterial({color:job.k==='forge'?0xffb020:0xe8dcc0}));
       fx.position.set(2.9,1.2,2.4); fx.visible=false; p.add(fx);
-    }else if(job.k==='ferme'||job.k==='moisson'){
+    }
+    // pastille d'humeur / de rencontre au-dessus de la tête
+    // pastille de rencontre : petit disque face caméra, cerclé de sombre pour
+    // qu'il se détache du ciel et ne se confonde pas avec la tête
+    const badge=new THREE.Group();
+    const ring=new THREE.Mesh(new THREE.CircleGeometry(1.75,12),
+      new THREE.MeshBasicMaterial({color:0x1b2430}));
+    const dot=new THREE.Mesh(new THREE.CircleGeometry(1.3,12),
+      new THREE.MeshBasicMaterial({color:0xffffff}));
+    dot.position.z=0.05; badge.add(ring); badge.add(dot);
+    badge.userData.dot=dot;
+    badge.position.set(0,13.4,0); badge.visible=false; p.add(badge);
+    if(job.k==='ferme'||job.k==='moisson'){
       fx=new THREE.Group();
       for(let b=0;b<3;b++) fx.add(at(cone(0.35,2.2,0x8ec44a,4),(b-1)*1.1,1.1,0));
       fx.position.set(0,0,3.4); fx.visible=false; p.add(fx);
     }
     p.userData={ ...p.userData, id:i, rec, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
                  timer:2+i*1.4, job, home:st, bed:homes[i%homes.length],
-                 sp:7+((i*7)%5), talk:null, npc:1, fx, row:0 };
+                 sp:7+((i*7)%5), talk:null, npc:1, fx, row:0,
+                 badge, near:null, seen:{}, cool:0, avoid:{} };
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
   return {anim, walkers, spots:built_spots};
+}
+/* ---- chaque habitant regarde autour de lui et réagit à ses voisins ---- */
+const BQ=new THREE.Quaternion();   // tampon réutilisé pour orienter les pastilles
+const SEE=30;         // rayon de perception
+const TALK_D=13;      // distance à laquelle on s'aborde
+function perceiveAll(walkers,now){
+  const mode=routine();
+  walkers.forEach(p=>{ p.userData.near=null; });
+  for(let i=0;i<walkers.length;i++){
+    const A=walkers[i], ua=A.userData, ra=ua.rec;
+    for(let j=i+1;j<walkers.length;j++){
+      const B=walkers[j], ub=B.userData, rb=ub.rec;
+      const d=Math.hypot(A.position.x-B.position.x, A.position.z-B.position.z);
+      if(d>SEE) continue;
+      // --- 1. ils se voient : on retient le plus proche de chaque côté
+      if(!ua.near||d<ua.nearD){ ua.near=B; ua.nearD=d; }
+      if(!ub.near||d<ub.nearD){ ub.near=A; ub.nearD=d; }
+      if(!ra||!rb) continue;
+      // --- 2. contagion d'humeur : à force de se côtoyer, on déteint l'un sur l'autre
+      const prox=1-d/SEE, bond=(ra.bond&&ra.bond[rb.id])||0;
+      const pull=0.012*prox*(1+Math.min(bond,20)/20);
+      const ma=moodOf(ra), mb=moodOf(rb);
+      nudgeMood(ra,(mb-ma)*pull); nudgeMood(rb,(ma-mb)*pull);
+      // --- 3. on s'évite après une brouille
+      if((ua.avoid[rb.id]||0)>now||(ub.avoid[ra.id]||0)>now){
+        if(d<TALK_D+6&&ua.state!=='talk'){
+          const ax=A.position.x-B.position.x, az=A.position.z-B.position.z, n=Math.hypot(ax,az)||1;
+          ua.tgt.set(A.position.x+ax/n*30,0,A.position.z+az/n*30); ua.talk=null; ua.state='walk';
+        }
+        continue;
+      }
+      // --- 4. assez près pour s'aborder ? Il faut que les DEUX en aient envie.
+      if(d>TALK_D) continue;
+      if(mode==='sleep') continue;
+      if(ua.state==='talk'||ub.state==='talk') continue;
+      if(now<(ua.cool||0)||now<(ub.cool||0)) continue;
+      if(!wantsToTalk(ra,rb,mode)||!wantsToTalk(rb,ra,mode)) continue;
+      engage(A,B,now,mode);
+    }
+  }
+}
+/* deux habitants s'abordent : l'échange les transforme tous les deux */
+function engage(A,B,now,mode){
+  const ua=A.userData, ub=B.userData, ra=ua.rec, rb=ub.rec;
+  ua.state=ub.state='talk'; ua.talk=B; ub.talk=A;
+  ua.timer=ub.timer=4+Math.random()*4;
+  ua.cool=ub.cool=now+9000;
+  const out=meetOutcome(ra,rb);
+  const col={love:0xff2d55, warm:0xffb300, chat:0x2f9dff, clash:0xff4500}[out];
+  [ua,ub].forEach(u=>{ if(u.badge){ u.badge.userData.dot.material.color.setHex(col);
+    u.badge.visible=true; u.badgeT=2.6; } });
+  if(out==='clash'){
+    nudgeMood(ra,-0.22); nudgeMood(rb,-0.22);
+    ua.avoid[rb.id]=now+45000; ub.avoid[ra.id]=now+45000;
+    ua.timer=ub.timer=1.6;
+    sayMeet(A,B,t('⚡ ','⚡ ')+ra.name+t(' hausse le ton contre ',' snaps at ')+rb.name+'.',
+                 '⚡ '+ra.name+' snaps at '+rb.name+'.');
+    relate(ra,rb);
+    return;
+  }
+  relate(ra,rb);
+  if(out==='love'){
+    nudgeMood(ra,0.2); nudgeMood(rb,0.2);
+    sayMeet(A,B,'💛 '+ra.name+t(' et ',' and ')+rb.name+t(' se retrouvent.',' meet up.'),
+                '💛 '+ra.name+' and '+rb.name+' meet up.');
+  }else{
+    nudgeMood(ra,out==='warm'?0.12:0.07); nudgeMood(rb,out==='warm'?0.12:0.07);
+    // le grognon plombe son interlocuteur, le bavard le remonte
+    if(ra.tr==='grognon') nudgeMood(rb,-0.1);
+    if(rb.tr==='grognon') nudgeMood(ra,-0.1);
+    if(ra.tr==='bavard') nudgeMood(rb,0.05);
+    if(rb.tr==='bavard') nudgeMood(ra,0.05);
+    if(Math.random()<0.55) villagerSay(Math.random()<0.5?A:B);
+  }
+  // influence : un travailleur de bonne humeur entraîne l'autre au boulot
+  const lead=(ra.tr==='travailleur'&&moodOf(ra)>0.6)?ua:(rb.tr==='travailleur'&&moodOf(rb)>0.6)?ub:null;
+  if(lead&&mode==='work'&&Math.random()<0.5){
+    const foll=lead===ua?ub:ua;
+    foll.followUp={x:lead.home.x,z:lead.home.z};
+  }
+}
+function sayMeet(A,B,fr,en){
+  const el=$('#v3dsay'); if(!el) return;
+  el.innerHTML=esc(t(fr,en));
+  el.classList.add('show');
+  clearTimeout(V3.sayT); V3.sayT=setTimeout(()=>el.classList.remove('show'),3200);
 }
 /* fumée : petites sphères qui montent en boucle */
 function makeSmoke(scene,g){
@@ -3290,9 +3427,23 @@ function v3dInit(){
     if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
     // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
+    // ---- perception mutuelle (4 Hz : 16 habitants = 120 paires, négligeable)
+    V3.perc=(V3.perc||0)-dt;
+    if(V3.perc<=0){ V3.perc=0.35; perceiveAll(built.walkers,now); }
     built.walkers.forEach(p=>{
       const u=p.userData, ar=u.arms;
       u.timer-=dt;
+      // l'humeur règle le rythme : un habitant heureux travaille et marche plus vif
+      const mo=u.rec?moodOf(u.rec):0.6, nrj=0.72+mo*0.56;
+      if(u.badge&&u.badge.visible){
+        u.badgeT-=dt;
+        u.badge.position.y=13.4+Math.sin(tt*4+u.id)*0.35;
+        // le badge est enfant du villageois, qui pivote : on annule sa rotation
+        // pour que le disque reste bien face au joueur
+        p.getWorldQuaternion(BQ).invert();
+        u.badge.quaternion.copy(BQ).multiply(cam.quaternion);
+        if(u.badgeT<=0) u.badge.visible=false;
+      }
       if(u.state==='walk'){
         if(u.fx&&u.fx.visible) u.fx.visible=false;
         if(p.rotation.x) p.rotation.x=0;
@@ -3302,8 +3453,10 @@ function v3dInit(){
           u.timer=u.state==='talk'?4+Math.random()*4:7+Math.random()*9;
           if(Math.random()<0.5) villagerSay(p);
         }else{
-          p.position.x+=dx/d*u.sp*dt; p.position.z+=dz/d*u.sp*dt;
+          p.position.x+=dx/d*u.sp*nrj*dt; p.position.z+=dz/d*u.sp*nrj*dt;
           p.rotation.y=Math.atan2(dx,dz);
+          // en chemin, on salue d'un signe la personne qu'on croise
+          if(u.near&&u.nearD<16&&ar){ ar[1].rotation.x=-1.2; }
           const sw=Math.sin(tt*8+u.id)*0.8;
           if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; }
           p.position.y=Math.abs(Math.sin(tt*8+u.id))*0.45;
@@ -3318,25 +3471,25 @@ function v3dInit(){
           // geste propre au métier
           const k=u.job.k;
           if(k==='forge'||k==='bois'){                 // frappe régulière + gerbe d'étincelles
-            const ph=tt*4+u.id, st=Math.max(0,Math.sin(ph));
+            const ph=tt*4*nrj+u.id, st=Math.max(0,Math.sin(ph));
             if(ar){ ar[0].rotation.x=-st*2.1; ar[1].rotation.x=-st*0.5; }
             p.position.y=st*0.25;
             if(u.fx){ const hit=Math.sin(ph)<-0.55;   // juste après l'impact
               u.fx.visible=hit;
               if(hit) u.fx.scale.setScalar(0.5+Math.abs(Math.cos(ph*3))*0.8); }
           }else if(k==='moisson'){                     // fauche : balayage large, on avance dans le blé
-            const sw=Math.sin(tt*2.2+u.id);
+            const sw=Math.sin(tt*2.2*nrj+u.id);
             if(ar){ ar[0].rotation.x=-0.55-sw*0.55; ar[1].rotation.x=-0.35-sw*0.4; }
             p.rotation.y+=sw*0.02;
             p.position.x+=Math.sin(p.rotation.y)*sw*0.05;
             p.position.z+=Math.cos(p.rotation.y)*sw*0.05;
             if(u.fx){ u.fx.visible=sw>0.75; }          // gerbe coupée
           }else if(k==='ferme'){                       // labour : penché sur le sillon, avance pas à pas
-            const ph=tt*1.5+u.id, b=Math.abs(Math.sin(ph));
+            const ph=tt*1.5*nrj+u.id, b=Math.abs(Math.sin(ph));
             if(ar){ ar[0].rotation.x=-1.15-b*0.5; ar[1].rotation.x=-1.0-b*0.4; }
             p.position.y=-b*0.85;                      // se plie en deux sur la terre
             p.rotation.x=b*0.28;
-            if(Math.sin(ph)<0&&Math.sin(ph-dt*1.5)>=0){   // fin de geste : un pas dans le sillon
+            if(Math.sin(ph)<0&&Math.sin(ph-dt*1.5*nrj)>=0){   // fin de geste : un pas dans le sillon
               u.row=(u.row+1)%8;
               p.position.x+=Math.sin(p.rotation.y)*2.2;
               p.position.z+=Math.cos(p.rotation.y)*2.2;
@@ -3377,9 +3530,15 @@ function v3dInit(){
           if(u.fx&&u.fx.visible) u.fx.visible=false;
           if(p.rotation.x) p.rotation.x=0;
           if(u.talk){ const o=u.talk;
-            p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z); }
-          const nod=Math.sin(tt*3+u.id*2);
-          if(ar){ ar[0].rotation.x=nod*0.35; ar[1].rotation.x=-nod*0.2; }
+            p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z);
+            // on se rapproche à distance de conversation, sans se marcher dessus
+            const dd=Math.hypot(o.position.x-p.position.x,o.position.z-p.position.z);
+            if(dd>7.5){ p.position.x+=(o.position.x-p.position.x)/dd*3.2*dt;
+                        p.position.z+=(o.position.z-p.position.z)/dd*3.2*dt; }
+          }
+          const heat=(u.badge&&u.badge.visible&&u.badge.userData.dot.material.color.getHex()===0xff4500)?2.2:1;
+          const nod=Math.sin(tt*3*heat+u.id*2);
+          if(ar){ ar[0].rotation.x=nod*0.35*heat; ar[1].rotation.x=-nod*0.2*heat; }
           p.position.y=Math.abs(Math.sin(tt*2.4+u.id))*0.18;
         }
         if(u.timer<=0){
@@ -3388,16 +3547,29 @@ function v3dInit(){
           const chatChance=social?0.75:(u.rec&&u.rec.tr==='bavard'?0.55:0.35);
           if(mode==='sleep'){                                   // rentrer se coucher
             u.tgt.set(u.bed.x+(Math.random()-0.5)*6,0,u.bed.z+(Math.random()-0.5)*6); u.talk=null;
-          }else if(Math.random()<chatChance&&built.walkers.length>1){   // aller discuter
-            const o=built.walkers[Math.floor(Math.random()*built.walkers.length)];
-            if(o!==p){
-              u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p;
-              // l'amitié se renforce à chaque discussion
-              if(u.rec&&o.userData.rec) relate(u.rec,o.userData.rec);
-            } else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
+          }else if(Math.random()<chatChance&&built.walkers.length>1){   // aller VOIR quelqu'un
+            // on se dirige vers lui ; l'échange ne se déclenchera que si les
+            // deux en ont envie une fois à portée (voir perceiveAll)
+            const cand=built.walkers.filter(w=>{
+              if(w===p||!w.userData.rec||!u.rec) return false;
+              return (u.avoid[w.userData.rec.id]||0)<=now;
+            });
+            const pref=cand.filter(w=>{ const r=w.userData.rec;
+              return u.rec.love===r.id||((u.rec.bond&&u.rec.bond[r.id])||0)>=6; });
+            const pool=(pref.length&&Math.random()<0.7)?pref:cand;
+            const o=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+            if(o){ u.tgt.set(o.position.x+4,0,o.position.z+4); u.talk=null; }
+            else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
           }else if(social){                                     // veillée autour du feu / banquet
             const f=built.spots.find(x=>x.job==='feu')||u.home;
             u.tgt.set(f.x+(Math.random()-0.5)*16,0,f.z+(Math.random()-0.5)*16); u.talk=null;
+          }else if(u.followUp){                                 // entraîné au travail par un collègue
+            u.tgt.set(u.followUp.x+(Math.random()-0.5)*10,0,u.followUp.z+(Math.random()-0.5)*10);
+            u.talk=null; u.followUp=null;
+          }else if(u.rec&&u.rec.love&&Math.random()<0.35
+                   &&built.walkers.some(w=>w.userData.rec&&w.userData.rec.id===u.rec.love)){
+            const lv=built.walkers.find(w=>w.userData.rec&&w.userData.rec.id===u.rec.love);
+            u.tgt.set(lv.position.x+(Math.random()-0.5)*12,0,lv.position.z+(Math.random()-0.5)*12); u.talk=null;
           }else{                                                // retourner travailler à SON poste
             const mine=built.spots.filter(x=>x.job===u.job.k);
             const h=mine.length?(Math.random()<0.8?u.home:mine[Math.floor(Math.random()*mine.length)])
@@ -3550,6 +3722,7 @@ function showPerson(rec,obj){
     +(rec.bio?'<i style="color:var(--dim)">« '+esc(t(rec.bio,rec.bioe))+' »</i><br><br>':'')
     +'<b>'+t('Caractère','Character')+' :</b> '+esc(t(tr.n,tr.ne))+' — <i>'+esc(t(tr.d,tr.de))+'</i><br>'
     +'<b>'+t('Au village depuis','In the village for')+' :</b> '+(d?d+' '+t('jour'+(d>1?'s':''),'day'+(d>1?'s':'')):t('aujourd\'hui','today'))+'<br>'
+    +'<b>'+t('Humeur','Mood')+' :</b> '+moodIcon(rec)+' '+esc(moodWord(rec))+'<br>'
     +'<b>'+t('Discussions','Chats')+' :</b> '+(rec.chats||0)+'<br>'
     +'<b>'+t('Meilleur ami','Best friend')+' :</b> '+(bf?esc(bf.p.name)+' <span style="color:var(--dim)">('+bf.n+' '+t('échanges','talks')+')</span>':t('personne encore…','nobody yet…'))+'<br>'
     +(lv?'<b>💛 '+t('En couple avec','In love with')+' :</b> '+esc(lv.name)+'<br>':'')
@@ -3567,7 +3740,7 @@ function peopleHtml(){
     const bf=bestFriend(r), tr=traitOf(r.tr);
     h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
      +'<span class="fkn">'+esc(r.name)+'</span>'
-     +'<span class="fkt">'+esc(t(tr.n,tr.ne))+'</span>'
+     +'<span class="fkt">'+moodIcon(r)+' '+esc(t(tr.n,tr.ne))+'</span>'
      +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name):(bf?'🤝 '+esc(bf.p.name):'—'))+'</span></button>';
   });
   return h+'</div><p class="small" style="margin-top:8px">'
