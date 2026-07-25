@@ -102,7 +102,7 @@ main#app{display:block;padding-top:14px}
 .px{font-family:var(--px)}
 h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);text-align:center;letter-spacing:1px;text-shadow:0 3px 0 #000,0 0 24px #FFC61A44;margin:10px 0 2px}
 .logo-sub{font-family:var(--px);font-size:9px;color:var(--dim);text-align:center;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
-.eyebrow{font-family:var(--px);font-size:9px;color:var(--zone);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.eyebrow{font-family:var(--px);font-size:9px;color:var(--zone);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;line-height:1.7}
 .small{font-size:13px;color:var(--dim)}
 
 /* dashed center-line divider */
@@ -127,8 +127,11 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .btn-shield{background:#12253F;border-color:var(--shield);color:#CFE2FB;box-shadow:0 4px 0 #00000088}
 .btn-stop{background:#2E0D0E;border-color:var(--stop);color:#FFD7D8;box-shadow:0 4px 0 #00000088}
 .btn-ghost{background:var(--lane2);border-color:var(--edge);color:var(--dim);box-shadow:0 4px 0 #00000055}
-.btnrow{display:flex;gap:10px}
-.btnrow .btn{justify-content:center;text-align:center}
+.btnrow{display:flex;gap:8px}
+/* width:100% hérité de .btn faisait déborder la rangée : on repasse en flex partagé */
+.btnrow .btn{justify-content:center;text-align:center;flex:1 1 0;width:auto;min-width:0;
+  padding:13px 6px;gap:6px;overflow-wrap:anywhere}
+.btnrow .btn:last-child{flex:0 0 auto;padding:13px 12px}
 .menu{display:flex;flex-direction:column;gap:11px}
 
 /* ---------- world cards ---------- */
@@ -191,7 +194,9 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .exp .tag{font-family:var(--px);font-size:8px;color:var(--bus);display:block;margin-bottom:6px;letter-spacing:1px}
 .nextbar{margin-top:14px}
 
-/* shake on wrong */
+/* shake on wrong : secoue #app, jamais <body> — un élément ne peut pas masquer
+   son propre débordement, on se retrouvait avec un scroll horizontal sur mobile */
+html,body{overflow-x:hidden}
 .shake{animation:shake .35s}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
 
@@ -210,7 +215,7 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 @keyframes fshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
 .fighter{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;transition:transform .12s}
 .fighter .fic{font-size:40px;filter:drop-shadow(0 4px 3px #0009);display:block}
-.fighter .fnm{font-family:var(--px);font-size:7px;color:#FFD7D8;letter-spacing:.5px;max-width:78px;text-align:center;line-height:1.5}
+.fighter .fnm{font-family:var(--px);font-size:7px;color:#FFD7D8;letter-spacing:.5px;max-width:78px;text-align:center;line-height:1.5;overflow-wrap:anywhere;hyphens:auto}
 .fighter.hero .fic{transform:scaleX(-1)}
 .fighter.atk{animation:fatk .38s ease-out}
 .fighter.hero.atk{animation-name:fatkR}
@@ -250,7 +255,7 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .timer{font-family:var(--px);font-size:22px;color:var(--bus);font-variant-numeric:tabular-nums}
 .timer.low{color:var(--stop);animation:pulse .5s infinite}
 .blitzscore{font-family:var(--px);font-size:14px;color:var(--retro)}
-.drillp{font-size:18px;font-weight:700;line-height:1.45;text-wrap:balance;min-height:80px;display:flex;align-items:center}
+.drillp{font-size:18px;font-weight:700;line-height:1.45;text-wrap:balance;min-height:80px;display:flex;align-items:center;overflow-wrap:anywhere}
 .drillp b{color:var(--bus)}
 .opts.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .opts.grid2 .opt{justify-content:center;text-align:center;font-family:var(--mono);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;padding:16px 8px}
@@ -265,8 +270,8 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 }
 .stamp.ok{color:var(--exit);border-color:var(--exit);background:#0F3A2244;text-shadow:0 0 16px #33B26866}
 .stamp.ko{color:var(--stop);border-color:var(--stop);background:#3A111344}
-.statrow{display:flex;gap:10px;margin:14px 0}
-.stat{flex:1;background:var(--lane2);border:2px solid var(--edge);border-radius:10px;padding:11px 8px;text-align:center}
+.statrow{display:flex;gap:8px;margin:14px 0}
+.stat{flex:1 1 0;min-width:0;background:var(--lane2);border:2px solid var(--edge);border-radius:10px;padding:11px 5px;text-align:center;overflow-wrap:anywhere}
 .stat .v{font-family:var(--px);font-size:15px;color:var(--bus);font-variant-numeric:tabular-nums}
 .stat .l{font-size:11px;color:var(--dim);margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
 .stars{text-align:center;font-size:34px;letter-spacing:8px;margin:6px 0}
@@ -444,6 +449,13 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .footnote{margin-top:22px;font-size:11.5px;color:#5F6F84;line-height:1.55;text-align:center}
 .footnote a{color:var(--shield)}
 
+/* téléphone : le bandeau était si serré que le titre de niveau et les XP
+   se réduisaient à « BA… ». On renvoie la barre de niveau sur une 2e ligne. */
+@media (max-width:430px){
+  .hud-in{flex-wrap:wrap;row-gap:8px}
+  .hud-mid{flex:1 0 100%;order:5}
+  .hud-title{font-size:8px}
+}
 @media (min-width:640px){
   body{font-size:16.5px}
   .worlds{grid-template-columns:1fr 1fr}
@@ -1152,7 +1164,22 @@ function load(){
   try{
     const raw=localStorage.getItem(SAVE_KEY);
     if(!raw) return defaults();
-    return Object.assign(defaults(), JSON.parse(raw));
+    const parsed=JSON.parse(raw);
+    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)) return defaults();
+    const d=defaults(), st=Object.assign(d, parsed);
+    // une sauvegarde tronquée (écriture interrompue sur mobile) peut contenir
+    // des null / mauvais types : on retombe sur la valeur par défaut champ par champ
+    Object.keys(d).forEach(k=>{
+      const ref=defaults()[k], v=st[k];
+      if(v==null){ st[k]=ref; return; }
+      if(Array.isArray(ref)!==Array.isArray(v)||typeof ref!==typeof v) st[k]=ref;
+    });
+    st.res=Object.assign({food:0,wood:0,iron:0},st.res);
+    ['food','wood','iron'].forEach(k=>{ if(typeof st.res[k]!=='number'||!isFinite(st.res[k])) st.res[k]=0; });
+    ['xp','coins','coinsTotal','totalOk','totalKo'].forEach(k=>{ if(typeof st[k]!=='number'||!isFinite(st[k])) st[k]=0; });
+    st.people=st.people.filter(x=>x&&typeof x==='object');
+    st.village=st.village.filter(x=>typeof x==='string');
+    return st;
   }catch(e){ return defaults(); }
 }
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
@@ -1715,16 +1742,16 @@ function renderHud(){
 function signSvg(t){
   const s={
    stop:'<svg width="110" height="110" viewBox="0 0 100 100"><polygon points="30,3 70,3 97,30 97,70 70,97 30,97 3,70 3,30" fill="#C1121F" stroke="#fff" stroke-width="5"/><text x="50" y="60" font-family="Arial,sans-serif" font-size="24" font-weight="bold" fill="#fff" text-anchor="middle">STOP</text></svg>',
-   yield:'<svg width="110" height="100" viewBox="0 0 100 90"><polygon points="4,4 96,4 50,86" fill="#fff"/><polygon points="12,9 88,9 50,74" fill="#C1121F"/><polygon points="24,16 76,16 50,58" fill="#fff"/><text x="50" y="38" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="#C1121F" text-anchor="middle">YIELD</text></svg>',
+   yield:'<svg width="110" height="100" viewBox="0 0 100 90"><polygon points="4,4 96,4 50,86" fill="#fff"/><polygon points="12,9 88,9 50,74" fill="#C1121F"/><polygon points="23,15 77,15 50,60" fill="#fff"/><text x="50" y="31" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#C1121F" text-anchor="middle">YIELD</text></svg>',
    pennant:'<svg width="130" height="72" viewBox="0 0 130 72"><polygon points="4,4 126,36 4,68" fill="#FFC61A" stroke="#111" stroke-width="3"/><text x="38" y="34" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#111">NO</text><text x="24" y="47" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#111">PASSING</text></svg>',
    diamond:'<svg width="110" height="110" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" transform="rotate(45 50 50)" fill="#FFC61A" stroke="#111" stroke-width="4" rx="6"/><text x="50" y="60" font-family="Arial,sans-serif" font-size="30" font-weight="bold" fill="#111" text-anchor="middle">!</text></svg>',
    school:'<svg width="105" height="110" viewBox="0 0 100 105"><polygon points="50,3 97,38 97,100 3,100 3,38" fill="#FFC61A" stroke="#111" stroke-width="4"/><text x="50" y="65" font-family="Arial,sans-serif" font-size="16" font-weight="bold" fill="#111" text-anchor="middle">SCHOOL</text></svg>',
    rr:'<svg width="110" height="110" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#FFC61A" stroke="#111" stroke-width="4"/><line x1="22" y1="22" x2="78" y2="78" stroke="#111" stroke-width="7"/><line x1="78" y1="22" x2="22" y2="78" stroke="#111" stroke-width="7"/><text x="24" y="58" font-family="Arial,sans-serif" font-size="17" font-weight="bold" fill="#111">R</text><text x="63" y="58" font-family="Arial,sans-serif" font-size="17" font-weight="bold" fill="#111">R</text></svg>',
-   crossbuck:'<svg width="130" height="110" viewBox="0 0 130 110"><g transform="rotate(-24 65 55)"><rect x="5" y="44" width="120" height="22" fill="#fff" stroke="#111" stroke-width="3" rx="3"/><text x="65" y="60" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">RAILROAD</text></g><g transform="rotate(24 65 55)"><rect x="5" y="44" width="120" height="22" fill="#fff" stroke="#111" stroke-width="3" rx="3"/><text x="65" y="60" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">CROSSING</text></g></svg>',
+   crossbuck:'<svg width="140" height="120" viewBox="0 0 140 120"><g transform="rotate(-26 70 60)"><rect x="8" y="49" width="124" height="22" fill="#fff" stroke="#111" stroke-width="3" rx="3"/></g><g transform="rotate(26 70 60)"><rect x="8" y="49" width="124" height="22" fill="#fff" stroke="#111" stroke-width="3" rx="3"/></g><g transform="rotate(-26 70 60)"><text x="34" y="65" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">RAIL</text><text x="108" y="65" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">ROAD</text></g><g transform="rotate(26 70 60)"><text x="34" y="65" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">CROS</text><text x="108" y="65" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">SING</text></g></svg>',
    sigred:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#E5383B"><animate attributeName="opacity" values="1;0.15;1" dur="1s" repeatCount="indefinite"/></circle><circle cx="30" cy="65" r="15" fill="#332B00"/><circle cx="30" cy="100" r="15" fill="#0E2A18"/></svg>',
    sigyel:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#3A0E0F"/><circle cx="30" cy="65" r="15" fill="#FFC61A"><animate attributeName="opacity" values="1;0.15;1" dur="1s" repeatCount="indefinite"/></circle><circle cx="30" cy="100" r="15" fill="#0E2A18"/></svg>',
    arrow:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#E5383B"/><circle cx="30" cy="65" r="15" fill="#332B00"/><circle cx="30" cy="100" r="15" fill="#0E2A18"/><path d="M20 100 h10 v-7 l12 10 -12 10 v-7 h-10 z" fill="#33B268"/></svg>',
-   jug:'<svg width="150" height="96" viewBox="0 0 150 96"><rect x="3" y="3" width="144" height="90" fill="#fff" stroke="#111" stroke-width="4" rx="6"/><text x="75" y="28" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">ALL TURNS</text><text x="75" y="48" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">FROM</text><text x="75" y="68" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">RIGHT LANE</text><path d="M60 88 q15 -8 30 0" stroke="#111" stroke-width="3" fill="none"/></svg>',
+   jug:'<svg width="150" height="104" viewBox="0 0 150 104"><rect x="3" y="3" width="144" height="98" fill="#fff" stroke="#111" stroke-width="4" rx="6"/><text x="75" y="27" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">ALL TURNS</text><text x="75" y="47" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">FROM</text><text x="75" y="67" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">RIGHT LANE</text><path d="M52 88 q13 -12 30 -6 l0 -6 12 10 -12 10 0 -6 q-12 -4 -22 6 z" fill="#111"/></svg>',
    donotenter:'<svg width="104" height="104" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#C1121F" stroke="#fff" stroke-width="5"/><rect x="20" y="42" width="60" height="16" rx="2" fill="#fff"/></svg>',
    wrongway:'<svg width="150" height="86" viewBox="0 0 150 86"><rect x="3" y="3" width="144" height="80" rx="5" fill="#C1121F" stroke="#fff" stroke-width="5"/><text x="75" y="38" font-family="Arial,sans-serif" font-size="21" font-weight="bold" fill="#fff" text-anchor="middle">WRONG</text><text x="75" y="66" font-family="Arial,sans-serif" font-size="21" font-weight="bold" fill="#fff" text-anchor="middle">WAY</text></svg>',
    noturn:'<svg width="112" height="120" viewBox="0 0 112 120"><rect x="3" y="3" width="106" height="114" rx="5" fill="#fff" stroke="#111" stroke-width="4"/><circle cx="56" cy="40" r="26" fill="none" stroke="#C1121F" stroke-width="7"/><path d="M44 30 h14 v-7 l13 12 -13 12 v-7 h-14 z" fill="#111"/><line x1="36" y1="60" x2="76" y2="20" stroke="#C1121F" stroke-width="7"/><text x="56" y="90" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="#111" text-anchor="middle">NO TURN</text><text x="56" y="108" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="#C1121F" text-anchor="middle">ON RED</text></svg>',
@@ -1738,9 +1765,9 @@ function signSvg(t){
    shield:'<svg width="96" height="104" viewBox="0 0 96 104"><path d="M8 14 Q48 2 88 14 L88 52 Q88 84 48 100 Q8 84 8 52 Z" fill="#1B3A73" stroke="#fff" stroke-width="4"/><path d="M8 14 Q48 2 88 14 L88 30 L8 30 Z" fill="#C1121F"/><text x="48" y="74" font-family="Arial,sans-serif" font-size="30" font-weight="bold" fill="#fff" text-anchor="middle">95</text></svg>',
    redx:'<svg width="96" height="96" viewBox="0 0 96 96"><rect x="3" y="3" width="90" height="90" rx="8" fill="#111" stroke="#444" stroke-width="3"/><line x1="24" y1="24" x2="72" y2="72" stroke="#E5383B" stroke-width="11"/><line x1="72" y1="24" x2="24" y2="72" stroke="#E5383B" stroke-width="11"/></svg>',
    yellowx:'<svg width="96" height="96" viewBox="0 0 96 96"><rect x="3" y="3" width="90" height="90" rx="8" fill="#111" stroke="#444" stroke-width="3"/><line x1="24" y1="24" x2="72" y2="72" stroke="#FFC61A" stroke-width="11"><animate attributeName="opacity" values="1;.15;1" dur="1s" repeatCount="indefinite"/></line><line x1="72" y1="24" x2="24" y2="72" stroke="#FFC61A" stroke-width="11"><animate attributeName="opacity" values="1;.15;1" dur="1s" repeatCount="indefinite"/></line></svg>',
-   yellowarrow:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#3A0E0F"/><circle cx="30" cy="65" r="15" fill="#332B00"/><path d="M20 100 h10 v-7 l12 10 -12 10 v-7 h-10 z" fill="#FFC61A" transform="rotate(180 30 103)"><animate attributeName="opacity" values="1;.2;1" dur=".7s" repeatCount="indefinite"/></path></svg>',
+   yellowarrow:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#3A0E0F"/><circle cx="30" cy="65" r="15" fill="#332B00"/><circle cx="30" cy="100" r="15" fill="#241D00"/><path d="M40 100 h-10 v-7 l-12 10 12 10 v-7 h10 z" fill="#FFC61A"><animate attributeName="opacity" values="1;.2;1" dur=".7s" repeatCount="indefinite"/></path></svg>',
    slow:'<svg width="112" height="104" viewBox="0 0 112 104"><polygon points="56,6 106,96 6,96" fill="#F58220" stroke="#C1121F" stroke-width="7"/></svg>',
-   oneway:'<svg width="150" height="60" viewBox="0 0 150 60"><rect x="3" y="3" width="144" height="54" rx="4" fill="#111" stroke="#fff" stroke-width="3"/><path d="M18 30 h96 v-11 l22 11 -22 11 v-11 z" fill="#fff"/><text x="60" y="36" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="#111" text-anchor="middle">ONE WAY</text></svg>'
+   oneway:'<svg width="150" height="60" viewBox="0 0 150 60"><rect x="3" y="3" width="144" height="54" rx="4" fill="#111" stroke="#fff" stroke-width="3"/><path d="M96 30 h22 v-9 l18 9 -18 9 v-9 z" fill="#fff"/><text x="52" y="37" font-family="Arial,sans-serif" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle">ONE WAY</text></svg>'
   };
   return s[t]||'';
 }
@@ -1964,8 +1991,8 @@ function answer(pos,ev){
     gainXp(xp,ev);
   }else{
     c.combo=0; SFX.ko();
-    document.body.classList.add('shake');
-    setTimeout(()=>document.body.classList.remove('shake'),380);
+    const shk=$('#app'); shk.classList.add('shake');
+    setTimeout(()=>shk.classList.remove('shake'),380);
   }
   checkBadges();
   render();
@@ -2074,8 +2101,8 @@ function bossAnswer(pos,ev){
     c.combo=0; c.hearts--;
     SFX.ko();
     fightFx(false,0,0);
-    document.body.classList.add('shake');
-    setTimeout(()=>document.body.classList.remove('shake'),380);
+    const shk=$('#app'); shk.classList.add('shake');
+    setTimeout(()=>shk.classList.remove('shake'),380);
   }
   checkBadges();
   const nb=$('#nextbtn'); if(nb) nb.focus();
@@ -2551,9 +2578,21 @@ const TRAITS=[
 /* quel bâtiment loge quel métier */
 const HOUSED={hutte:null, chasseur:'chasse', fermier:'ferme', bucheron:'bois', forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
   puits:'eau', chaudron:'potion', camp:'garde', entrainement:'garde', banquet:'boire', feu:'feu'};
+/* un métier n'est possible que si le bâtiment correspondant existe */
+function jobAvailable(k){
+  const j=JOBS.find(x=>x.k===k);
+  return !!j && (!j.need || nOwned(j.need)>0);
+}
+/* métiers ouverts aux habitants des huttes : bûcheron et conteur toujours,
+   moisson/eau seulement si le champ et le puits ont été construits */
+function hutJobPool(){
+  const pool=['bois','feu'];
+  ['moisson','eau','poules'].forEach(k=>{ if(jobAvailable(k)&&!pool.includes(k)) pool.push(k); });
+  return pool;
+}
 function jobForBuilding(id){
   const base=id.split('#')[0];
-  if(base==='hutte'){ const pool=['bois','moisson','eau','feu']; return pool[Math.floor(Math.random()*pool.length)]; }
+  if(base==='hutte'){ const pool=hutJobPool(); return pool[Math.floor(Math.random()*pool.length)]; }
   return HOUSED[base]||'bois';
 }
 function newPerson(i,home,jobK){
@@ -2584,6 +2623,11 @@ function syncPeople(){
   keys.forEach(k=>{ if(k==='founder') return;
     if(!S.people.some(p=>p.home===k)) S.people.push(newPerson(S.people.length,k,jobForBuilding(k))); });
   S.people=S.people.filter(p=>p.home==='founder'||keys.includes(p.home));
+  // un habitant de hutte dont le métier n'a plus de bâtiment se reconvertit
+  S.people.forEach(p=>{
+    if(!p.home||p.home.split('#')[0]!=='hutte') return;
+    if(!jobAvailable(p.job)) p.job=jobForBuilding('hutte');
+  });
   save(); return S.people;
 }
 /* chroniques du village : amours, amitiés, disputes */
@@ -3396,18 +3440,23 @@ function miniInit(){
     const sc=new THREE.Scene();
     sc.add(new THREE.HemisphereLight(0xdff0ff,0x4a7a2a,1.05));
     const dl=new THREE.DirectionalLight(0xfff2d0,1.15); dl.position.set(-30,50,30); sc.add(dl);
-    const disc=new THREE.Mesh(new THREE.CircleGeometry(id==='palissade'?26:19,20),mat(COL.grass));
+    // muraille et palissade sont des anneaux complets : cadrés en entier ils ne
+    // donnaient qu'un fil illisible. On cadre sur une PORTION de l'enceinte.
+    const RING={muraille:152, palissade:138};
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(RING[id]?30:19,20),mat(COL.grass));
     disc.rotation.x=-Math.PI/2; sc.add(disc);
     const g=B3[id](); sc.add(g);
     const bb=new THREE.Box3().setFromObject(g), sz=new THREE.Vector3(), ctr=new THREE.Vector3();
     bb.getSize(sz); bb.getCenter(ctr);
-    const rad=Math.max(sz.x,sz.z,sz.y*1.1)*0.62+9;
+    let rad=Math.max(sz.x,sz.z,sz.y*1.1)*0.62+9;
+    if(RING[id]){ ctr.set(0,9,RING[id]); rad=24; disc.position.set(0,0,RING[id]); }
     const cam=new THREE.PerspectiveCamera(34,W/H,1,500);
-    MINI.items.push({ctx,sc,cam,ctr,rad,a:0.6+i*0.5,cw:cv.width,ch:cv.height});
+    MINI.items.push({ctx,sc,cam,ctr,rad,ring:!!RING[id],a:0.6+i*0.5,cw:cv.width,ch:cv.height});
   });
   const drawOne=it=>{
-    it.cam.position.set(Math.sin(it.a)*it.rad*2.2, it.rad*1.5, Math.cos(it.a)*it.rad*2.2);
-    it.cam.lookAt(it.ctr.x,it.ctr.y*0.6,it.ctr.z);
+    it.cam.position.set(it.ctr.x+Math.sin(it.a)*it.rad*2.2, it.ctr.y+it.rad*1.5,
+                        it.ctr.z+Math.cos(it.a)*it.rad*2.2*(it.ring?0.85:1)+(it.ring?it.rad*1.6:0));
+    it.cam.lookAt(it.ctr.x,it.ctr.y*0.6+(it.ring?it.ctr.y*0.4:0),it.ctr.z);
     ren.render(it.sc,it.cam);
     it.ctx.clearRect(0,0,it.cw,it.ch);
     it.ctx.drawImage(off,0,0,it.cw,it.ch);
