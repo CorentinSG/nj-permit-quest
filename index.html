@@ -247,6 +247,29 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .gtable td:last-child{text-align:right;font-family:var(--mono);font-weight:700;color:var(--bus);font-variant-numeric:tabular-nums}
 .gtable tr:last-child td{border-bottom:none}
 
+/* ---------- village 3D ---------- */
+.v3d{position:relative;height:320px;margin-bottom:12px;border:3px solid #7BAE3F;border-radius:14px;overflow:hidden;
+  background:linear-gradient(#0B1729 0%,#16233A 26%,#24351A 26%,#1A2711 100%);
+  touch-action:none;cursor:grab;box-shadow:0 5px 0 #00000066}
+.v3d.dragging{cursor:grabbing}
+.v3d-cam{position:absolute;inset:0;perspective:760px;perspective-origin:50% 44%}
+.v3d-world{position:absolute;left:50%;top:60%;width:0;height:0;transform-style:preserve-3d;
+  transform:scale(1.22) rotateX(var(--tilt,56deg)) rotateZ(var(--rot,-26deg))}
+.g-obj{position:absolute;transform-style:preserve-3d}
+.g-face{position:absolute;left:50%;top:50%;backface-visibility:visible}
+.g-tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+.g-ground{position:absolute;left:50%;top:50%;width:290px;height:290px;margin:-145px 0 0 -145px;border-radius:34px;
+  background:radial-gradient(circle at 38% 32%,#43642A,#31501E 62%,#26401A);
+  box-shadow:0 0 0 3px #1D3312,0 0 46px #000 inset}
+.g-path{background:#7A6647;border-radius:11px;opacity:.75}
+.g-bill{position:absolute;left:50%;top:50%;transform-origin:50% 100%;line-height:1;white-space:nowrap;
+  filter:drop-shadow(0 3px 2px rgba(0,0,0,.55));pointer-events:none}
+.g-plot{position:absolute;left:50%;top:50%;border:2px dashed rgba(123,174,63,.45);border-radius:7px}
+.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#CFE3B5;opacity:.75;pointer-events:none;text-shadow:0 1px 2px #000}
+.v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
+.v3d-ctl button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
+.v3d-ctl button:active{transform:translateY(1px)}
+
 /* ---------- village gaulois ---------- */
 .vpanel{background:linear-gradient(#12253F 0%,#12253F 26%,#1E2A12 26%,#243617 100%);border-color:#7BAE3F}
 .vsky{font-size:19px;letter-spacing:14px;padding:2px 4px 12px;opacity:.9}
@@ -1383,7 +1406,7 @@ function showOverlay(ic,title,html){
 let CUR={screen:'home'};        // état de l'écran courant
 let blitzTimer=0;
 
-function stopTimers(){ if(blitzTimer){ clearInterval(blitzTimer); blitzTimer=0; } }
+function stopTimers(){ if(blitzTimer){ clearInterval(blitzTimer); blitzTimer=0; } v3dStop(); }
 function go(screen,params){
   stopTimers();
   CUR={screen, ...(params||{})};
@@ -1399,6 +1422,7 @@ function render(){
     badges:scrBadges, settings:scrSettings}[CUR.screen]||scrHome;
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
+  if(CUR.screen==='village') v3dInit();
 }
 
 /* ---------- accueil ---------- */
@@ -1716,16 +1740,126 @@ function arenaWinHtml(w){
    +'</div></div>';
 }
 
+/* ============================================================
+   VILLAGE 3D — CSS 3D pur, zéro dépendance
+   Repère : X droite, Y profondeur, Z hauteur.
+   ============================================================ */
+let V3D={raf:0, rot:-26, tilt:58, drag:false, auto:true, lx:0, ly:0, el:null};
+function v3dStop(){ if(V3D.raf){ cancelAnimationFrame(V3D.raf); V3D.raf=0; } V3D.el=null; }
+const V3SH=[.70,.86,1,.80];   // luminosité des 4 murs (N, E, S, O)
+
+function g3obj(x,y,inner,rz){
+  return '<div class="g-obj" style="transform:translate3d('+x+'px,'+y+'px,0)'+(rz?' rotateZ('+rz+'deg)':'')+'">'+inner+'</div>';
+}
+function g3box(w,d,h,col,z){
+  z=z||0; let s='';
+  for(let k=0;k<4;k++){
+    const fw=(k%2===0)?w:d, off=((k%2===0)?d:w)/2;
+    s+='<div class="g-face" style="width:'+fw+'px;height:'+h+'px;margin-left:'+(-fw/2)+'px;margin-top:'+(-h/2)
+      +'px;background:'+col+';filter:brightness('+V3SH[k]+');transform:translateZ('+(z+h/2)+'px) rotateZ('+(k*90)+'deg) translateY('+(-off)+'px) rotateX(90deg)"></div>';
+  }
+  s+='<div class="g-face" style="width:'+w+'px;height:'+d+'px;margin-left:'+(-w/2)+'px;margin-top:'+(-d/2)
+    +'px;background:'+col+';filter:brightness(1.2);transform:translateZ('+(z+h)+'px)"></div>';
+  return s;
+}
+function g3pyr(b,ph,z,col){
+  const half=b/2, slant=Math.sqrt(ph*ph+half*half), th=90-Math.atan2(half,ph)*180/Math.PI;
+  let s='';
+  for(let k=0;k<4;k++){
+    s+='<div class="g-face g-tri" style="width:'+b+'px;height:'+slant+'px;margin-left:'+(-half)+'px;margin-top:'+(-slant)
+      +'px;background:'+col+';filter:brightness('+V3SH[k]+');transform:translateZ('+z+'px) rotateZ('+(k*90)+'deg) translateY('+(-half)+'px) rotateX('+th+'deg)"></div>';
+  }
+  return s;
+}
+function g3bill(em,size,z){
+  return '<div class="g-bill" style="font-size:'+size+'px;margin-left:'+(-size/2)+'px;margin-top:'+(-size)
+    +'px;transform:translateZ('+(z||0)+'px) rotateZ(calc(-1 * var(--rot))) rotateX(calc(-1 * var(--tilt)))">'+em+'</div>';
+}
+function g3disc(r,col,z){
+  return '<div class="g-face" style="width:'+(r*2)+'px;height:'+(r*2)+'px;margin-left:'+(-r)+'px;margin-top:'+(-r)
+    +'px;border-radius:50%;background:'+col+';transform:translateZ('+(z==null?0.5:z)+'px)"></div>';
+}
+function g3shadow(r){ return g3disc(r,'rgba(0,0,0,.34)',0.4); }
+function g3door(d,h){ // porte sur le mur sud
+  return '<div class="g-face" style="width:9px;height:'+h+'px;margin-left:-4.5px;margin-top:'+(-h/2)
+    +'px;background:#3E2F1B;transform:translateZ('+(h/2)+'px) rotateZ(180deg) translateY('+(-(d/2+0.3))+'px) rotateX(90deg)"></div>';
+}
+/* constructeurs par élément de boutique */
+const V3B={
+  feu:     ()=>g3disc(12,'#3A3026',0.6)+g3bill('🔥',26,1),
+  hutte:   ()=>g3shadow(21)+g3box(30,30,18,'#C9A66B')+g3door(30,12)+g3pyr(44,21,18,'#8A6B33'),
+  ble:     ()=>'<div class="g-face" style="width:64px;height:46px;margin-left:-32px;margin-top:-23px;border-radius:6px;background:#6E7A24;transform:translateZ(0.5px)"></div>'
+                +g3bill('🌾',15,0)+g3obj(-20,-12,g3bill('🌾',14,0))+g3obj(19,-13,g3bill('🌾',14,0))
+                +g3obj(-18,13,g3bill('🌾',14,0))+g3obj(20,12,g3bill('🌾',14,0)),
+  poule:   ()=>g3shadow(13)+g3box(16,14,9,'#A8672E')+g3pyr(22,9,9,'#75481F')+g3obj(13,6,g3bill('🐔',13,0)),
+  puits:   ()=>g3shadow(12)+g3box(16,16,10,'#8A9099')+g3box(3,3,13,'#6B5433',10)
+                +g3obj(0,0,'')+g3pyr(22,9,23,'#7A5C28'),
+  menhir:  ()=>g3shadow(10)+g3box(13,11,36,'#9AA2AA'),
+  sanglier:()=>g3bill('🐗',19,0)+g3obj(17,9,g3bill('🐗',15,0)),
+  palissade:()=>{ let s=''; for(let i=0;i<20;i++){ const a=i/20*Math.PI*2;
+                  s+=g3obj(Math.cos(a)*114, Math.sin(a)*114, g3box(7,7,17,'#6B5433')); } return s; },
+  forge:   ()=>g3shadow(18)+g3box(26,22,15,'#6E5C4A')+g3pyr(32,12,15,'#463A2D')+g3bill('⚒️',15,20)+g3obj(12,-9,g3bill('💨',13,14)),
+  chien:   ()=>g3bill('🐶',17,0),
+  barde:   ()=>g3bill('🎶',17,0)+g3obj(0,7,g3box(6,6,14,'#5A4327')),
+  taverne: ()=>g3shadow(24)+g3box(38,28,21,'#C9A66B')+g3door(28,13)+g3pyr(50,20,21,'#7A5C28')+g3bill('🍺',16,44),
+  chaudron:()=>g3disc(13,'#2F2A22',0.6)+g3box(15,15,8,'#3B3B44')+g3bill('⚗️',18,9),
+  druide:  ()=>g3bill('🧙',20,0),
+  chef:    ()=>g3bill('👑',18,7)+g3obj(0,4,g3bill('🛡️',16,0)),
+  banquet: ()=>g3shadow(30)+g3box(62,18,8,'#B07C46')+g3bill('🍗',16,9)+g3obj(-20,0,g3bill('🍗',14,9))
+                +g3obj(21,0,g3bill('🍖',14,9))+g3obj(0,-16,g3bill('🎆',22,26))
+};
+/* emplacements (x,y) dans le village */
+const V3POS={
+  palissade:[0,0], feu:[0,10], puits:[52,-52], hutte:[-53,-53], menhir:[0,-78],
+  taverne:[76,4], ble:[50,54], banquet:[0,84], poule:[-54,54], forge:[-78,4],
+  chaudron:[-30,26], druide:[-32,2], chef:[32,22], barde:[36,-20], chien:[12,38], sanglier:[-16,52]
+};
+function village3dHtml(){
+  const owned=S.village;
+  let sc='<div class="g-ground"></div>'
+    +'<div class="g-face g-path" style="width:150px;height:22px;margin-left:-75px;margin-top:-11px;transform:translateZ(0.3px) rotateZ(24deg)"></div>';
+  SHOP.forEach(it=>{
+    const p=V3POS[it.id]||[0,0];
+    if(owned.includes(it.id)) sc+=g3obj(p[0],p[1],V3B[it.id]());
+    else if(it.id!=='palissade') sc+='<div class="g-plot" style="width:24px;height:24px;margin-left:-12px;margin-top:-12px;transform:translate3d('+p[0]+'px,'+p[1]+'px,0.4px)"></div>';
+  });
+  return '<div class="v3d" id="v3d"><div class="v3d-cam"><div class="v3d-world" id="v3dw" style="--rot:'+V3D.rot+'deg;--tilt:'+V3D.tilt+'deg">'
+    +sc+'</div></div>'
+    +'<div class="v3d-hint">'+t('👆 glisse pour tourner','👆 drag to rotate')+'</div>'
+    +'<div class="v3d-ctl"><button onclick="G.v3dTurn(-30)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
+    +'<button onclick="G.v3dTurn(30)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
+}
+function v3dApply(){
+  if(!V3D.el) return;
+  V3D.el.style.setProperty('--rot', V3D.rot.toFixed(1)+'deg');
+  V3D.el.style.setProperty('--tilt', V3D.tilt.toFixed(1)+'deg');
+}
+function v3dTurn(d){ V3D.auto=false; V3D.rot+=d; v3dApply(); }
+function v3dInit(){
+  const stage=$('#v3d'); V3D.el=$('#v3dw');
+  if(!stage||!V3D.el) return;
+  v3dApply();
+  const down=e=>{ V3D.drag=true; V3D.auto=false; const t0=e.touches?e.touches[0]:e; V3D.lx=t0.clientX; V3D.ly=t0.clientY; stage.classList.add('dragging'); };
+  const move=e=>{ if(!V3D.drag) return; const t0=e.touches?e.touches[0]:e;
+    V3D.rot+=(t0.clientX-V3D.lx)*0.45;
+    V3D.tilt=Math.max(24,Math.min(80,V3D.tilt+(t0.clientY-V3D.ly)*0.25));
+    V3D.lx=t0.clientX; V3D.ly=t0.clientY; v3dApply(); if(e.cancelable) e.preventDefault(); };
+  const up=()=>{ V3D.drag=false; stage.classList.remove('dragging'); };
+  stage.addEventListener('pointerdown',down);
+  stage.addEventListener('pointermove',move,{passive:false});
+  window.addEventListener('pointerup',up);
+  stage.addEventListener('pointercancel',up);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) V3D.auto=false;
+  const loop=()=>{ if(!V3D.el) return; if(V3D.auto&&!V3D.drag){ V3D.rot+=0.16; v3dApply(); } V3D.raf=requestAnimationFrame(loop); };
+  v3dStop(); V3D.el=$('#v3dw'); V3D.raf=requestAnimationFrame(loop);
+}
+
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
   const owned=S.village;
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
-   +'<div class="panel vpanel"><div class="vsky">'+(owned.includes('banquet')?'🎆':'☁️')+' &nbsp; 🌤️'+(owned.length>=8?' &nbsp; 🕊️':'')+'</div><div class="vgrid">';
-  for(let i=0;i<SHOP.length;i++){
-    const it=owned[i]?SHOP.find(s=>s.id===owned[i]):null;
-    v+='<div class="vslot'+(it?' filled':'')+'">'+(it?it.ic:'')+'</div>';
-  }
-  v+='</div><p class="small" style="text-align:center;margin-top:10px">'
+   +village3dHtml()
+   +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
      :t('Village : <b>'+owned.length+'/'+SHOP.length+'</b> éléments · chaque bonne réponse rapporte des 🪙','Village: <b>'+owned.length+'/'+SHOP.length+'</b> items · every correct answer earns 🪙'))+'</p></div>'
@@ -2064,7 +2198,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  startArena, arenaNext, buy, startHardRun, startNemesisRun, startNemesisExam,
+  startArena, arenaNext, buy, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
