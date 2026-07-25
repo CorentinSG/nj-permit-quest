@@ -1750,9 +1750,9 @@ function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
 
 /* ---------- palette stylisée ---------- */
 const COL={
-  grass:0x5d9a28, grassDark:0x44701f, dirt:0xc09758, dirtDark:0xa37c40,
-  wall:0xdfc493, wallDark:0xc9ac78, beam:0x6b4a28, wood:0x8a6236, woodDark:0x6b4a28,
-  thatch:0xc28e3c, thatchDark:0x9d6f2c, stone:0x9aa3a8, stoneDark:0x7d858a,
+  grass:0x63a02a, grassDark:0x4a7a20, dirt:0xc9a468, dirtDark:0xac8449,
+  wall:0xe6d3ab, wallDark:0xcdb488, beam:0x6b4a28, wood:0x8a6236, woodDark:0x6b4a28,
+  thatch:0xbe8c3e, thatchDark:0x8f6526, stone:0x9aa3a8, stoneDark:0x7d858a,
   leaf:0x4f9128, leaf2:0x66ab34, leaf3:0x3c7a20, water:0x3f7fa8, fire:0xff8c1a,
   skin:0xf0c9a0, cloth:[0xc0463c,0x3f6fb0,0x8a5aa8,0xd08a2a,0x4a9a6a,0xb0503a,0x5a6ab0,0xc07a3a]
 };
@@ -1765,39 +1765,118 @@ function cone(r,h,c,seg){ const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg|
 function sph(r,c,d){ const m=new THREE.Mesh(new THREE.IcosahedronGeometry(r,d==null?0:d),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
 function at(o,x,y,z){ o.position.set(x,y,z); return o; }
 
-/* maison : murs + poutres + toit de chaume pyramidal */
-function house(w,d,h,rh,thatchC){
+/* toit à DEUX PENTES : prisme triangulaire extrudé + bandeau de chaume + faîtage */
+function gable(w,len,h,c,cDark){
   const g=new THREE.Group();
-  const b=box(w,h,d,COL.wall); b.position.y=h/2; g.add(b);
-  // poutres d'angle et ceinture
-  const bw=1.4;
-  [[-w/2,-d/2],[w/2,-d/2],[-w/2,d/2],[w/2,d/2]].forEach(p=>{
-    g.add(at(box(bw*1.6,h,bw*1.6,COL.beam),p[0],h/2,p[1]));
-  });
-  g.add(at(box(w+1,bw*1.6,d+1,COL.beam),0,h-1,0));
-  g.add(at(box(w+1,bw*1.6,d+1,COL.beam),0,1,0));
-  // porte + fenêtre lumineuse
-  g.add(at(box(w*0.26,h*0.6,1,COL.woodDark),0,h*0.3,d/2+0.3));
-  const win=new THREE.Mesh(new THREE.PlaneGeometry(w*0.2,h*0.24),
-    new THREE.MeshBasicMaterial({color:0xffd88a}));
-  g.add(at(win,-w*0.28,h*0.62,d/2+0.35));
-  // avant-toit + toit
-  g.add(at(box(w+5,1.6,d+5,COL.thatchDark),0,h+0.8,0));
-  const r=cone(Math.max(w,d)*0.86,rh,thatchC||COL.thatch,4);
-  r.rotation.y=Math.PI/4; g.add(at(r,0,h+1.6+rh/2,0));
+  const prism=(ww,ll,hh,col)=>{
+    const sh=new THREE.Shape();
+    sh.moveTo(-ww/2,0); sh.lineTo(ww/2,0); sh.lineTo(0,hh); sh.closePath();
+    const geo=new THREE.ExtrudeGeometry(sh,{depth:ll,bevelEnabled:false});
+    geo.translate(0,0,-ll/2);
+    const m=new THREE.Mesh(geo,mat(col)); m.castShadow=m.receiveShadow=true; return m;
+  };
+  g.add(prism(w,len,h,c));                        // pente principale
+  g.add(prism(w+3.2,len+2.6,h*0.3,cDark||c));     // bandeau bas plus épais et plus sombre
+  const rg=new THREE.Mesh(new THREE.BoxGeometry(3.4,2.2,len+1.6),mat(cDark||c));
+  rg.castShadow=true; rg.position.y=h-1; g.add(rg);   // faîtage
   return g;
 }
-/* arbre feuillu ou sapin */
+/* bâtiment à colombage, toit à deux pentes */
+function house(w,d,h,rh,thatchC){
+  const g=new THREE.Group(), C=thatchC||COL.thatch, CD=COL.thatchDark;
+  const b=box(w,h,d,COL.wall); b.position.y=h/2; g.add(b);
+  const bw=1.5;
+  // sablière basse + haute
+  g.add(at(box(w+1.2,bw*1.5,d+1.2,COL.beam),0,0.9,0));
+  g.add(at(box(w+1.2,bw*1.5,d+1.2,COL.beam),0,h-0.9,0));
+  // poteaux d'angle
+  [[-w/2,-d/2],[w/2,-d/2],[-w/2,d/2],[w/2,d/2]].forEach(p=>
+    g.add(at(box(bw*1.7,h,bw*1.7,COL.beam),p[0],h/2,p[1])));
+  // poteaux intermédiaires + croix de Saint-André sur les longs pans
+  const nb=Math.max(1,Math.round(w/9));
+  for(let i=1;i<nb;i++){
+    const x=-w/2+i*(w/nb);
+    g.add(at(box(bw,h,d+0.6,COL.beam),x,h/2,0));
+  }
+  for(let s=-1;s<=1;s+=2){
+    for(let k=-1;k<=1;k+=2){
+      const br=box(w*0.42,bw,0.9,COL.beam);
+      br.position.set(k*w*0.24,h*0.5,s*(d/2+0.35));
+      br.rotation.z=k*0.62; g.add(br);
+    }
+  }
+  // porte encadrée + fenêtres à croisillon
+  g.add(at(box(w*0.24+1.6,h*0.62+1.2,0.7,COL.beam),0,h*0.31,d/2+0.35));
+  g.add(at(box(w*0.24,h*0.62,1.1,COL.woodDark),0,h*0.3,d/2+0.5));
+  [-1,1].forEach(k=>{
+    const wx=k*w*0.3;
+    g.add(at(box(w*0.17+1.2,h*0.2+1.2,0.7,COL.beam),wx,h*0.63,d/2+0.35));
+    const win=new THREE.Mesh(new THREE.PlaneGeometry(w*0.17,h*0.2),
+      new THREE.MeshBasicMaterial({color:0xffcf6e}));
+    g.add(at(win,wx,h*0.63,d/2+0.72));
+  });
+  // toit
+  const r=gable(w+4,d+3.5,rh,C,CD); r.position.y=h; g.add(r);
+  return g;
+}
+/* ---------- accessoires de village ---------- */
+function barrel(s){ s=s||1; const g=new THREE.Group();
+  g.add(at(cyl(2.1*s,2.4*s,5*s,COL.wood,10),0,2.5*s,0));
+  [1.3,3.7].forEach(y=>{ const b=cyl(2.35*s,2.35*s,0.6*s,COL.woodDark,10); g.add(at(b,0,y*s,0)); });
+  return g; }
+function crate(s){ s=s||1; const g=new THREE.Group();
+  g.add(at(box(4*s,3.6*s,4*s,0xb2854a),0,1.8*s,0));
+  g.add(at(box(4.3*s,0.5*s,4.3*s,COL.woodDark),0,3.4*s,0));
+  g.add(at(box(4.3*s,0.5*s,4.3*s,COL.woodDark),0,0.5*s,0));
+  return g; }
+function haybale(s){ s=s||1; const g=new THREE.Group();
+  const c=cyl(2.4*s,2.4*s,4.4*s,0xd9be62,10); c.rotation.z=Math.PI/2;
+  g.add(at(c,0,2.4*s,0)); return g; }
+function logpile(s){ s=s||1; const g=new THREE.Group();
+  for(let i=0;i<3;i++){ const l=cyl(1.1*s,1.1*s,7*s,COL.wood,8); l.rotation.z=Math.PI/2;
+    g.add(at(l,0,1.1*s,(i-1)*2.4*s)); }
+  for(let i=0;i<2;i++){ const l=cyl(1.1*s,1.1*s,7*s,0x7a5630,8); l.rotation.z=Math.PI/2;
+    g.add(at(l,0,3.1*s,(i-0.5)*2.4*s)); }
+  return g; }
+function fenceRun(n,step,s){ s=s||1; const g=new THREE.Group();
+  for(let i=0;i<n;i++) g.add(at(cyl(0.7*s,0.9*s,7*s,COL.wood,6),i*step,3.5*s,0));
+  [2.2,5].forEach(y=>g.add(at(box((n-1)*step,0.8*s,0.6*s,COL.woodDark),(n-1)*step/2,y*s,0)));
+  return g; }
+function stall(){ const g=new THREE.Group();
+  [[-5,-3],[5,-3],[-5,3],[5,3]].forEach(p=>g.add(at(cyl(0.7,0.9,9,COL.wood,6),p[0],4.5,p[1])));
+  const aw=box(13,0.8,9,0xc0543c); aw.rotation.x=0.16; g.add(at(aw,0,9.4,0));
+  g.add(at(box(12,0.9,6,0xb2854a),0,5,0));
+  [[-3.4,0xd0603a],[0,0xe8c05a],[3.4,0x6aa832]].forEach(p=>g.add(at(sph(1.3,p[1],0),p[0],6,0)));
+  return g; }
+function cart(){ const g=new THREE.Group();
+  g.add(at(box(9,3,5.6,0xb2854a),0,4.2,0));
+  g.add(at(box(9,1.2,6,COL.woodDark),0,5.9,0));
+  [-1,1].forEach(k=>{ const w=cyl(2.6,2.6,0.9,COL.woodDark,12); w.rotation.x=Math.PI/2;
+    g.add(at(w,k*3,2.6,3.2)); });
+  g.add(at(cyl(0.5,0.5,7,COL.wood,6).rotateZ(Math.PI/2),-7,3.4,0));
+  return g; }
+function flowers(n,c){ const g=new THREE.Group();
+  for(let i=0;i<n;i++){ const a=i*2.4, r=1+((i*7)%5)*0.7;
+    g.add(at(cyl(0.18,0.18,1.8,0x4a8a2e,4),Math.cos(a)*r,0.9,Math.sin(a)*r));
+    g.add(at(sph(0.75,c,0),Math.cos(a)*r,2,Math.sin(a)*r)); }
+  return g; }
+function tuft(s){ s=s||1; const g=new THREE.Group();
+  for(let i=0;i<4;i++){ const a=i*1.6, t=cone(0.55*s,2.6*s,COL.leaf2,4);
+    t.position.set(Math.cos(a)*0.8*s,1.3*s,Math.sin(a)*0.8*s);
+    t.rotation.z=Math.cos(a)*0.32; t.rotation.x=Math.sin(a)*0.32; g.add(t); }
+  return g; }
+
+/* arbre feuillu (canopée en grappe) ou sapin */
 function tree(s,pine){
-  const g=new THREE.Group(), th=9*s;
-  g.add(at(cyl(1.5*s,2.2*s,th,COL.wood,6),0,th/2,0));
+  const g=new THREE.Group(), th=12*s;
+  const tr=cyl(1.6*s,2.6*s,th,COL.wood,7); tr.rotation.z=(s%0.3)*0.3; g.add(at(tr,0,th/2,0));
   if(pine){
-    for(let i=0;i<3;i++) g.add(at(cone(8*s-i*2*s,9*s-i*1.2*s,i%2?COL.leaf3:COL.leaf,7),0,th*0.7+i*5.2*s,0));
+    for(let i=0;i<4;i++) g.add(at(cone(9.5*s-i*1.9*s,10*s-i*1.1*s,i%2?COL.leaf3:COL.leaf,8),0,th*0.6+i*4.9*s,0));
   }else{
     const c=[COL.leaf,COL.leaf2,COL.leaf3][Math.floor(s*7)%3];
-    g.add(at(sph(7.5*s,c,1),0,th+5.5*s,0));
-    g.add(at(sph(5*s,c,0),3*s,th+3*s,2*s));
-    g.add(at(sph(4.5*s,c,0),-3.4*s,th+3.6*s,-1.6*s));
+    const blobs=[[0,7.2,0,8.4],[3.6,4.6,2.2,5.6],[-3.8,5.2,-1.8,5.2],[1.4,10.4,-2.6,5],[-2.2,9.4,2.4,4.6]];
+    blobs.forEach((b,i)=>{ const o=sph(b[3]*s,i%2?c:COL.leaf3,1);
+      o.scale.y=0.86; g.add(at(o,b[0]*s,th+b[1]*s,b[2]*s)); });
   }
   return g;
 }
@@ -1833,7 +1912,7 @@ const B3={
     const f=new THREE.Mesh(new THREE.ConeGeometry(2.6,7,6),fm); f.position.y=5.4; f.name='flame'; g.add(f);
     const pl=new THREE.PointLight(0xff9a3c,1.5,70); pl.position.y=7; pl.name='firelight'; g.add(pl);
     g.userData.smoke={x:0,y:9,z:0,n:3}; return g; },
-  hutte(){ const g=house(17,17,11,13); g.add(at(box(3,6,3,COL.stone),4,20,3));
+  hutte(){ const g=house(17,15,13,12); g.add(at(box(3,6,3,COL.stone),4,20,3));
     g.userData.smoke={x:4,y:24,z:3,n:3}; return g; },
   ble(){ const g=new THREE.Group();
     const f=new THREE.Mesh(new THREE.PlaneGeometry(38,28),mat(0xc2ae44));
@@ -1841,7 +1920,7 @@ const B3={
     for(let i=0;i<26;i++){ const x=(i%7-3)*5.2+(i%2)*1.6, z=(Math.floor(i/7)-1.5)*6.4;
       const s=at(cyl(.35,.5,6,0xd8c452,4),x,3,z); s.name='wheat'; s.userData.p=i*0.4; g.add(s); }
     return g; },
-  poule(){ const g=house(10,9,5.5,6,COL.thatchDark);
+  poule(){ const g=house(11,9,6.5,5.5,COL.thatchDark);
     const a=at(animal('hen'),7,0,4); a.name='walker'; a.userData.p=0; g.add(a);
     g.add(at(animal('hen'),-6,0,6)); return g; },
   puits(){ const g=new THREE.Group();
@@ -1862,7 +1941,7 @@ const B3={
       const tip=at(cone(1.9,2.6,COL.woodDark,6),Math.cos(a)*r,10.5+(i%3),Math.sin(a)*r);
       g.add(p); g.add(tip); }
     return g; },
-  forge(){ const g=house(15,13,9,8,COL.thatchDark);
+  forge(){ const g=house(16,13,11,9,COL.thatchDark);
     g.add(at(cyl(2.4,3,10,COL.stone,7),5,5,-4));
     const e=new THREE.Mesh(new THREE.IcosahedronGeometry(1.8,0),new THREE.MeshBasicMaterial({color:0xff7a20}));
     e.name='ember'; g.add(at(e,-4,3,6));
@@ -1876,7 +1955,7 @@ const B3={
     const p=person(2); p.position.y=0; p.name='bardp'; g.add(p);
     const n=new THREE.Mesh(new THREE.TorusGeometry(1.1,.35,6,10),new THREE.MeshBasicMaterial({color:0xffe08a}));
     n.name='note'; g.add(at(n,2.6,11,0)); return g; },
-  taverne(){ const g=house(23,17,13,15);
+  taverne(){ const g=house(24,17,15,14);
     g.add(at(box(3,7,3,COL.stone),-8,22,-5));
     const s=new THREE.Mesh(new THREE.BoxGeometry(7,4.5,.6),mat(0xd8a24a));
     s.name='sign'; g.add(at(s,0,17,10));
@@ -1952,6 +2031,26 @@ function buildVillage(scene){
     const g=new THREE.Group(); g.add(at(sph(3.6*b[2],COL.leaf2,0),0,2.4,0));
     g.add(at(sph(2.6*b[2],COL.leaf,0),2.4,1.6,1)); g.position.set(b[0],0,b[1]); scene.add(g); });
 
+  // accessoires : tonneaux, caisses, bottes de foin, bois, clôtures, étal, charrette
+  const put=(o,x,z,ry,sc)=>{ o.position.set(x,0,z); if(ry)o.rotation.y=ry; if(sc)o.scale.setScalar(sc); scene.add(o); };
+  if(owned.includes('taverne')){ put(barrel(1),58,14,0); put(barrel(.9),63,10,0); put(crate(1),55,20,.5);
+    put(stall(),40,30,-0.5); }
+  if(owned.includes('forge')){ put(logpile(1),-58,14,0.4); put(crate(.9),-40,-6,0.9); put(barrel(.85),-56,-6,0); }
+  if(owned.includes('ble')){ put(haybale(1),44,44,0.3); put(haybale(.9),50,38,1.1); put(cart(),18,48,0.9);
+    put(fenceRun(5,7,1),12,22,-1.05); }
+  if(owned.includes('poule')){ put(fenceRun(4,7,.9),-46,44,0.2); put(crate(.8),-28,30,0.3); }
+  if(owned.includes('hutte')){ put(barrel(.9),-24,-38,0); put(logpile(.85),-44,-42,1.2); }
+  if(owned.includes('banquet')){ put(barrel(1),-18,58,0); put(barrel(.95),20,60,0); }
+  if(owned.includes('puits')){ put(crate(.85),40,-26,0.6); }
+  // végétation de sol : touffes d'herbe et massifs de fleurs
+  const FL=[[-40,-18,0xc86ad8],[36,-40,0xf0e070],[-14,44,0xe8f0f0],[52,-14,0xc86ad8],[-58,26,0xf0e070],
+            [22,-52,0xe8f0f0],[-30,-52,0xc86ad8],[62,34,0xf0e070]];
+  FL.forEach(f=>{ const o=flowers(6,f[2]); o.position.set(f[0],0,f[1]); scene.add(o); });
+  for(let i=0;i<34;i++){
+    const a=i*2.399, r=26+((i*17)%74);
+    const o=tuft(0.8+((i*13)%5)*0.14);
+    o.position.set(Math.cos(a)*r,0,Math.sin(a)*r); o.rotation.y=a; scene.add(o);
+  }
   // villageois qui déambulent (nombre lié à la taille du village)
   const n=Math.min(8,Math.floor(owned.length/2)+1), walkers=[];
   for(let i=0;i<n;i++){
@@ -1998,16 +2097,16 @@ function v3dInit(){
   ren.toneMapping=THREE.ACESFilmicToneMapping; ren.toneMappingExposure=0.42;
   V3.ren=ren;
   const scene=new THREE.Scene(); V3.scene=scene;
-  scene.background=new THREE.Color(0x9fd4ea);
-  scene.fog=new THREE.Fog(0xa8d4e8,240,520);
+  scene.background=new THREE.Color(0x9ed3ea);
+  scene.fog=new THREE.Fog(0xbcd9c8,260,560);
   const cam=new THREE.PerspectiveCamera(38,W/H,1,900); V3.cam=cam;
   // lumières : soleil chaud + ciel/sol + appoint froid
-  const sun=new THREE.DirectionalLight(0xffeec0,1.15);
-  sun.position.set(-80,130,70); sun.castShadow=true;
-  sun.shadow.mapSize.set(1024,1024);
+  const sun=new THREE.DirectionalLight(0xffe3a8,1.32);
+  sun.position.set(-95,105,80); sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048);
   const sc=sun.shadow.camera; sc.left=-150;sc.right=150;sc.top=150;sc.bottom=-150;sc.near=10;sc.far=340;
   sun.shadow.bias=-0.0012; scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0x9fc8ee,0x2f5618,0.5));
+  scene.add(new THREE.HemisphereLight(0x9ec4e8,0x37631c,0.44));
   const fill=new THREE.DirectionalLight(0xa8c8f0,0.14); fill.position.set(90,60,-70); scene.add(fill);
 
   const built=buildVillage(scene);
