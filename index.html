@@ -282,6 +282,20 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 
 
 /* ---------- besoins du village ---------- */
+".tribute{background:#2A2405;border:2px solid var(--busD);border-radius:9px;padding:8px 10px;
+  font-size:12.5px;color:#F5E8BE;margin-top:10px;text-align:center}
+.tribute i{color:var(--dim);font-style:normal;font-size:11px}
+.stock{display:flex;gap:10px;justify-content:center;margin:2px 0 10px}
+.stock span{background:#00000055;border:2px solid var(--edge);border-radius:8px;padding:5px 9px;font-size:13px}
+.stock b{color:var(--bus);font-family:var(--mono)}
+.sdesc.okres{color:var(--exit)}
+.sdesc.badres{color:var(--stop)}
+.chron{display:flex;flex-direction:column;gap:6px}
+.chrl{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+  border-bottom:1px dashed var(--edge);padding-bottom:6px}
+.chrl:last-child{border-bottom:none}
+.chrl span{font-size:12.5px;line-height:1.45}
+.chrl i{font-style:normal;font-size:10.5px;color:var(--dim);white-space:nowrap}
 .folk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .folkc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--lane2);
   border:2px solid var(--edge);border-radius:10px;padding:9px 10px;text-align:left}
@@ -980,37 +994,37 @@ const LEVELS=[
 /* ---------------- BOUTIQUE / VILLAGE GAULOIS ---------------- */
 const SHOP=[
 /* --- village --- */
-{id:'feu',ic:'🔥',n:'Feu de camp',ne:'Campfire',p:60},
-{id:'hutte',ic:'🛖',n:'Hutte',ne:'Hut',p:80,stack:true,rate:1.22,
+{id:'feu',ic:'🔥',n:'Feu de camp',ne:'Campfire',p:60,rc:{wood:4}},
+{id:'hutte',ic:'🛖',n:'Hutte',ne:'Hut',p:80,stack:true,rate:1.22,rc:{wood:10},
  d:'Chaque hutte fait venir un villageois',de:'Each hut brings in a new villager'},
-{id:'ble',ic:'🌾',n:'Champ de blé',ne:'Wheat field',p:90},
-{id:'poule',ic:'🐔',n:'Poulailler',ne:'Hen house',p:100},
-{id:'puits',ic:'⛲',n:'Puits',ne:'Well',p:110},
+{id:'ble',ic:'🌾',n:'Champ de blé',ne:'Wheat field',p:90,rc:{wood:6}},
+{id:'poule',ic:'🐔',n:'Poulailler',ne:'Hen house',p:100,rc:{wood:8,food:4}},
+{id:'puits',ic:'⛲',n:'Puits',ne:'Well',p:110,rc:{wood:6,iron:3}},
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
-{id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140},
-{id:'forge',ic:'⚒️',n:'Forge du forgeron',ne:'Blacksmith forge',p:150},
+{id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140,rc:{wood:22}},
+{id:'forge',ic:'⚒️',n:'Forge du forgeron',ne:'Blacksmith forge',p:150,rc:{wood:10,iron:8}},
 {id:'chien',ic:'🐶',n:'Idéfix le chien',ne:'Dogmatix the dog',p:160},
 {id:'barde',ic:'🎶',n:'Le barde (ligoté)',ne:'The bard (tied up)',p:180},
-{id:'taverne',ic:'🍺',n:'Taverne',ne:'Tavern',p:200},
-{id:'chaudron',ic:'⚗️',n:'Chaudron de potion',ne:'Potion cauldron',p:220},
+{id:'taverne',ic:'🍺',n:'Taverne',ne:'Tavern',p:200,rc:{wood:16,food:10}},
+{id:'chaudron',ic:'⚗️',n:'Chaudron de potion',ne:'Potion cauldron',p:220,rc:{iron:12,wood:6}},
 {id:'druide',ic:'🧙',n:'Le druide',ne:'The druid',p:250},
 {id:'chef',ic:'👑',n:'Le chef sur son bouclier',ne:'The chief on his shield',p:300},
-{id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400},
+{id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400,rc:{food:40,wood:20}},
 /* --- armée : chaîne de progression contre Rome --- */
-{id:'camp',ic:'⛺',n:'Camp militaire',ne:'Military camp',p:260,cat:'army',req:'forge',pw:10,
+{id:'camp',ic:'⛺',n:'Camp militaire',ne:'Military camp',p:260,cat:'army',req:'forge',pw:10,rc:{wood:18,iron:10},
  d:'Tentes et feu de guerre',de:'Tents and a war fire'},
-{id:'entrainement',ic:'🎯',n:'Terrain d\'entraînement',ne:'Training ground',p:300,cat:'army',req:'camp',pw:12,
+{id:'entrainement',ic:'🎯',n:'Terrain d\'entraînement',ne:'Training ground',p:300,cat:'army',req:'camp',pw:12,rc:{wood:20,iron:12},
  d:'Mannequins et râtelier d\'armes',de:'Dummies and a weapon rack'},
-{id:'guerriers',ic:'🛡️',n:'Escouade de guerriers',ne:'Warrior squad',p:340,cat:'army',req:'entrainement',pw:18,
+{id:'guerriers',ic:'🛡️',n:'Escouade de guerriers',ne:'Warrior squad',p:340,cat:'army',req:'entrainement',pw:18,rc:{iron:22,food:14},
  d:'4 guerriers casqués en patrouille',de:'4 helmeted warriors on patrol'},
-{id:'tour',ic:'🗼',n:'Tour de guet',ne:'Watchtower',p:380,cat:'army',req:'palissade',pw:15,
+{id:'tour',ic:'🗼',n:'Tour de guet',ne:'Watchtower',p:380,cat:'army',req:'palissade',pw:15,rc:{wood:26,iron:10},
  d:'Voit venir les légions de loin',de:'Spots the legions from afar'},
-{id:'muraille',ic:'🧱',n:'Muraille de pierre',ne:'Stone rampart',p:450,cat:'army',req:'palissade',pw:25,
+{id:'muraille',ic:'🧱',n:'Muraille de pierre',ne:'Stone rampart',p:450,cat:'army',req:'palissade',pw:25,rc:{wood:48,iron:18},
  d:'Remparts crénelés autour du village',de:'Crenellated ramparts around the village'},
-{id:'catapulte',ic:'🎪',n:'Catapulte',ne:'Catapult',p:520,cat:'army',req:'entrainement',pw:22,
+{id:'catapulte',ic:'🎪',n:'Catapulte',ne:'Catapult',p:520,cat:'army',req:'entrainement',pw:22,rc:{wood:30,iron:26},
  d:'De quoi renvoyer les Romains chez eux',de:'Enough to send the Romans home'},
-{id:'chefguerre',ic:'⚔️',n:'Chef de guerre',ne:'Warlord',p:600,cat:'army',req:'guerriers',pw:30,
+{id:'chefguerre',ic:'⚔️',n:'Chef de guerre',ne:'Warlord',p:600,cat:'army',req:'guerriers',pw:30,rc:{iron:34,food:20},
  d:'Il mène la charge, panache rouge au vent',de:'He leads the charge, red plume flying'}
 ];
 /* nombre d'exemplaires possédés (1 max sauf articles empilables) */
@@ -1025,6 +1039,22 @@ function priceOf(it){
   return Math.round(it.p*Math.pow(it.rate||1.22,nOwned(it.id)));
 }
 function hutCount(){ return nOwned('hutte'); }
+/* coût en ressources : croît lui aussi pour les articles empilables */
+function resCost(it){
+  if(!it.rc) return null;
+  const m=it.stack?Math.pow(1.18,nOwned(it.id)):1, out={};
+  Object.keys(it.rc).forEach(k=>{ out[k]=Math.round(it.rc[k]*m); });
+  return out;
+}
+function canAfford(it){
+  const rc=resCost(it); if(!rc) return true;
+  S.res=S.res||{food:0,wood:0,iron:0};
+  return Object.keys(rc).every(k=>(S.res[k]||0)>=rc[k]);
+}
+function resLabel(rc){
+  const ic={food:'🌾',wood:'🪵',iron:'⚙️'};
+  return Object.keys(rc).map(k=>rc[k]+' '+ic[k]).join(' ');
+}
 const ARMY_MAX=132;   // puissance totale si tout est acheté
 function armyPower(){ return SHOP.filter(i=>i.cat==='army'&&S.village.includes(i.id))
   .reduce((n,i)=>n+i.pw,0); }
@@ -1089,6 +1119,7 @@ const defaults=()=>({
   coins:0, coinsTotal:0,   // sesterces 🪙
   res:{food:0,wood:0,iron:0},   // ressources gagnées en répondant juste
   needDay:'',                   // jour du dernier ravitaillement
+  lastTribute:0,                // horodatage du dernier versement horaire
   village:[],              // ids d'objets achetés, dans l'ordre
   vpos:{},                 // id -> [x,z] : placement libre par le joueur
   stack:{},                // id -> nombre d'exemplaires (huttes)
@@ -1417,13 +1448,32 @@ function villageHappy(){
   return Math.round(a.reduce((s2,x)=>s2+x.pct,0)/a.length);
 }
 function allNeedsMet(){ return NEEDS.every(n=>needState(n).ok); }
+/* Village prospère = 1 🪙 par heure, même hors-ligne (12 h de report maximum). */
+function collectTribute(){
+  if(!S.village||!S.village.length) return 0;
+  const now=Date.now();
+  if(!S.lastTribute){ S.lastTribute=now; save(); return 0; }
+  if(!allNeedsMet()){ S.lastTribute=now; save(); return 0; }
+  const hours=Math.floor((now-S.lastTribute)/36e5);
+  if(hours<1) return 0;
+  const paid=Math.min(hours,12);
+  S.lastTribute+=paid*36e5;
+  gainCoins(paid); save();
+  return paid;
+}
+function tributeIn(){          // minutes avant la prochaine pièce
+  if(!S.lastTribute||!allNeedsMet()) return null;
+  const ms=36e5-((Date.now()-S.lastTribute)%36e5);
+  return Math.max(0,Math.ceil(ms/6e4));
+}
 function needsHtml(){
   const pop=popCount(), met=allNeedsMet();
   let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
    +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>'
+   +'<div class="stock">'+NEEDS.map(n=>'<span>'+n.ic+' <b>'+((S.res&&S.res[n.k])||0)+'</b></span>').join('')+'</div>'
    +'<p class="small" style="margin:0 0 10px">'
-   +t('Chaque <b>bonne réponse</b> produit une ressource. Le type dépend de <b>l\'activité</b> que tu joues :',
-      'Every <b>correct answer</b> produces a resource. Which one depends on the <b>activity</b> you play:')+'</p>';
+   +t('Chaque <b>bonne réponse</b> produit une ressource. Elles servent à <b>construire</b> (chaque bâtiment coûte des matériaux) et à <b>nourrir</b> le village.',
+      'Every <b>correct answer</b> produces a resource. They are used to <b>build</b> (each building costs materials) and to <b>feed</b> the village.')+'</p>';
   NEEDS.forEach(n=>{ const st=needState(n);
     h+='<div class="needbk'+(st.ok?' ok':'')+'">'
      +'<div class="needrow"><span class="nic">'+n.ic+'</span>'
@@ -1434,9 +1484,12 @@ function needsHtml(){
             :' · <b style="color:var(--stop)">'+t('il manque '+st.miss,'need '+st.miss+' more')+'</b>')+'</span>'
      +(st.ok?'':'<button class="sbuy" onclick="'+n.go+'">'+esc(t(n.btn,n.btne))+' →</button>')+'</div></div>';
   });
+  const tin=tributeIn();
+  h+=(met?'<div class="tribute">🪙 '+t('Village prospère : <b>+1 sesterce par heure</b>','Thriving village: <b>+1 sesterce per hour</b>')
+      +(tin!=null?' <i>('+t('prochaine dans '+tin+' min','next in '+tin+' min')+')</i>':'')+'</div>':'');
   h+='<p class="small" style="margin-top:10px;line-height:1.6">'+(met
-      ?t('😄 <b>Tous les besoins sont comblés !</b> Le village prospère : tu gagnes <b>+1 🪙 bonus</b> à chaque bonne réponse.',
-         '😄 <b>All needs are met!</b> The village thrives: you earn <b>+1 bonus 🪙</b> on every correct answer.')
+      ?t('😄 <b>Tous les besoins sont comblés !</b> Tu gagnes <b>+1 🪙 bonus</b> à chaque bonne réponse, <b>et 1 🪙 par heure</b> même hors du jeu.',
+         '😄 <b>All needs are met!</b> You earn <b>+1 bonus 🪙</b> per correct answer, <b>and 1 🪙 per hour</b> even while away.')
       :t('Comble les trois jauges pour débloquer le <b>bonus de prospérité</b> (+1 🪙 par bonne réponse). Les besoins montent quand le village s\'agrandit.',
          'Fill all three bars to unlock the <b>prosperity bonus</b> (+1 🪙 per correct answer). Needs grow as the village grows.'))+'</p></div>';
   return h;
@@ -2301,11 +2354,69 @@ function tree(s,pine){
   return g;
 }
 /* ---------- habitants nommés, persistants d'une session à l'autre ---------- */
-const NAMES_M=['Bravourix','Tranquilix','Ronchonnix','Costaudix','Malinix','Rapidix','Gourmandix',
- 'Bavardix','Têtubix','Vaillantix','Râleurix','Doucix','Farouchix','Solidix','Gaillardix',
- 'Musclix','Astucix','Grognonix','Sagacix','Pétulantix'];
-const NAMES_F=['Belladona','Fleurine','Aurélia','Morgane','Brenna','Ysolde','Ambra','Nemetona',
- 'Rhiannon','Sirona','Éponine','Maëlys','Enora','Solenn','Gwenaëlle'];
+/* base de personnages : chacun a son nom, son sexe et sa petite phrase d'arrivée */
+const ROSTER=[
+ {n:'Vercingétorix',f:0,tr:'courageux',bio:'A tenu tête à César. Deux fois.',bioe:'Stood up to Caesar. Twice.'},
+ {n:'Bravourix',f:0,tr:'courageux',bio:'Se porte volontaire avant même la question.',bioe:'Volunteers before the question is asked.'},
+ {n:'Ronchonnix',f:0,tr:'grognon',bio:'Trouve que c\'était mieux avant. Avant quoi ? Avant.',bioe:'Thinks it was better before. Before what? Before.'},
+ {n:'Tranquilix',f:0,tr:'reveur',bio:'N\'a jamais couru de sa vie.',bioe:'Has never run in his life.'},
+ {n:'Costaudix',f:0,tr:'travailleur',bio:'Porte deux menhirs. Un dans chaque main.',bioe:'Carries two menhirs. One in each hand.'},
+ {n:'Malinix',f:0,tr:'curieux',bio:'A toujours une idée. Rarement bonne.',bioe:'Always has an idea. Rarely a good one.'},
+ {n:'Rapidix',f:0,tr:'travailleur',bio:'Fait tout vite, y compris les erreurs.',bioe:'Does everything fast, mistakes included.'},
+ {n:'Gourmandix',f:0,tr:'gourmand',bio:'Connaît l\'heure du repas au sanglier près.',bioe:'Knows mealtime down to the boar.'},
+ {n:'Bavardix',f:0,tr:'bavard',bio:'Trois heures pour dire bonjour.',bioe:'Three hours just to say hello.'},
+ {n:'Têtubix',f:0,tr:'grognon',bio:'N\'a jamais changé d\'avis. Jamais.',bioe:'Has never changed his mind. Ever.'},
+ {n:'Vaillantix',f:0,tr:'courageux',bio:'Dort avec son bouclier.',bioe:'Sleeps with his shield.'},
+ {n:'Râleurix',f:0,tr:'grognon',bio:'Râle même quand tout va bien.',bioe:'Grumbles even when all is well.'},
+ {n:'Doucix',f:0,tr:'reveur',bio:'Parle aux sangliers. Ils répondent.',bioe:'Talks to boars. They answer.'},
+ {n:'Farouchix',f:0,tr:'courageux',bio:'A mordu un légionnaire. Le légionnaire a fui.',bioe:'Bit a legionary. The legionary fled.'},
+ {n:'Solidix',f:0,tr:'travailleur',bio:'Sa hutte a tenu trois tempêtes.',bioe:'His hut survived three storms.'},
+ {n:'Gaillardix',f:0,tr:'gourmand',bio:'Champion de lancer de tonneau.',bioe:'Barrel-throwing champion.'},
+ {n:'Musclix',f:0,tr:'travailleur',bio:'Soulève l\'enclume pour s\'échauffer.',bioe:'Lifts the anvil to warm up.'},
+ {n:'Astucix',f:0,tr:'curieux',bio:'A inventé la roue carrée. Puis la ronde.',bioe:'Invented the square wheel. Then the round one.'},
+ {n:'Grognonix',f:0,tr:'grognon',bio:'Deux mots par jour, maximum.',bioe:'Two words a day, maximum.'},
+ {n:'Sagacix',f:0,tr:'curieux',bio:'Lit les nuages comme d\'autres lisent les runes.',bioe:'Reads clouds like others read runes.'},
+ {n:'Pétulantix',f:0,tr:'bavard',bio:'Chante en travaillant. Faux.',bioe:'Sings while working. Off-key.'},
+ {n:'Rustix',f:0,tr:'travailleur',bio:'Se lève avant le coq. Le coq lui en veut.',bioe:'Wakes before the rooster. The rooster resents it.'},
+ {n:'Ventrebleux',f:0,tr:'gourmand',bio:'A mangé le banquet d\'avant le banquet.',bioe:'Ate the pre-banquet banquet.'},
+ {n:'Cabochardix',f:0,tr:'grognon',bio:'Refuse d\'admettre que la Terre est ronde.',bioe:'Refuses to admit the Earth is round.'},
+ {n:'Fortunix',f:0,tr:'curieux',bio:'Trouve toujours des pièces dans la boue.',bioe:'Always finds coins in the mud.'},
+ {n:'Placidix',f:0,tr:'reveur',bio:'Rien ne le presse, pas même les Romains.',bioe:'Nothing rushes him, not even the Romans.'},
+ {n:'Truculentix',f:0,tr:'bavard',bio:'Raconte la même histoire depuis huit ans.',bioe:'Has told the same story for eight years.'},
+ {n:'Nerveusix',f:0,tr:'courageux',bio:'Prêt à se battre. Contre n\'importe quoi.',bioe:'Ready to fight. Anything.'},
+ {n:'Songeurix',f:0,tr:'reveur',bio:'A oublié pourquoi il est entré dans la hutte.',bioe:'Forgot why he entered the hut.'},
+ {n:'Copieux',f:0,tr:'gourmand',bio:'Sert des portions de géant.',bioe:'Serves giant portions.'},
+ {n:'Belladona',f:1,tr:'curieux',bio:'Connaît chaque plante de la forêt.',bioe:'Knows every plant in the forest.'},
+ {n:'Fleurine',f:1,tr:'reveur',bio:'Met des fleurs partout, même sur les boucliers.',bioe:'Puts flowers everywhere, even on shields.'},
+ {n:'Aurélia',f:1,tr:'travailleur',bio:'Debout la première, couchée la dernière.',bioe:'First up, last to bed.'},
+ {n:'Morgane',f:1,tr:'curieux',bio:'Pose des questions qui dérangent le druide.',bioe:'Asks questions that unsettle the druid.'},
+ {n:'Brenna',f:1,tr:'courageux',bio:'A chassé un ours à mains nues. Le sien.',bioe:'Chased off a bear bare-handed. Her own.'},
+ {n:'Ysolde',f:1,tr:'reveur',bio:'Chante mieux que le barde. Ce n\'est pas difficile.',bioe:'Sings better than the bard. Not hard.'},
+ {n:'Ambra',f:1,tr:'gourmand',bio:'Goûte tout avant tout le monde.',bioe:'Tastes everything before everyone else.'},
+ {n:'Nemetona',f:1,tr:'curieux',bio:'Veille sur le bois sacré.',bioe:'Watches over the sacred grove.'},
+ {n:'Rhiannon',f:1,tr:'travailleur',bio:'Tisse plus vite que son ombre.',bioe:'Weaves faster than her shadow.'},
+ {n:'Sirona',f:1,tr:'reveur',bio:'Soigne les blessures et les chagrins.',bioe:'Heals wounds and heartaches.'},
+ {n:'Éponine',f:1,tr:'bavard',bio:'Sait tout sur tout le monde. Surtout sur toi.',bioe:'Knows everything about everyone. Especially you.'},
+ {n:'Maëlys',f:1,tr:'courageux',bio:'A appris à lancer la hache avant à marcher.',bioe:'Learned to throw an axe before walking.'},
+ {n:'Enora',f:1,tr:'travailleur',bio:'Répare ce que les autres cassent.',bioe:'Fixes what others break.'},
+ {n:'Solenn',f:1,tr:'grognon',bio:'N\'aime ni le bruit, ni les Romains, ni le bruit des Romains.',bioe:'Dislikes noise, Romans, and the noise of Romans.'},
+ {n:'Gwenaëlle',f:1,tr:'gourmand',bio:'Meilleure cuisinière du village. Elle le sait.',bioe:'Best cook in the village. She knows it.'},
+ {n:'Riwana',f:1,tr:'curieux',bio:'Démonte tout pour voir dedans.',bioe:'Takes everything apart to see inside.'},
+ {n:'Ondine',f:1,tr:'reveur',bio:'Passe des heures au bord du puits.',bioe:'Spends hours by the well.'},
+ {n:'Kiara',f:1,tr:'courageux',bio:'Première à monter sur la muraille.',bioe:'First up on the rampart.'},
+ {n:'Naoline',f:1,tr:'bavard',bio:'Commente tout ce qui bouge.',bioe:'Comments on everything that moves.'},
+ {n:'Loeiza',f:1,tr:'travailleur',bio:'Compte les gerbes deux fois. Par prudence.',bioe:'Counts the sheaves twice. To be safe.'},
+ {n:'Marius',f:0,tr:'curieux',bio:'Ancien Romain. Il a préféré rester.',bioe:'A former Roman. He chose to stay.'},
+ {n:'Barbérix',f:0,tr:'bavard',bio:'Coupe les barbes et les histoires.',bioe:'Trims beards and cuts stories short.'},
+ {n:'Tonnelix',f:0,tr:'gourmand',bio:'Fabrique les tonneaux. Les vide aussi.',bioe:'Makes the barrels. Empties them too.'},
+ {n:'Chasseurix',f:0,tr:'courageux',bio:'Rentre toujours avec un sanglier.',bioe:'Always comes back with a boar.'},
+ {n:'Silvana',f:1,tr:'reveur',bio:'Dort dans les arbres quand il fait chaud.',bioe:'Sleeps in trees when it is hot.'},
+ {n:'Alambix',f:0,tr:'curieux',bio:'Teste les potions. Sur lui-même.',bioe:'Tests potions. On himself.'},
+ {n:'Bougonnix',f:0,tr:'grognon',bio:'A un avis sur ton avis.',bioe:'Has an opinion about your opinion.'},
+ {n:'Vivianne',f:1,tr:'curieux',bio:'Dessine des cartes de pays qu\'elle n\'a pas vus.',bioe:'Draws maps of lands she has not seen.'},
+ {n:'Taranis',f:0,tr:'courageux',bio:'On dit que la foudre l\'évite par respect.',bioe:'They say lightning avoids him out of respect.'},
+ {n:'Brigantia',f:1,tr:'travailleur',bio:'Forge aussi bien que le forgeron. Ne le dis pas.',bioe:'Forges as well as the smith. Do not tell him.'}
+];
 const TRAITS=[
  {k:'bavard',  n:'bavard',ne:'chatty',      d:'Ne peut pas s\'empêcher de raconter sa vie',de:'Cannot stop telling his life story'},
  {k:'travailleur',n:'travailleur',ne:'hardworking',d:'Toujours le premier au travail',de:'Always first to work'},
@@ -2315,23 +2426,78 @@ const TRAITS=[
  {k:'courageux',n:'courageux',ne:'brave',   d:'Sera au premier rang face à César',de:'Will stand front row against Caesar'},
  {k:'curieux', n:'curieux',ne:'curious',    d:'Pose des questions sur tout',de:'Asks questions about everything'}
 ];
-function newPerson(i){
-  const f=Math.random()<0.42;
-  const pool=f?NAMES_F:NAMES_M;
-  const used=(S.people||[]).map(x=>x.name);
-  let name=pool[Math.floor(Math.random()*pool.length)], guard=0;
-  while(used.includes(name)&&guard++<40) name=pool[Math.floor(Math.random()*pool.length)];
-  return {id:'p'+Date.now().toString(36)+i, name, f, ci:Math.floor(Math.random()*8),
-          tr:TRAITS[Math.floor(Math.random()*TRAITS.length)].k,
-          born:Date.now(), bond:{}, chats:0, days:0};
+/* quel bâtiment loge quel métier */
+const HOUSED={hutte:null, forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
+  puits:'eau', chaudron:'potion', camp:'garde', entrainement:'garde', banquet:'boire', feu:'feu'};
+function jobForBuilding(id){
+  const base=id.split('#')[0];
+  if(base==='hutte'){ const pool=['bois','moisson','eau','feu']; return pool[Math.floor(Math.random()*pool.length)]; }
+  return HOUSED[base]||'bois';
 }
-/* garde la liste d'habitants alignée sur le nombre de villageois affichés */
-function syncPeople(n){
+function newPerson(i,home,jobK){
+  const used=(S.people||[]).map(x=>x.name);
+  const free=ROSTER.filter(r=>!used.includes(r.n)&&r.n!=='Vercingétorix');
+  const pick=free.length?free[Math.floor(Math.random()*free.length)]
+    :{n:'Villageois '+(used.length+1),f:Math.random()<.5?1:0,tr:'travailleur',bio:'Arrivé récemment.',bioe:'Newly arrived.'};
+  return {id:'p'+Date.now().toString(36)+i+Math.floor(Math.random()*999), name:pick.n, f:!!pick.f,
+          ci:Math.floor(Math.random()*8), tr:pick.tr, bio:pick.bio, bioe:pick.bioe,
+          home:home||null, job:jobK||'feu', love:null, born:Date.now(), bond:{}, chats:0};
+}
+/* la population découle des bâtiments : 1 fondateur + 1 habitant par bâtiment habité */
+function housingKeys(){
+  const keys=['founder'];
+  SHOP.forEach(it=>{
+    if(!(it.id in HOUSED)) return;
+    if(it.stack){ for(let i=0;i<nOwned(it.id);i++) keys.push(i?it.id+'#'+i:it.id); }
+    else if(S.village.includes(it.id)) keys.push(it.id);
+  });
+  return keys;
+}
+function syncPeople(){
   S.people=S.people||[];
-  while(S.people.length<n){ const p=newPerson(S.people.length); S.people.push(p); }
-  if(S.people.length>n) S.people=S.people.slice(0,n);
+  const keys=housingKeys();
+  // le fondateur d'abord
+  if(!S.people.length){ const r=ROSTER[0], f=newPerson(0,'founder','feu');
+    f.name=r.n; f.tr=r.tr; f.f=!!r.f; f.bio=r.bio; f.bioe=r.bioe; S.people.push(f); }
+  keys.forEach(k=>{ if(k==='founder') return;
+    if(!S.people.some(p=>p.home===k)) S.people.push(newPerson(S.people.length,k,jobForBuilding(k))); });
+  S.people=S.people.filter(p=>p.home==='founder'||keys.includes(p.home));
   save(); return S.people;
 }
+/* chroniques du village : amours, amitiés, disputes */
+function chron(fr,en){
+  S.events=S.events||[];
+  S.events.unshift({t:Date.now(),fr,en});
+  if(S.events.length>24) S.events.length=24;
+}
+/* évolution d'une relation après une discussion */
+function relate(A,B){
+  A.bond[B.id]=(A.bond[B.id]||0)+1; B.bond[A.id]=(B.bond[A.id]||0)+1;
+  A.chats++; B.chats++;
+  const n=A.bond[B.id];
+  if(n===6) chron(A.name+' et '+B.name+' sont devenus amis.',A.name+' and '+B.name+' became friends.');
+  if(n===14) chron(A.name+' et '+B.name+' sont désormais inséparables.',A.name+' and '+B.name+' are now inseparable.');
+  // coup de foudre : lien fort, pas déjà en couple, et sexes différents
+  if(n>=20&&!A.love&&!B.love&&A.f!==B.f&&Math.random()<0.35){
+    A.love=B.id; B.love=A.id;
+    chron('💛 '+A.name+' et '+B.name+' filent le parfait amour !','💛 '+A.name+' and '+B.name+' have fallen in love!');
+  }
+  // petite dispute
+  if(n>8&&Math.random()<0.045){
+    A.bond[B.id]=Math.max(0,n-4); B.bond[A.id]=A.bond[B.id];
+    const why=[['une histoire de sanglier mal partagé','a badly shared boar'],
+               ['un menhir posé de travers','a crooked menhir'],
+               ['la fraîcheur du poisson','the freshness of the fish'],
+               ['qui parle le plus fort à la veillée','who talks loudest at the gathering']];
+    const w=why[Math.floor(Math.random()*why.length)];
+    chron('⚡ '+A.name+' s\'est disputé avec '+B.name+' pour '+w[0]+'.',
+          '⚡ '+A.name+' argued with '+B.name+' over '+w[1]+'.');
+    if(A.love===B.id&&Math.random()<0.4){ A.love=null; B.love=null;
+      chron('💔 '+A.name+' et '+B.name+' se sont séparés…','💔 '+A.name+' and '+B.name+' have broken up…'); }
+  }
+  V3.saveSoon=1;
+}
+function loveOf(p){ return p.love?(S.people||[]).find(x=>x.id===p.love):null; }
 function traitOf(k){ return TRAITS.find(x=>x.k===k)||TRAITS[0]; }
 function daysIn(p){ return Math.max(0,Math.floor((Date.now()-p.born)/864e5)); }
 function bestFriend(p){
@@ -2724,8 +2890,8 @@ function buildVillage(scene){
   addSpot('entrainement',52,-28,'garde'); addSpot('camp',-56,-26,'garde');
   addSpot('chaudron',-17,14,'potion'); addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');
   if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
-  const n=Math.min(12,Math.floor(owned.length/2)+1+hutCount()), walkers=[];
-  const folk=syncPeople(n);
+  const folk=syncPeople();
+  const n=Math.min(16,folk.length), walkers=[];
   // lieux de repos : les huttes servent de maisons pour la nuit
   const homes=[]; for(let i=0;i<Math.max(1,hutCount());i++){
     const k=i?'hutte#'+i:'hutte';
@@ -2735,8 +2901,8 @@ function buildVillage(scene){
   for(let i=0;i<n;i++){
     const rec=folk[i];
     const p=person(rec.ci);
-    const st=spots[i%spots.length];
-    const job=JOBS.find(j=>j.k===st.job)||JOBS[JOBS.length-1];
+    const job=JOBS.find(j=>j.k===rec.job)||JOBS[JOBS.length-1];
+    const st=spots.find(x=>x.job===rec.job)||spots[i%spots.length];
     p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
     const tl=toolMesh(job.tool);
     if(tl&&p.userData.hand) p.userData.hand.add(tl);
@@ -2951,11 +3117,7 @@ function v3dInit(){
             if(o!==p){
               u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p;
               // l'amitié se renforce à chaque discussion
-              if(u.rec&&o.userData.rec){
-                const A=u.rec,B=o.userData.rec;
-                A.bond[B.id]=(A.bond[B.id]||0)+1; B.bond[A.id]=(B.bond[A.id]||0)+1;
-                A.chats++; B.chats++; V3.saveSoon=1;
-              }
+              if(u.rec&&o.userData.rec) relate(u.rec,o.userData.rec);
             } else { u.tgt.set(u.home.x,0,u.home.z); u.talk=null; }
           }else if(social){                                     // veillée autour du feu / banquet
             const f=built.spots.find(x=>x.job==='feu')||u.home;
@@ -3027,6 +3189,7 @@ function miniInit(){
 }
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
+  collectTribute();
   const owned=S.village, ap=armyPct(), pw=armyPower();
   const vill=SHOP.filter(i=>i.cat!=='army'), army=SHOP.filter(i=>i.cat==='army');
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
@@ -3037,6 +3200,7 @@ function scrVillage(){
    +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
    +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
    +'</div>'
+   +chronHtml()
    +peopleHtml()
    +needsHtml()
    +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
@@ -3051,16 +3215,18 @@ function scrVillage(){
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
      :t('Village : <b>'+owned.length+'/'+SHOP.length+'</b> éléments · chaque bonne réponse rapporte des 🪙','Village: <b>'+owned.length+'/'+SHOP.length+'</b> items · every correct answer earns 🪙'))+'</p></div>';
   const row=s2=>{
-    const cnt=nOwned(s2.id), cost=priceOf(s2);
+    const cnt=nOwned(s2.id), cost=priceOf(s2), rc=resCost(s2), okRes=canAfford(s2);
     const got=s2.stack?false:S.village.includes(s2.id), can=S.coins>=cost;
     const lock=s2.req&&!S.village.includes(s2.req);
     const reqN=lock?(SHOP.find(x=>x.id===s2.req)||{}):null;
     let r='<div class="shoprow'+(got?' got':'')+(lock?' lock':'')+'">'+mini3d(s2.id)
      +'<span class="snm">'+esc(t(s2.n,s2.ne))+(s2.stack&&cnt?' <b class="scnt">×'+cnt+'</b>':'')
      +(s2.d?'<i class="sdesc">'+esc(t(s2.d,s2.de))+(s2.pw?' · +'+s2.pw+' ⚔️':'')+'</i>':'')
-     +(lock?'<i class="sdesc">🔒 '+t('nécessite : ','requires: ')+esc(t(reqN.n,reqN.ne))+'</i>':'')+'</span>';
+     +(lock?'<i class="sdesc">🔒 '+t('nécessite : ','requires: ')+esc(t(reqN.n,reqN.ne))+'</i>':'')
+     +(rc&&!got?'<i class="sdesc'+(okRes?' okres':' badres')+'">'+t('matériaux','materials')+' : '+resLabel(rc)+(okRes?' ✔':' ✘')+'</i>':'')
+     +'</span>';
     r+= got?'<span class="sgot">✔ '+t('acquis','owned')+'</span>'
-       :'<button class="sbuy'+(can&&!lock?'':' cant')+'" onclick="G.buy(\''+s2.id+'\')">'+cost+' 🪙</button>';
+       :'<button class="sbuy'+(can&&!lock&&okRes?'':' cant')+'" onclick="G.buy(\''+s2.id+'\')">'+cost+' 🪙</button>';
     return r+'</div>';
   };
   v+='<div class="panel"><div class="eyebrow">🛒 '+t('VILLAGE — tes sesterces : ','VILLAGE — your sesterces: ')+S.coins+' 🪙</div>';
@@ -3083,8 +3249,14 @@ function goHome(){
     +'<button class="btn btn-stop" style="flex:1;justify-content:center" onclick="G.hideOverlay();G.go(\'home\')">'+t('QUITTER','LEAVE')+'</button></span>');
 }
 /* fiche détaillée d'un habitant */
+function homeLabel(rec){
+  if(!rec.home||rec.home==='founder') return t('la maison du chef','the chief\'s house');
+  const base=rec.home.split('#')[0], it=SHOP.find(x=>x.id===base);
+  const num=rec.home.includes('#')?' n°'+(+rec.home.split('#')[1]+1):'';
+  return it?t(it.n,it.ne)+num:rec.home;
+}
 function showPerson(rec,obj){
-  const tr=traitOf(rec.tr), bf=bestFriend(rec);
+  const tr=traitOf(rec.tr), bf=bestFriend(rec), lv=loveOf(rec);
   const job=obj&&obj.userData.job?obj.userData.job:null;
   const d=daysIn(rec);
   const mode=routine(), doing={work:t('au travail','at work'),eat:t('à table','eating'),
@@ -3092,10 +3264,13 @@ function showPerson(rec,obj){
   showOverlay(job?job.ic:'🧑', rec.name,
     '<div style="text-align:left;font-size:13.5px;line-height:1.7">'
     +(job?'<b>'+t('Métier','Trade')+' :</b> '+esc(t(job.n,job.ne))+'<br>':'')
+    +(rec.bio?'<i style="color:var(--dim)">« '+esc(t(rec.bio,rec.bioe))+' »</i><br><br>':'')
     +'<b>'+t('Caractère','Character')+' :</b> '+esc(t(tr.n,tr.ne))+' — <i>'+esc(t(tr.d,tr.de))+'</i><br>'
     +'<b>'+t('Au village depuis','In the village for')+' :</b> '+(d?d+' '+t('jour'+(d>1?'s':''),'day'+(d>1?'s':'')):t('aujourd\'hui','today'))+'<br>'
     +'<b>'+t('Discussions','Chats')+' :</b> '+(rec.chats||0)+'<br>'
     +'<b>'+t('Meilleur ami','Best friend')+' :</b> '+(bf?esc(bf.p.name)+' <span style="color:var(--dim)">('+bf.n+' '+t('échanges','talks')+')</span>':t('personne encore…','nobody yet…'))+'<br>'
+    +(lv?'<b>💛 '+t('En couple avec','In love with')+' :</b> '+esc(lv.name)+'<br>':'')
+    +'<b>'+t('Loge à','Lives at')+' :</b> '+esc(homeLabel(rec))+'<br>'
     +'<b>'+t('En ce moment','Right now')+' :</b> '+doing
     +'</div>');
 }
@@ -3110,11 +3285,24 @@ function peopleHtml(){
     h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
      +'<span class="fkn">'+esc(r.name)+'</span>'
      +'<span class="fkt">'+esc(t(tr.n,tr.ne))+'</span>'
-     +'<span class="fkb">'+(bf?'🤝 '+esc(bf.p.name):'—')+'</span></button>';
+     +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name):(bf?'🤝 '+esc(bf.p.name):'—'))+'</span></button>';
   });
   return h+'</div><p class="small" style="margin-top:8px">'
    +t('Touche un villageois dans la scène 3D (hors mode déplacement) pour voir sa fiche. Chaque nouvelle hutte fait venir un habitant.',
       'Tap a villager in the 3D scene (outside move mode) to see their profile. Each new hut brings in a villager.')+'</p></div>';
+}
+/* chroniques du village */
+function chronHtml(){
+  const ev=S.events||[];
+  if(!ev.length) return '';
+  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">📜 '
+   +t('CHRONIQUES DU VILLAGE','VILLAGE CHRONICLES')+'</div><div class="chron">';
+  ev.slice(0,10).forEach(e=>{
+    const dd=Math.floor((Date.now()-e.t)/864e5);
+    h+='<div class="chrl"><span>'+esc(t(e.fr,e.en))+'</span><i>'
+      +(dd?('il y a '+dd+' j'):t('aujourd\'hui','today'))+'</i></div>';
+  });
+  return h+'</div></div>';
 }
 function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
 function toggleEdit(){
@@ -3130,18 +3318,36 @@ function buy(id){
   if(it.req&&!S.village.includes(it.req)){
     const r=SHOP.find(x=>x.id===it.req)||{};
     SFX.ko(); toast('🔒 '+t('Il te faut d\'abord : ','You first need: ')+'<b>'+esc(t(r.n,r.ne))+'</b>'); return; }
+  const rc=resCost(it);
+  if(rc&&!canAfford(it)){
+    const miss=Object.keys(rc).filter(k=>(S.res[k]||0)<rc[k])
+      .map(k=>(rc[k]-(S.res[k]||0))+' '+({food:'🌾',wood:'🪵',iron:'⚙️'})[k]).join(', ');
+    SFX.ko(); toast('🪵 '+t('Matériaux insuffisants ! Il manque : ','Not enough materials! Missing: ')+'<b>'+miss+'</b>');
+    return; }
   const cost=priceOf(it);
   if(S.coins<cost){ SFX.ko(); toast(t('🪙 Pas assez de sesterces ! Il t\'en manque '+(cost-S.coins)+'. Va répondre à des questions !','🪙 Not enough sesterces! You need '+(cost-S.coins)+' more. Go answer questions!')); return; }
   S.coins-=cost;
+  if(rc){ Object.keys(rc).forEach(k=>{ S.res[k]=(S.res[k]||0)-rc[k]; }); }
   if(it.stack){ S.stack=S.stack||{}; S.stack[id]=(S.stack[id]||0)+1;
                 if(!S.village.includes(id)) S.village.push(id); }
   else S.village.push(id);
+  // tout bâtiment habité fait arriver un personnage de la base
+  let arrival=null;
+  if(id in HOUSED){
+    const before=(S.people||[]).map(p=>p.id);
+    syncPeople();
+    arrival=(S.people||[]).find(p=>!before.includes(p.id))||null;
+  }
   save(); checkBadges();
   SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
-  toast(it.ic+' '+(it.stack
-    ? (function(){ const np=newPerson((S.people||[]).length); S.people=S.people||[]; S.people.push(np); save();
-        return t(np.name+' s\'installe dans la hutte n°'+nOwned(id)+' !',np.name+' moves into hut #'+nOwned(id)+'!'); })()
-    : t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!')));
+  if(arrival){
+    const where=homeLabel(arrival);
+    chron(arrival.name+' est arrivé au village ('+where+').',arrival.name+' arrived in the village ('+where+').');
+    toast(it.ic+' <b>'+esc(arrival.name)+'</b> '+t('s\'installe : ','moves in: ')+esc(where)
+      +'<br><i style="color:var(--dim)">« '+esc(t(arrival.bio||'',arrival.bioe||''))+' »</i>');
+  }else{
+    toast(it.ic+' '+t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!'));
+  }
   render();
 }
 
@@ -3467,7 +3673,11 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
-touchDaily(); save();
+touchDaily();
+(function(){ const g=collectTribute(); if(g) setTimeout(()=>toast(
+  t('🪙 Le village prospère t\'a rapporté <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> pendant ton absence !',
+    '🪙 Your thriving village earned you <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> while you were away!')),700); })();
+save();
 render();
 
 </script>
