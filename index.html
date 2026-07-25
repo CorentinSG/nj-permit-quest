@@ -248,6 +248,14 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .gtable tr:last-child td{border-bottom:none}
 
 
+/* ---------- besoins du village ---------- */
+.needrow{display:flex;align-items:center;gap:9px;padding:6px 0}
+.needrow .nic{font-size:19px;width:24px;text-align:center;flex:none}
+.needrow .nbar{flex:1;height:12px;background:#000A;border:2px solid var(--edge);border-radius:7px;overflow:hidden}
+.needrow .nbar i{display:block;height:100%;transition:width .4s}
+.needrow .nval{font-family:var(--mono);font-size:12px;color:var(--stop);font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+.needrow .nval.ok{color:var(--exit)}
+
 /* ---------- compte à rebours invasion ---------- */
 .cdbox{background:linear-gradient(#2A1012,#1A0C10);border:3px solid var(--stopD);border-radius:12px;
   padding:12px 14px;margin-bottom:14px;text-align:center;box-shadow:0 4px 0 #00000066}
@@ -790,7 +798,24 @@ const Q=[
 {w:'gdl',q:"A lost or stolen driver license, permit or non-driver ID should be reported to:",a:["The police","Your insurance company","The nearest driver testing center","The federal government"],x:"Permis perdu ou volé : on prévient la POLICE (risque d'usurpation d'identité), puis on demande un duplicata au MVC.",xe:"Lost or stolen license: report it to the POLICE (identity-theft risk), then get a duplicate from the MVC."},
 {w:'gdl',q:"If you sell your car and do not buy another one, you should:",a:["Turn the license plates in to an MVC agency (or mail them to the MVC)","Keep them as a souvenir","Throw them away","Give them to a friend to use"],x:"Plaques d'immatriculation : elles appartiennent à l'État. Tu les RENDS au MVC, sinon tu restes lié au véhicule (et à ses amendes).",xe:"License plates belong to the State. Return them to the MVC, or you stay tied to the vehicle (and its tickets)."},
 {w:'share',q:"Passing on the right on a road with more than one lane in your direction is allowed when:",a:["The vehicle ahead is turning left and there is room to pass safely","There is any slow-moving vehicle ahead","You are entering an intersection","There are no traffic signals"],x:"Dépassement par la droite autorisé notamment quand le véhicule devant tourne à GAUCHE et qu'il te reste de la place sur la chaussée. Jamais par l'accotement !",xe:"Passing on the right is allowed notably when the vehicle ahead is turning LEFT and there's room on the pavement. Never on the shoulder!"},
-{w:'speed',q:"When driving in the city, you should:",a:["Drive slowly, yield to pedestrians, and look at least 12 seconds ahead","Drive slowly and sound the horn every 12 seconds","Speed up, yield to pedestrians and look 2 seconds ahead","Drive slowly and look only 2 seconds ahead"],x:"Conduite urbaine : lentement, priorité aux piétons, et le regard à 12 SECONDES devant (≈ 1 pâté de maisons).",xe:"City driving: slowly, yield to pedestrians, and scan 12 SECONDS ahead (about one city block)."}
+{w:'speed',q:"When driving in the city, you should:",a:["Drive slowly, yield to pedestrians, and look at least 12 seconds ahead","Drive slowly and sound the horn every 12 seconds","Speed up, yield to pedestrians and look 2 seconds ahead","Drive slowly and look only 2 seconds ahead"],x:"Conduite urbaine : lentement, priorité aux piétons, et le regard à 12 SECONDES devant (≈ 1 pâté de maisons).",xe:"City driving: slowly, yield to pedestrians, and scan 12 SECONDS ahead (about one city block)."},
+
+/* ================ VÉRIFICATIONS & COMPLÉMENTS (2e passe joueur) ================ */
+{w:'points',q:"While driving, a handheld phone may legally be used only to:",a:["Report a fire, a crash, or a medical emergency","Use GPS navigation","Send a quick text at a red light","Make a short call"],x:"Téléphone en main : UNIQUEMENT pour signaler un incendie, un accident ou une urgence médicale. Le GPS et les appels doivent être en mains-libres.",xe:"Handheld phone: ONLY to report a fire, crash or medical emergency. GPS and calls must be hands-free."},
+{w:'share',q:"To turn LEFT from a two-way road onto another two-way road, you should approach the turn:",a:["As close as possible to the line nearest the center of the road","From the right-hand lane","From the shoulder","From whichever lane is emptiest"],x:"Tourner à gauche : on se serre au maximum contre la ligne centrale. Ça dégage la visibilité et laisse passer ceux qui vont tout droit.",xe:"Turning left: hug the line nearest the center. It opens up visibility and lets through traffic pass."},
+{w:'share',q:"When making a right turn, you should NOT:",a:["Swing outward or into another lane while turning","Signal before the turn","Slow down before the turn","Approach as far right as possible"],x:"Virage à droite : on longe le bord droit et on ne déborde JAMAIS sur l'autre voie. Déborder = 4 points et un cycliste écrasé.",xe:"Right turn: hug the right edge and NEVER swing wide into another lane. Swinging wide = 4 points and a crushed cyclist."},
+{w:'signs',q:"A single solid WHITE line painted across your lane at an intersection means:",a:["Stop behind the line when required by a signal or sign","Passing is permitted beyond this point","Traffic from both directions must stop","The lane ends ahead"],x:"La ligne blanche transversale (stop line) marque où s'arrêter. On s'arrête DERRIÈRE, jamais dessus ni au-delà.",xe:"The transverse white stop line marks where to stop. Stop BEHIND it, never on or past it."},
+{w:'speed',q:"In a construction zone, motorists should:",a:["Adjust speed and position to keep space around their vehicle","Keep their normal speed to clear it faster","Ignore posted signs if no workers are visible","Move as close as possible to the cones"],x:"Zone de travaux : adapte ta vitesse ET ta position pour garder de l'espace autour de toi. Rappel : amendes DOUBLÉES.",xe:"Work zone: adjust both speed AND position to keep space around you. Remember: fines are DOUBLED."},
+{w:'speed',q:"As you approach a curve, inertia makes your vehicle tend to:",a:["Keep going straight","Turn into the curve on its own","Slow down by itself","Lean toward the inside of the curve"],x:"L'inertie pousse la voiture TOUT DROIT dans le virage. D'où la règle : on freine AVANT, pas pendant.",xe:"Inertia makes the car want to keep going STRAIGHT through a curve. Hence: brake BEFORE, not during."},
+{w:'surv',q:"The standard accident-prevention formula is:",a:["Be alert, be prepared, act in time","Be calm, be quick, be decisive","Be alert, be aggressive, act in time","Be prepared, be safe, be cautious"],x:"La formule du manuel : « Be alert, be prepared, act in time » — rester attentif, être prêt, agir à temps. Elle tombe telle quelle.",xe:"The manual's formula: 'Be alert, be prepared, act in time.' It shows up verbatim on the test."},
+{w:'booze',q:"In New Jersey, the minimum age to purchase, possess or consume alcohol is:",a:["21","18","19","20"],x:"21 ans pour acheter, posséder OU consommer de l'alcool au NJ. En dessous, c'est aussi une suspension de permis.",xe:"21 to buy, possess OR consume alcohol in NJ. Below that, it also costs you your license."},
+{w:'gdl',q:"If your license PLATES are lost or stolen, you must immediately notify:",a:["The local police","The MVC only","Your insurance company","The dealership"],x:"Plaques volées : POLICE d'abord (on peut commettre des délits avec). Piège : rendre les plaques au MVC, c'est quand on vend la voiture.",xe:"Stolen plates: POLICE first (they can be used for crimes). Trap: returning plates to the MVC is for when you sell the car."},
+{w:'share',q:"Approaching a stopped ice cream truck with its flashing red lights on, you must:",a:["Stop, then pass at no more than 15 mph, watching for children","Pass at the normal speed limit","Stop and wait until the lights stop flashing","Sound your horn and continue"],x:"Camion de glaces, feux rouges : ARRÊT, puis on repart à 15 mph max. Piège : 10 mph, c'est le bus scolaire — ici c'est 15.",xe:"Ice cream truck, red lights: STOP, then pass at 15 mph max. Trap: 10 mph is the school bus — here it's 15."},
+{w:'points',q:"The minimum fine for littering from a vehicle in New Jersey is:",a:["$100","$50","$250","$500"],x:"Jeter un détritus par la fenêtre : 100 $ minimum. Et jusqu'à 500 $ + travaux d'intérêt général en récidive.",xe:"Tossing litter from your car: $100 minimum. Up to $500 plus community service for repeats."},
+{w:'gdl',q:"A probationary driver must enroll in a Probationary Driver Program after:",a:["Accumulating 4 or more points from moving violations during the probationary period","Any single moving violation","Turning 18","A first parking ticket"],x:"4 points ou plus pendant la période probatoire = stage Probationary Driver Program obligatoire. Piège : le seuil ordinaire de suspension, c'est 12 points.",xe:"4+ points during the probationary period = mandatory Probationary Driver Program. Trap: the ordinary suspension threshold is 12 points."},
+{w:'share',q:"To share the road safely with large trucks and buses, you must understand their limitations in:",a:["Visibility, stopping distance and maneuverability","Fuel consumption and cargo type","Driver schedules and rest breaks","Paint color and plate numbers"],x:"Trois limites d'un poids lourd : ce qu'il VOIT (No-Zones), la distance pour S'ARRÊTER, et sa capacité à MANŒUVRER (virages larges).",xe:"Three truck limitations: what it SEES (No-Zones), how far it needs to STOP, and how it MANEUVERS (wide turns)."},
+{w:'signs',q:"You are approaching an intersection and the light turns yellow. You should:",a:["Stop before entering the intersection if you can do so safely","Speed up to clear it before red","Sound your horn and continue","Stop immediately, even in the intersection"],x:"Jaune = arrête-toi SI tu peux le faire sans danger. Accélérer pour passer est exactement ce que le test sanctionne.",xe:"Yellow = stop IF you can do it safely. Speeding up to beat it is exactly what the test penalizes."},
+{w:'points',q:"New Jersey law limits vehicle idling to no more than:",a:["3 minutes","1 minute","10 minutes","There is no limit"],x:"Moteur au ralenti : 3 MINUTES maximum (loi anti-pollution). Au-delà, c'est verbalisable.",xe:"Idling: 3 MINUTES maximum (anti-pollution law). Beyond that, it's ticketable."}
 ];
 
 /* ---------------- BLITZ : les Petites Règles™ (55) ---------------- */
@@ -874,7 +899,7 @@ const FACTS=[
 {g:'🍺 Alcool',ge:'🍺 Alcohol',items:[["BAC 21 ans et +","BAC 21 and over","0.08%"],["BAC moins de 21 ans","BAC under 21","0.01%"],["BAC pro (CDL)","BAC commercial (CDL)","0.04%"],["Élimination","Elimination","1 verre / heure","1 drink / hour"],["Équivalence","Equivalence","12 oz bière = 5 oz vin = 1.5 oz shot","12 oz beer = 5 oz wine = 1.5 oz shot"],["1re offense DUI (0.08–0.10)","1st DUI (0.08–0.10)","$250–400 · IDRC 12–48 h · ≤ 30 j · interlock","$250–400 · IDRC 12–48 h · ≤ 30 days · interlock"],["2e DUI","2nd DUI","$500–1000 · prison 48 h–90 j · susp. 1–2 ans","$500–1000 · 48 h–90 days jail · 1–2 yr susp."],["3e DUI","3rd DUI","$1000 · ≤ 180 j · permis perdu des années","$1000 · ≤ 180 days · license lost for years"],["Open container 1re / 2e","Open container 1st / 2nd","$200 / $250 + 10 j TIG","$200 / $250 + 10 days svc"],["DUI possible sous 0.08 ?","DUI possible under 0.08?","OUI si conduite altérée","YES if driving impaired"],["Refus du breath test","Refusing the breath test","sanctions séparées + DUI possible","separate penalties + DUI still possible"],["Ce qui dégrise","What sobers you up","le temps, rien d'autre","time, nothing else"]]},
 {g:'⚖️ Points & amendes',ge:'⚖️ Points & fines',items:[["Suspension","Suspension","12 pts"],["Surtaxe","Surcharge","6 pts / 3 ans","6 pts / 3 yrs"],["Montant surtaxe","Surcharge amount","$150/an + $25/pt > 6","$150/yr + $25/pt > 6"],["1 an sans infraction","1 year, no violations","−3 pts"],["Stage defensive driving (1×/5 ans)","Defensive driving course (1×/5 yrs)","−2 pts"],["Excès 1–14 / 15–29 / 30+","Speeding 1–14 / 15–29 / 30+","2 / 4 / 5 pts"],["Tailgating","Tailgating","5 pts"],["Reckless / careless","Reckless / careless","5 / 2 pts"],["Dépassement interdit","Improper passing","4 pts"],["Dépassement par l'accotement","Passing off the roadway","4 pts"],["Virage / demi-tour irrégulier","Improper turn / U-turn","3 pts"],["Sens interdit (one-way)","Wrong way on one-way","2 pts"],["Course sur route","Highway racing","5 pts"],["Refus de céder (véh. urgence)","Failure to yield (emergency)","2 pts"],["Infraction hors de l'État","Out-of-state violation","2 pts"],["Délit de fuite (blessé / matériel)","Leaving scene (injury / property)","8 / 2 pts"],["Piéton non respecté","Failing to yield to a pedestrian","$200 + 2 pts"],["Téléphone 1re / 2e / 3e","Handheld phone 1st / 2nd / 3rd","$200–400 / 400–600 / 600–800 + 3 pts"],["Sans assurance","No insurance","$300–1000 + 1 an","$300–1000 + 1 yr"]]},
 {g:'🎓 GDL & MVC',ge:'🎓 GDL & MVC',items:[["Examen théorique","Knowledge test","50 Q · 80%"],["Vision","Vision","20/50"],["Accompagnateur","Supervising driver","21 ans + 3 ans de permis","21 + 3 yrs licensed"],["Pratique : 21 ans et +","Practice: 21 and over","3 mois","3 months"],["Pratique : moins de 21 ans","Practice: under 21","6 mois","6 months"],["Heures loggées (< 21, loi 2025)","Logged hours (under 21, 2025 law)","50 h · 10 de nuit","50 h · 10 at night"],["Special learner (16 ans)","Special learner (age 16)","6 mois","6 months"],["Probatoire","Probationary","1 an","1 year"],["Couvre-feu GDL","GDL curfew","23h01 – 5h00","11:01 p.m. – 5 a.m."],["Passagers GDL","GDL passengers","dépendants + 1","dependents + 1"],["Électronique GDL","GDL electronics","zéro, même mains-libres","none, even hands-free"],["Décalcos absentes / violation GDL","Missing decals / GDL violation","$100"],["Adresse / nom / nouveau résident","Address / name / new resident","1 sem · 2 sem · 60 j","1 wk · 2 wks · 60 days"]]},
-{g:'👶 Enfants & divers',ge:'👶 Kids & misc',items:[["Dos à la route","Rear-facing seat","< 2 ans & < 30 lb","< 2 yrs & < 30 lb"],["Booster","Booster","< 8 ans & < 57 in","< 8 yrs & < 57 in"],["Banquette arrière recommandée","Back seat recommended","< 13 ans","< 13 yrs"],["Conducteur responsable des passagers","Driver responsible for passengers","< 18 ans","< 18 yrs"],["Pneus cloutés","Studded tires","15 nov – 1er avril","Nov 15 – Apr 1"],["Rapport de police si dégâts","Police report if damage","> $500"],["Véhicule lent (triangle orange)","Slow vehicle (orange triangle)","≤ 25 mph"]]},
+{g:'👶 Enfants & divers',ge:'👶 Kids & misc',items:[["Dos à la route","Rear-facing seat","< 2 ans & < 30 lb","< 2 yrs & < 30 lb"],["Booster","Booster","< 8 ans & < 57 in","< 8 yrs & < 57 in"],["Banquette arrière recommandée","Back seat recommended","< 13 ans","< 13 yrs"],["Conducteur responsable des passagers","Driver responsible for passengers","< 18 ans","< 18 yrs"],["Pneus cloutés","Studded tires","15 nov – 1er avril","Nov 15 – Apr 1"],["Rapport de police si dégâts","Police report if damage","> $500"],["Camion de glaces (feux rouges)","Ice cream truck (red lights)","STOP puis 15 mph","STOP then 15 mph"],["Détritus jeté (minimum)","Littering (minimum)","$100"],["Moteur au ralenti","Idling limit","3 min"],["Âge légal alcool","Legal drinking age","21 ans","21"],["Plaques volées","Stolen plates","→ police"],["Probatoire : stage obligatoire","Probationary program required","4 points"],["Véhicule lent (triangle orange)","Slow vehicle (orange triangle)","≤ 25 mph"]]},
 {g:'🚑 Urgences & pièges d\'expert',ge:'🚑 Emergencies & expert traps',items:[["Suivre un véhicule d'urgence","Following an emergency vehicle","≥ 300 ft"],["Camion de pompiers en intervention","Fire apparatus at a fire","bulle de 200 ft","200-ft bubble"],["Move Over Law","Move Over Law","changer de voie ou ralentir · $100–500","change lanes or slow · $100–500"],["Neige sur le toit / si dégâts","Roof snow / if damage","$25–75 / $200–1000"],["Chargement dépassant ≥ 4 ft","Load extending ≥ 4 ft","drapeau rouge (feu la nuit)","red flag (light at night)"],["Temps de réaction moyen","Average reaction time","¾ s"],["Vitesse ×2","Speed ×2","freinage ×4","braking ×4"],["Pluie : le plus glissant","Rain: most slippery","les premières minutes","the first minutes"],["Angle mort arrière d'un camion","Truck rear blind spot","jusqu'à 200 ft","up to 200 ft"],["Feu de signalisation éteint","Dark traffic signal","= all-way STOP"],["Gauche au rouge (NJ)","Left on red (NJ)","JAMAIS","NEVER"],["Colline : montée avec trottoir","Hill: uphill with curb","roues vers la rue","wheels to street"],["Colline : descente / sans trottoir","Hill: downhill / no curb","roues vers le bord","wheels to edge"]]}
 ];
 
@@ -989,6 +1014,8 @@ const defaults=()=>({
   examBest:0, examPassed:false, examsTaken:0,
   examEclairBest:0, examHardBest:0,
   coins:0, coinsTotal:0,   // sesterces 🪙
+  res:{food:0,wood:0,iron:0},   // ressources gagnées en répondant juste
+  needDay:'',                   // jour du dernier ravitaillement
   village:[],              // ids d'objets achetés, dans l'ordre
   vpos:{},                 // id -> [x,z] : placement libre par le joueur
   arenaWins:0,
@@ -1281,6 +1308,46 @@ function floatXp(txt,x,y){
 
 /* ---------- XP / badges ---------- */
 function gainCoins(n){ S.coins+=n; S.coinsTotal+=n; }
+/* ---------- besoins du village ----------
+   Chaque bonne réponse produit une ressource (blé / bois / fer) au hasard.
+   Les besoins montent avec la taille du village : il faut continuer à
+   réviser pour nourrir, chauffer et armer les habitants. */
+const NEEDS=[
+ {k:'food',ic:'🌾',n:'Nourriture',ne:'Food',per:2.2},
+ {k:'wood',ic:'🪵',n:'Bois',ne:'Wood',per:1.5},
+ {k:'iron',ic:'⚙️',n:'Fer',ne:'Iron',per:1.1}
+];
+function gainRes(){
+  S.res=S.res||{food:0,wood:0,iron:0};
+  const k=NEEDS[Math.floor(Math.random()*NEEDS.length)].k;
+  S.res[k]=(S.res[k]||0)+1;
+}
+function popCount(){ return Math.min(8,Math.floor(S.village.length/2)+1)
+  + SHOP.filter(i=>i.cat==='army'&&S.village.includes(i.id)).length*2; }
+function needOf(n){ return Math.round(popCount()*n.per); }
+function needState(n){
+  const have=(S.res&&S.res[n.k])||0, want=needOf(n);
+  return {have, want, pct:want?Math.min(100,Math.round(have/want*100)):100, ok:have>=want};
+}
+function villageHappy(){
+  const a=NEEDS.map(needState);
+  return Math.round(a.reduce((s2,x)=>s2+x.pct,0)/a.length);
+}
+function needsHtml(){
+  const pop=popCount(), hap=villageHappy();
+  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
+   +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>';
+  NEEDS.forEach(n=>{ const st=needState(n);
+    h+='<div class="needrow"><span class="nic">'+n.ic+'</span>'
+     +'<span class="nbar"><i style="width:'+st.pct+'%;background:'+(st.ok?'linear-gradient(90deg,#155C33,#33B268)':'linear-gradient(90deg,#7C1215,#E5383B)')+'"></i></span>'
+     +'<span class="nval'+(st.ok?' ok':'')+'">'+st.have+'/'+st.want+'</span></div>';
+  });
+  h+='<p class="small" style="margin-top:8px">'+(hap>=100
+      ?t('😄 Le village est comblé — tout le monde travaille de bon cœur.','😄 The village is thriving — everyone works happily.')
+      :hap>=60?t('🙂 Ça tient, mais les réserves baissent. Réponds juste pour ravitailler.','🙂 Holding on, but stocks are dropping. Answer correctly to restock.')
+      :t('😟 Le village manque de tout ! Chaque bonne réponse rapporte une ressource.','😟 The village lacks everything! Every correct answer brings in a resource.'))+'</p></div>';
+  return h;
+}
 function gainXp(n,ev){
   const before=levelIdx();
   S.xp+=n;
@@ -1359,7 +1426,7 @@ function errorPool(){
 function recordAnswer(qi,good){
   const s=qstat(qi);
   const wasError=s.box===1&&s.ko>0;
-  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++; gainCoins(2); }
+  if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++; gainCoins(2); gainRes(); }
   else{ s.ko++; s.box=1; }
   if(good){
     S.totalOk++; touchDaily(); S.daily.ok++;
@@ -1825,7 +1892,7 @@ const COL={
   leaf:0x4f9128, leaf2:0x66ab34, leaf3:0x3c7a20, water:0x3f7fa8, fire:0xff8c1a,
   skin:0xf0c9a0, cloth:[0xc0463c,0x3f6fb0,0x8a5aa8,0xd08a2a,0x4a9a6a,0xb0503a,0x5a6ab0,0xc07a3a]
 };
-function mat(c,ro){ return new THREE.MeshLambertMaterial({color:c}); }
+function mat(c){ return new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x0d0d0d,flatShading:false}); }
 
 /* ---------- briques de construction ---------- */
 function box(w,h,d,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c)); m.castShadow=m.receiveShadow=true; return m; }
@@ -2146,17 +2213,20 @@ Object.assign(P3,{ camp:[-62,-30], entrainement:[58,-30], guerriers:[-40,20],
   tour:[70,-58], muraille:[0,0], catapulte:[44,-52], chefguerre:[-24,-16] });
 
 /* ---------- construction de la scène ---------- */
+let built_spots=[];
 function buildVillage(scene){
   const owned=S.village;
   // sol
-  const gGeo=new THREE.CircleGeometry(190,48);
+  const gGeo=new THREE.CircleGeometry(210,64);
   const ground=new THREE.Mesh(gGeo,mat(COL.grass));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
   // taches d'herbe + place centrale + chemins
   const patch=(r,x,z,c,s)=>{ const m=new THREE.Mesh(new THREE.CircleGeometry(r,18),mat(c));
     m.rotation.x=-Math.PI/2; m.position.set(x,0.12,z); m.scale.z=s||1; m.receiveShadow=true; scene.add(m); };
   patch(30,-46,-30,COL.grassDark,.8); patch(26,52,28,COL.grassDark,.9); patch(22,-20,52,COL.grassDark,1);
-  patch(26,0,4,COL.dirt,.9);
+  patch(34,-70,34,COL.grassDark,.7); patch(28,68,-40,COL.grassDark,.85); patch(20,10,-64,COL.grassDark,1.1);
+  patch(16,-58,60,0x7ab13a,.9); patch(18,62,62,0x7ab13a,1); patch(14,-14,-30,0x7ab13a,1.2);
+  patch(26,0,4,COL.dirt,.9); patch(13,30,-30,COL.dirt,1); patch(11,-46,8,COL.dirt,1.1);
   const path=(w,l,x,z,ry)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,l),mat(COL.dirtDark));
     m.rotation.x=-Math.PI/2; m.rotation.z=ry; m.position.set(x,0.16,z); m.receiveShadow=true; scene.add(m); };
   path(11,86,-18,-16,0.5); path(10,72,26,14,-0.75); path(9,60,-6,34,0.15);
@@ -2209,19 +2279,28 @@ function buildVillage(scene){
     const o=tuft(0.8+((i*13)%5)*0.14);
     o.position.set(Math.cos(a)*r,0,Math.sin(a)*r); o.rotation.y=a; scene.add(o);
   }
-  // villageois qui déambulent (nombre lié à la taille du village)
+  // --- habitants : chacun a un métier, se déplace vers des lieux d'intérêt,
+  //     discute avec les autres, puis va se reposer. ---
+  const spots=[];
+  const addSpot=(id,x,z,job)=>{ if(!id||owned.includes(id)) spots.push({x,z,job}); };
+  addSpot(null,0,6,'feu');
+  addSpot('ble',26,38,'moisson'); addSpot('forge',-44,6,'forge');
+  addSpot('puits',28,-28,'eau');  addSpot('taverne',42,6,'boire');
+  addSpot('poule',-30,36,'poules'); addSpot('banquet',0,46,'banquet');
+  addSpot('entrainement',52,-28,'entrainement'); addSpot('camp',-56,-26,'garde');
+  addSpot('chaudron',-17,14,'potion'); addSpot('menhir',0,-42,'menhir');
+  if(spots.length<3){ spots.push({x:20,z:20,job:'balade'},{x:-20,z:18,job:'balade'}); }
   const n=Math.min(8,Math.floor(owned.length/2)+1), walkers=[];
   for(let i=0;i<n;i++){
-    const p=person(i), r=22+((i*13)%34);
-    p.userData={r, sp:(0.16+i*0.035)*(i%2?-1:1), ph:i*0.9};
+    const p=person(i);
+    const st=spots[i%spots.length];
+    p.position.set(st.x+(i%3-1)*5,0,st.z+(i%2?4:-4));
+    p.userData={ id:i, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
+                 timer:2+i*1.4, job:st.job, sp:7+((i*7)%5), talk:null };
     scene.add(p); walkers.push(p);
   }
-  // villageois postés
-  if(owned.includes('forge'))   { const p=person(5); p.position.set(-40,0,10); p.rotation.y=-0.6; scene.add(p); }
-  if(owned.includes('ble'))     { const p=person(3); p.position.set(22,0,40); p.rotation.y=2.2; scene.add(p); }
-  if(owned.includes('taverne')) { const p=person(6); p.position.set(40,0,14); p.rotation.y=-2; scene.add(p); }
-  if(owned.includes('poule'))   { const p=person(7); p.position.set(-26,0,40); p.rotation.y=1; scene.add(p); }
-  return {anim, walkers};
+  built_spots=spots;
+  return {anim, walkers, spots:built_spots};
 }
 /* fumée : petites sphères qui montent en boucle */
 function makeSmoke(scene,g){
@@ -2255,15 +2334,15 @@ function v3dInit(){
   ren.toneMapping=THREE.ACESFilmicToneMapping; ren.toneMappingExposure=0.42;
   V3.ren=ren;
   const scene=new THREE.Scene(); V3.scene=scene;
-  scene.background=new THREE.Color(0x9ed3ea);
-  scene.fog=new THREE.Fog(0xbcd9c8,260,560);
+  scene.background=new THREE.Color(0x8fc9e6);
+  scene.fog=new THREE.Fog(0xc4dfd0,290,620);
   const cam=new THREE.PerspectiveCamera(38,W/H,1,900); V3.cam=cam;
   // lumières : soleil chaud + ciel/sol + appoint froid
   const sun=new THREE.DirectionalLight(0xffe3a8,1.32);
   sun.position.set(-95,105,80); sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);
   const sc=sun.shadow.camera; sc.left=-150;sc.right=150;sc.top=150;sc.bottom=-150;sc.near=10;sc.far=340;
-  sun.shadow.bias=-0.0012; scene.add(sun);
+  sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.6; sun.shadow.radius=2.5; scene.add(sun);
   scene.add(new THREE.HemisphereLight(0x9ec4e8,0x37631c,0.44));
   const fill=new THREE.DirectionalLight(0xa8c8f0,0.14); fill.position.set(90,60,-70); scene.add(fill);
 
@@ -2342,13 +2421,45 @@ function v3dInit(){
     if(note){ const k=(tt*0.5)%1; note.position.y=11+k*7; note.material.opacity=1-k; note.rotation.z=tt*2; }
     if(potion) potion.material.color.setHSL(0.28+Math.sin(tt*2)*0.05,0.75,0.6);
     if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
+    // --- comportements des habitants ---
+    const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
     built.walkers.forEach(p=>{
-      const u=p.userData, a=tt*u.sp+u.ph;
-      p.position.set(Math.cos(a)*u.r, 0, Math.sin(a)*u.r);
-      p.rotation.y=-a+(u.sp>0?Math.PI/2:-Math.PI/2);
-      const sw=Math.sin(tt*7+u.ph)*0.7;
-      if(u.arms||p.userData.arms){ const ar=p.userData.arms; if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; } }
-      p.position.y=Math.abs(Math.sin(tt*7+u.ph))*0.5;
+      const u=p.userData;
+      u.timer-=dt;
+      if(u.state==='walk'){
+        const dx=u.tgt.x-p.position.x, dz=u.tgt.z-p.position.z, d=Math.hypot(dx,dz);
+        if(d<2.5){ u.state=Math.random()<0.3?'talk':'work'; u.timer=u.state==='talk'?4+Math.random()*4:6+Math.random()*8; }
+        else{
+          p.position.x+=dx/d*u.sp*dt; p.position.z+=dz/d*u.sp*dt;
+          p.rotation.y=Math.atan2(dx,dz);
+          const sw=Math.sin(tt*8+u.id)*0.8;
+          if(p.userData.arms){ p.userData.arms[0].rotation.x=sw; p.userData.arms[1].rotation.x=-sw; }
+          p.position.y=Math.abs(Math.sin(tt*8+u.id))*0.45;
+        }
+      }else{
+        p.position.y=0;
+        if(u.state==='work'){                       // gestes du métier
+          const w=Math.sin(tt*4+u.id);
+          if(p.userData.arms){ p.userData.arms[0].rotation.x=w*0.9; p.userData.arms[1].rotation.x=w*0.9; }
+          p.rotation.y+=Math.sin(tt*0.7+u.id)*0.004;
+        }else if(u.state==='talk'){                 // discussion : se font face et hochent la tête
+          if(u.talk){ const o=u.talk;
+            p.rotation.y=Math.atan2(o.position.x-p.position.x,o.position.z-p.position.z); }
+          const nod=Math.sin(tt*3+u.id*2);
+          if(p.userData.arms){ p.userData.arms[0].rotation.x=nod*0.35; p.userData.arms[1].rotation.x=-nod*0.2; }
+          p.position.y=Math.abs(Math.sin(tt*2.4+u.id))*0.18;
+        }
+        if(u.timer<=0){                              // choisir la suite
+          const sp=built.spots.length?built.spots[Math.floor(Math.random()*built.spots.length)]:{x:0,z:0,job:'balade'};
+          // parfois, aller rejoindre un autre villageois pour discuter
+          if(Math.random()<0.35&&built.walkers.length>1){
+            let o=built.walkers[Math.floor(Math.random()*built.walkers.length)];
+            if(o!==p){ u.tgt.set(o.position.x+3.5,0,o.position.z+3.5); u.talk=o; o.userData.talk=p; }
+            else { u.tgt.set(sp.x,0,sp.z); u.talk=null; u.job=sp.job; }
+          } else { u.tgt.set(sp.x+(Math.random()-0.5)*8,0,sp.z+(Math.random()-0.5)*8); u.talk=null; u.job=sp.job; }
+          u.state='walk';
+        }
+      }
     });
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     ren.render(scene,cam);
@@ -2418,6 +2529,7 @@ function scrVillage(){
    +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
    +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
    +'</div>'
+   +needsHtml()
    +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
    +'<div class="gprog-top" style="margin-top:6px"><span>'+t('Prêt à repousser César','Ready to repel Caesar')+'</span><b>'+ap+'%</b></div>'
    +'<div class="xp-lane" style="height:12px"><div class="xp-fill" style="width:'+ap+'%;background:linear-gradient(90deg,#7C1215,#E5383B)"></div><div class="xp-dash"></div></div>'
@@ -2746,6 +2858,7 @@ function scrSettings(){
    +'</span></div>'
    +'<div class="setrow"><label for="set-sound">🔊 '+t('Effets sonores','Sound effects')+'</label><input type="checkbox" id="set-sound" '+(S.sound?'checked':'')+' onchange="G.setSound(this.checked)" style="width:22px;height:22px"></div>'
    +'<div class="setrow"><label for="set-date">📅 '+t('Date de l\'examen','Exam date')+'</label><input type="date" id="set-date" value="'+esc(S.examDate)+'" onchange="G.setDate(this.value)"></div>'
+   +'<div class="setrow"><label for="set-time">🕑 '+t('Heure de l\'examen','Exam time')+'</label><input type="time" id="set-time" value="'+esc(S.examTime||'14:00')+'" onchange="G.setTime(this.value)"></div>'
    +'<div class="setrow"><label>💾 '+t('Progression','Progress')+'</label><button class="backbtn" onclick="G.resetAsk()" style="color:var(--stop);border-color:var(--stopD)">'+t('TOUT EFFACER','ERASE ALL')+'</button></div>'
    +'</div>'
    +'<p class="footnote">'+t('ROUTE 440 est un jeu d\'entraînement indépendant, non affilié au NJ MVC.<br>Sauvegarde locale sur cet appareil (localStorage).','ROUTE 440 is an independent practice game, not affiliated with the NJ MVC.<br>Progress is saved locally on this device (localStorage).')+'</p>';
@@ -2754,6 +2867,7 @@ function setSound(v){ S.sound=v; save(); if(v){ SFX.ok(); } }
 function setLang(v){ S.lang=(v==='en'?'en':'fr'); save(); applyLang(); render(); toast(t('🌐 Langue : Français · unités métriques','🌐 Language: English · US units')); }
 function toggleLang(){ setLang(S.lang==='en'?'fr':'en'); }
 function setDate(v){ S.examDate=v; save(); renderHud(); toast(t('📅 Date d\'examen mise à jour','📅 Exam date updated')); }
+function setTime(v){ S.examTime=v||'14:00'; save(); renderHud(); toast(t('🕑 Heure d\'examen : ','🕑 Exam time: ')+S.examTime); }
 function resetAsk(){
   showOverlay('🗑️',t('Tout effacer ?','Erase everything?'),t('XP, badges, records, erreurs — tout repart de zéro.','XP, badges, records, mistakes — everything resets to zero.')
    +'<span style="display:flex;gap:8px;margin-top:14px">'
@@ -2782,7 +2896,7 @@ document.addEventListener('keydown',e=>{
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
-  setSound, setLang, toggleLang, setDate, resetAsk, resetAll, hideOverlay};
+  setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
 touchDaily(); save();
