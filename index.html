@@ -271,6 +271,11 @@ html,body{overflow-x:hidden}
 .stamp.ok{color:var(--exit);border-color:var(--exit);background:#0F3A2244;text-shadow:0 0 16px #33B26866}
 .stamp.ko{color:var(--stop);border-color:var(--stop);background:#3A111344}
 .statrow{display:flex;gap:8px;margin:14px 0}
+/* rangée de 4 stats à libellés longs : 2×2 sur téléphone, sinon « DOMPTÉ/ES » */
+@media (max-width:430px){
+  .statrow.s4{flex-wrap:wrap}
+  .statrow.s4 .stat{flex:1 1 calc(50% - 4px)}
+}
 .stat{flex:1 1 0;min-width:0;background:var(--lane2);border:2px solid var(--edge);border-radius:10px;padding:11px 5px;text-align:center;overflow-wrap:anywhere}
 .stat .v{font-family:var(--px);font-size:15px;color:var(--bus);font-variant-numeric:tabular-nums}
 .stat .l{font-size:11px;color:var(--dim);margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
@@ -379,6 +384,17 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* marquer une question comme difficile, même quand on a eu bon */
+.flagrow{display:flex;justify-content:flex-end;margin-top:10px}
+.flagbtn{
+  font-family:var(--px);font-size:8px;letter-spacing:.5px;text-transform:uppercase;
+  padding:9px 12px;border-radius:9px;border:2px solid var(--edge);
+  background:var(--lane2);color:var(--dim);line-height:1.5;
+}
+.flagbtn.on{border-color:var(--bus);background:#3A2F00;color:var(--bus)}
+.flagbtn:active{transform:translateY(2px)}
+.hcard.flagged>summary{box-shadow:inset 3px 0 0 var(--bus)}
+.hcard.nem.manual>summary .nembadge{background:#3A2F00;color:var(--bus);border-color:var(--bus)}
 .hcard{background:var(--lane);border:3px solid var(--edge);border-radius:11px;padding:0;margin-bottom:9px;overflow:hidden}
 .hcard summary{cursor:pointer;list-style:none;padding:12px 13px;font-size:14.5px;font-weight:600;line-height:1.4;position:relative;padding-right:34px}
 .hcard summary::after{content:'▾';position:absolute;right:13px;top:12px;color:var(--dim)}
@@ -1138,6 +1154,7 @@ const defaults=()=>({
   xp:0, totalOk:0, totalKo:0, bestCombo:0, runsDone:0,
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
+  flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
   blitzBest:0,
   examBest:0, examPassed:false, examsTaken:0,
@@ -1887,7 +1904,7 @@ function scrHome(){
    +'<button class="btn btn-ghost" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
    +(function(){ const np=nemesisPool(); return '<button class="btn btn-stop" onclick="G.go(\'nemesis\')" style="background:#2A1030;border-color:#B45CE0;color:#EBC7FA"><span class="ic">😈</span><span>'+t('Ma Bête Noire','My Nemesis')
      +'<span class="sub">'+(np.length?t(np.length+' question'+(np.length>1?'s':'')+' classée'+(np.length>1?'s':'')+' par taux d\'échec · pire : '+Math.round(np[0].rate*100)+'%',np.length+' question'+(np.length>1?'s':'')+' ranked by failure rate · worst: '+Math.round(np[0].rate*100)+'%')
-       :t('Se remplit toute seule avec tes erreurs','Fills itself with your mistakes'))+'</span></span></button>'; })()
+       :t('Se remplit avec tes erreurs — et avec les questions que tu marques ☆','Fills up with your mistakes — and any question you flag ☆'))+'</span></span></button>'; })()
    +'<div class="btnrow">'
    +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>'+t('Grimoire','Grimoire')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'hard\')"><span class="ic">🏛️</span>'+t('Par cœur','By heart')+'</button>'
@@ -1973,6 +1990,7 @@ function scrRun(){
     html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?t(['✅ EXACT !','✅ NICKEL !','✅ PROPRE !','✅ BOOM !'][c.i%4],['✅ EXACT!','✅ NAILED IT!','✅ CLEAN!','✅ BOOM!'][c.i%4]):t('❌ RATÉ !','❌ MISSED!'))+'</div>'
      +'<div class="exp"><span class="tag">'+t('📌 LA RÈGLE','📌 THE RULE')+'</span>'+U(qx(q))+'</div>'
      +signReveal(q)
+     +'<div class="flagrow">'+flagBtn(c.qs[c.i].i)+'</div>'
      +'<div class="nextbar"><button class="btn btn-bus" style="justify-content:center" onclick="G.next()" id="nextbtn">'+(c.i+1<c.qs.length?t('SUIVANT →','NEXT →'):t('RÉSULTAT 🏁','RESULT 🏁'))+'</button></div>';
   }
   return html+'</div>';
@@ -2080,6 +2098,7 @@ function scrBoss(){
     html+='<div class="verdict '+(good?'ok':'ko')+'">'+(good?t('💥 −'+c.lastDmg+' HP !','💥 −'+c.lastDmg+' HP!'):t('❌ Le boss te frappe ! −1 ❤️','❌ The boss hits you! −1 ❤️'))+'</div>'
      +'<div class="exp"><span class="tag">'+t('📌 LA RÈGLE','📌 THE RULE')+'</span>'+U(qx(q))+'</div>'
      +signReveal(q)
+     +'<div class="flagrow">'+flagBtn(c.qs[c.i%c.qs.length].i)+'</div>'
      +'<div class="nextbar"><button class="btn btn-stop" style="justify-content:center" onclick="G.bossNext()" id="nextbtn">'+t('EN GARDE →','ON GUARD →')+'</button></div>';
   }
   return html+'</div>';
@@ -4101,11 +4120,38 @@ function scrExams(){
 
 /* ---------- ma bête noire (questions les plus ratées) ---------- */
 // Score de douleur : privilégie les questions ratées souvent ET avec un fort taux d'échec.
+/* ---------- questions marquées à la main ----------
+   « J'ai eu bon, mais je ne la sens pas » : un clic et elle rejoint la Bête Noire. */
+function isFlagged(i){ return !!(S.flag&&S.flag[i]); }
+function flagCount(){ return Object.keys(S.flag||{}).length; }
+function toggleFlag(i,ev){
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  S.flag=S.flag||{};
+  if(S.flag[i]){ delete S.flag[i]; SFX.click();
+    toast(t('☆ Retirée de ta Bête Noire.','☆ Removed from your Nemesis list.')); }
+  else{ S.flag[i]=Date.now(); SFX.ok();
+    toast(t('⭐ Ajoutée à ta Bête Noire — tu la reverras à l\'entraînement.',
+            '⭐ Added to your Nemesis list — you\'ll see it again in drills.')); }
+  save(); render();
+}
+/* bouton compact, réutilisé partout où une réponse est révélée */
+function flagBtn(i,compact){
+  const on=isFlagged(i);
+  return '<button class="flagbtn'+(on?' on':'')+'" onclick="G.toggleFlag('+i+',event)" '
+   +'aria-pressed="'+(on?'true':'false')+'" title="'+t('Marquer comme difficile','Mark as hard')+'">'
+   +(on?'★ ':'☆ ')
+   +(compact?'':(on?t('Dans ma Bête Noire','In my Nemesis'):t('Trop dure — à revoir','Too hard — review it')))
+   +'</button>';
+}
 function nemesisPool(){
   return Q.map((q,i)=>({q,i}))
-    .map(o=>{ const s=S.qstat[o.i]; if(!s||!s.ko) return null;
-      const tot=s.ok+s.ko, rate=s.ko/tot;
-      return {...o, ko:s.ko, ok:s.ok, tot, rate, box:s.box, score:s.ko*(0.5+rate)}; })
+    .map(o=>{ const s=S.qstat[o.i], man=isFlagged(o.i);
+      if((!s||!s.ko)&&!man) return null;
+      const ko=(s&&s.ko)||0, ok=(s&&s.ok)||0, tot=ok+ko, rate=tot?ko/tot:0;
+      // une question marquée à la main compte comme deux échecs : elle remonte
+      // en tête même si tu ne l'as jamais ratée
+      return {...o, ko, ok, tot, rate, box:(s&&s.box)||0, man,
+              score:ko*(0.5+rate)+(man?2.2:0)}; })
     .filter(Boolean)
     .sort((a,b)=>b.score-a.score);
 }
@@ -4114,16 +4160,17 @@ function scrNemesis(){
   let h='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Ma Bête Noire','My Nemesis')+'</div></div>';
   if(!pool.length){
     return h+'<div class="panel" style="text-align:center"><div style="font-size:50px">😇</div>'
-     +'<p class="small" style="margin-top:8px">'+t('Aucune question ratée pour l\'instant — rien à traquer !<br>Joue quelques missions : celles que tu rates atterriront ici automatiquement, classées de la pire à la moins pire.','No missed questions yet — nothing to hunt!<br>Play a few missions: whatever you get wrong lands here automatically, ranked worst first.')+'</p>'
+     +'<p class="small" style="margin-top:8px">'+t('Aucune question ratée pour l\'instant — rien à traquer !<br>Joue quelques missions : celles que tu rates atterriront ici automatiquement, classées de la pire à la moins pire.<br><br>Tu peux aussi ajouter toi-même une question en touchant <b>☆ Trop dure — à revoir</b> sous la correction, même quand tu as eu bon.','No missed questions yet — nothing to hunt!<br>Play a few missions: whatever you get wrong lands here automatically, ranked worst first.<br><br>You can also add one yourself by tapping <b>☆ Too hard — review it</b> under the explanation, even when you got it right.')+'</p>'
      +'<div class="menu" style="margin-top:14px"><button class="btn btn-exit" style="justify-content:center" onclick="G.go(\'worlds\')">🗺️ '+t('Aller jouer','Go play')+'</button></div></div>';
   }
   const tamed=pool.filter(o=>o.box>=3).length;
   const hot=pool.filter(o=>o.box===1).length;
   h+='<div class="panel" style="margin-bottom:12px">'
    +'<div class="eyebrow">'+t('TON TABLEAU DE CHASSE','YOUR HIT LIST')+'</div>'
-   +'<div class="statrow" style="margin:6px 0 0">'
+   +'<div class="statrow s4" style="margin:6px 0 0">'
    +'<div class="stat"><div class="v" style="color:var(--stop)">'+hot+'</div><div class="l">'+t('à venger','to avenge')+'</div></div>'
-   +'<div class="stat"><div class="v">'+pool.length+'</div><div class="l">'+t('ratées un jour','ever missed')+'</div></div>'
+   +'<div class="stat"><div class="v">'+pool.length+'</div><div class="l">'+t('en tout','in total')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--bus)">★ '+flagCount()+'</div><div class="l">'+t('marquées','flagged')+'</div></div>'
    +'<div class="stat"><div class="v" style="color:var(--exit)">'+tamed+'</div><div class="l">'+t('domptées','tamed')+'</div></div>'
    +'</div>'
    +'<div class="menu" style="margin-top:12px">'
@@ -4132,25 +4179,36 @@ function scrNemesis(){
    +'</div></div>';
   pool.forEach(o=>{
     const pct=Math.round(o.rate*100);
-    const cls=o.box>=3?'tamed':o.box===1?'hot':'warm';
-    h+='<details class="hcard nem '+cls+'"><summary>'
-     +'<span class="nembadge">'+pct+'%</span> '+esc(U(o.q.q))
-     +'<div class="nemmeta">'+t('raté '+o.ko+'× sur '+o.tot+' tentative'+(o.tot>1?'s':''),'missed '+o.ko+'× of '+o.tot+' attempt'+(o.tot>1?'s':''))
-     +' · '+(o.box>=3?t('domptée ✔','tamed ✔'):o.box===1?t('à venger ⚔️','to avenge ⚔️'):t('en cours…','in progress…'))+'</div></summary>'
+    const cls=(o.man&&!o.ko)?'manual':o.box>=3?'tamed':o.box===1?'hot':'warm';
+    h+='<details class="hcard nem '+cls+(o.man?' flagged':'')+'"><summary>'
+     +'<span class="nembadge">'+((o.man&&!o.ko)?'★':pct+'%')+'</span> '+esc(U(o.q.q))
+     +'<div class="nemmeta">'
+     +(o.man?t('⭐ marquée par toi','⭐ flagged by you')+(o.tot?' · ':''):'')
+     +(o.tot?t('raté '+o.ko+'× sur '+o.tot+' tentative'+(o.tot>1?'s':''),'missed '+o.ko+'× of '+o.tot+' attempt'+(o.tot>1?'s':''))
+       +' · '+(o.box>=3?t('domptée ✔','tamed ✔'):o.box===1?t('à venger ⚔️','to avenge ⚔️'):t('en cours…','in progress…')):'')
+     +'</div></summary>'
      +'<div class="hans">✔ '+esc(U(o.q.a[0]))+'</div>'
-     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div></details>';
+     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div>'
+     +'<div class="flagrow">'+flagBtn(o.i)+'</div></details>';
   });
   return h;
 }
-function startNemesisRun(){
+/* les pires N, PLUS tout ce que tu as marqué à la main : une question
+   marquée ne doit jamais se faire éjecter par des erreurs plus récentes */
+function nemesisDeck(n){
   const pool=nemesisPool();
-  if(!pool.length){ toast(t('😇 Aucune question ratée à travailler !','😇 No missed questions to work on!')); return; }
-  const qs=shuffle(pool.slice(0,20)).slice(0,10);
+  const top=pool.slice(0,n);
+  pool.forEach(o=>{ if(o.man&&!top.includes(o)) top.push(o); });
+  return top;
+}
+function startNemesisRun(){
+  const deck=nemesisDeck(20);
+  if(!deck.length){ toast(t('😇 Aucune question ratée à travailler !','😇 No missed questions to work on!')); return; }
+  const qs=shuffle(deck).slice(0,10);
   go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
 }
 function startNemesisExam(){
-  const pool=nemesisPool();
-  const qs=shuffle(pool.slice(0,40)).slice(0,20);
+  const qs=shuffle(nemesisDeck(40)).slice(0,20);
   go('exam',{mode:'nemesis', qs, need:16, i:0, answers:[], order:null});
 }
 
@@ -4162,9 +4220,10 @@ function scrHard(){
    +'<p class="small" style="margin-bottom:12px">'+t('Les <b>'+pool.length+' questions expertes</b> à connaître PAR CŒUR. Touche une carte pour révéler la réponse, ou lance une série.','The <b>'+pool.length+' expert questions</b> to know BY HEART. Tap a card to reveal the answer, or start a run.')+'</p>'
    +'<div class="menu" style="margin-bottom:14px"><button class="btn btn-stop" style="justify-content:center" onclick="G.startHardRun()">💀 '+t('SÉRIE ×10 ALÉATOIRE','RANDOM RUN ×10')+'</button></div>';
   pool.forEach(o=>{
-    h+='<details class="hcard"><summary>'+esc(U(o.q.q))+'</summary>'
+    h+='<details class="hcard'+(isFlagged(o.i)?' flagged':'')+'"><summary>'+esc(U(o.q.q))+'</summary>'
      +'<div class="hans">✔ '+esc(U(o.q.a[0]))+'</div>'
-     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div></details>';
+     +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div>'
+     +'<div class="flagrow">'+flagBtn(o.i)+'</div></details>';
   });
   return h;
 }
@@ -4327,7 +4386,8 @@ function scrExamEnd(){
       html+='<div style="padding:10px 0;border-bottom:1px dashed var(--edge)">'
        +'<div style="font-size:14px;font-weight:600;margin-bottom:5px">'+esc(U(q.q))+'</div>'
        +'<div style="font-size:13px;color:var(--exit);margin-bottom:4px">✔ '+esc(U(q.a[0]))+'</div>'
-       +'<div class="small" style="font-size:12.5px">'+U(qx(q))+'</div>'+signReveal(q)+'</div>';
+       +'<div class="small" style="font-size:12.5px">'+U(qx(q))+'</div>'+signReveal(q)
+       +'<div class="flagrow">'+flagBtn(a.qi)+'</div></div>';
     });
     html+='</div>';
   }
@@ -4407,7 +4467,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- API globale + boot ---------- */
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
-  startArena, arenaNext, buy, toggleEdit, goHome, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
+  startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay};
 window.G=G;
 applyLang();
