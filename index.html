@@ -282,7 +282,14 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 
 
 /* ---------- besoins du village ---------- */
-".tribute{background:#2A2405;border:2px solid var(--busD);border-radius:9px;padding:8px 10px;
+".prodbox{background:#00000055;border:2px solid var(--edge);border-radius:10px;padding:10px 11px;margin:2px 0 10px}
+.prodbox.bad{border-color:var(--stopD)}
+.prodl{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0;color:var(--dim)}
+.prodl b{color:var(--retro);font-family:var(--mono)}
+.prodl.tot{border-top:1px dashed var(--edge);margin-top:4px;padding-top:6px}
+.prodl.tot b{color:var(--bus)}
+.prodbox.bad .prodl.tot b{color:var(--stop)}
+.tribute{background:#2A2405;border:2px solid var(--busD);border-radius:9px;padding:8px 10px;
   font-size:12.5px;color:#F5E8BE;margin-top:10px;text-align:center}
 .tribute i{color:var(--dim);font-style:normal;font-size:11px}
 .stock{display:flex;gap:10px;justify-content:center;margin:2px 0 10px}
@@ -1000,6 +1007,12 @@ const SHOP=[
 {id:'ble',ic:'🌾',n:'Champ de blé',ne:'Wheat field',p:90,rc:{wood:6}},
 {id:'poule',ic:'🐔',n:'Poulailler',ne:'Hen house',p:100,rc:{wood:8,food:4}},
 {id:'puits',ic:'⛲',n:'Puits',ne:'Well',p:110,rc:{wood:6,iron:3}},
+{id:'chasseur',ic:'🏹',n:'Maison de chasseur',ne:'Hunter\'s lodge',p:130,stack:true,rate:1.2,rc:{wood:12},
+ prod:{food:2},d:'Son chasseur rapporte du gibier : +2 🌾/h',de:'Its hunter brings game: +2 🌾/h'},
+{id:'fermier',ic:'🚜',n:'Ferme',ne:'Farmhouse',p:170,stack:true,rate:1.2,rc:{wood:14,food:6},
+ prod:{food:3},d:'Son fermier cultive les terres : +3 🌾/h',de:'Its farmer works the land: +3 🌾/h'},
+{id:'bucheron',ic:'🪓',n:'Cabane du bûcheron',ne:'Woodcutter\'s cabin',p:150,stack:true,rate:1.2,rc:{wood:8,iron:4},
+ prod:{wood:2},d:'Son bûcheron abat des arbres : +2 🪵/h',de:'Its woodcutter fells trees: +2 🪵/h'},
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
 {id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140,rc:{wood:22}},
@@ -1120,6 +1133,7 @@ const defaults=()=>({
   res:{food:0,wood:0,iron:0},   // ressources gagnées en répondant juste
   needDay:'',                   // jour du dernier ravitaillement
   lastTribute:0,                // horodatage du dernier versement horaire
+  lastProd:0,                   // horodatage de la dernière récolte automatique
   village:[],              // ids d'objets achetés, dans l'ordre
   vpos:{},                 // id -> [x,z] : placement libre par le joueur
   stack:{},                // id -> nombre d'exemplaires (huttes)
@@ -1448,6 +1462,35 @@ function villageHappy(){
   return Math.round(a.reduce((s2,x)=>s2+x.pct,0)/a.length);
 }
 function allNeedsMet(){ return NEEDS.every(n=>needState(n).ok); }
+/* production horaire des bâtiments (chasseurs, fermes, bûcherons) */
+function prodPerHour(){
+  const out={food:0,wood:0,iron:0};
+  SHOP.forEach(it=>{ if(!it.prod) return;
+    const n=nOwned(it.id); if(!n) return;
+    Object.keys(it.prod).forEach(k=>{ out[k]+=it.prod[k]*n; });
+  });
+  return out;
+}
+/* le village mange : consommation horaire proportionnelle à la population */
+function upkeepPerHour(){ return Math.max(1,Math.round(popCount()*0.4)); }
+function foodBalance(){ return prodPerHour().food-upkeepPerHour(); }
+/* applique production et consommation depuis le dernier passage (12 h max) */
+function collectProduction(){
+  if(!S.village||!S.village.length) return null;
+  const now=Date.now();
+  if(!S.lastProd){ S.lastProd=now; save(); return null; }
+  const hours=Math.min(12,Math.floor((now-S.lastProd)/36e5));
+  if(hours<1) return null;
+  S.lastProd+=hours*36e5;
+  S.res=S.res||{food:0,wood:0,iron:0};
+  const p=prodPerHour(), up=upkeepPerHour()*hours;
+  const gained={food:p.food*hours, wood:p.wood*hours, iron:p.iron*hours};
+  S.res.food=Math.max(0,(S.res.food||0)+gained.food-up);
+  S.res.wood=(S.res.wood||0)+gained.wood;
+  S.res.iron=(S.res.iron||0)+gained.iron;
+  save();
+  return {hours, gained, up};
+}
 /* Village prospère = 1 🪙 par heure, même hors-ligne (12 h de report maximum). */
 function collectTribute(){
   if(!S.village||!S.village.length) return 0;
@@ -1484,6 +1527,16 @@ function needsHtml(){
             :' · <b style="color:var(--stop)">'+t('il manque '+st.miss,'need '+st.miss+' more')+'</b>')+'</span>'
      +(st.ok?'':'<button class="sbuy" onclick="'+n.go+'">'+esc(t(n.btn,n.btne))+' →</button>')+'</div></div>';
   });
+  const pr=prodPerHour(), up=upkeepPerHour(), bal=pr.food-up;
+  h+='<div class="prodbox'+(bal<0?' bad':'')+'">'
+   +'<div class="prodl"><span>🏹🚜 '+t('Production','Production')+'</span><b>+'+pr.food+' 🌾'+(pr.wood?' · +'+pr.wood+' 🪵':'')+' /h</b></div>'
+   +'<div class="prodl"><span>🍽️ '+t('Le village mange','The village eats')+'</span><b>−'+up+' 🌾/h</b></div>'
+   +'<div class="prodl tot"><span>'+t('Bilan','Balance')+'</span><b>'+(bal>=0?'+':'')+bal+' 🌾/h</b></div>'
+   +'<p class="small" style="margin:6px 0 0">'+(bal<0
+      ?t('⚠️ Le village consomme plus qu\'il ne produit. Construis des <b>maisons de chasseur</b> ou des <b>fermes</b>, ou nourris-le en répondant juste.',
+         '⚠️ The village consumes more than it produces. Build <b>hunter\'s lodges</b> or <b>farms</b>, or feed it by answering correctly.')
+      :t('✅ La production couvre les besoins : le village se nourrit tout seul.',
+         '✅ Production covers the needs: the village feeds itself.'))+'</p></div>';
   const tin=tributeIn();
   h+=(met?'<div class="tribute">🪙 '+t('Village prospère : <b>+1 sesterce par heure</b>','Thriving village: <b>+1 sesterce per hour</b>')
       +(tin!=null?' <i>('+t('prochaine dans '+tin+' min','next in '+tin+' min')+')</i>':'')+'</div>':'');
@@ -2427,7 +2480,7 @@ const TRAITS=[
  {k:'curieux', n:'curieux',ne:'curious',    d:'Pose des questions sur tout',de:'Asks questions about everything'}
 ];
 /* quel bâtiment loge quel métier */
-const HOUSED={hutte:null, forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
+const HOUSED={hutte:null, chasseur:'chasse', fermier:'ferme', bucheron:'bois', forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
   puits:'eau', chaudron:'potion', camp:'garde', entrainement:'garde', banquet:'boire', feu:'feu'};
 function jobForBuilding(id){
   const base=id.split('#')[0];
@@ -2522,6 +2575,12 @@ const JOBS=[
  {k:'eau',    ic:'🪣',need:'puits', n:'Porteur d\'eau',ne:'Water carrier',tool:'seau',say:['L\'eau est fraîche.','J\'en rapporte au chef.','Encore un seau…'],saye:['The water is cool.','Bringing some to the chief.','One more bucket…']},
  {k:'boire',  ic:'🍺',need:'taverne',n:'Habitué',ne:'Regular', tool:'chope', say:['À la santé du village !','Encore une tournée !','La cervoise est bonne.'],saye:['To the village!','Another round!','The ale is good.']},
  {k:'garde',  ic:'🛡️',need:'camp',  n:'Guetteur',ne:'Watchman',tool:'lance',say:['Rien à l\'horizon.','Les Romains approchent…','Je monte la garde.'],saye:['Nothing on the horizon.','The Romans are coming…','I stand watch.']},
+ {k:'chasse', ic:'🏹',need:'chasseur',n:'Chasseur',ne:'Hunter',tool:'arc',
+  say:['J\'ai vu des traces de sanglier.','Le gibier est rusé aujourd\'hui.','On mangera bien ce soir !'],
+  saye:['I saw boar tracks.','Game is cunning today.','We shall eat well tonight!']},
+ {k:'ferme',  ic:'🌱',need:'fermier', n:'Fermier',ne:'Farmer',tool:'faux',
+  say:['La terre est généreuse.','Il faudra bientôt moissonner.','Encore un sillon et j\'arrête.'],
+  saye:['The soil is generous.','Harvest time is near.','One more furrow and I stop.']},
  {k:'bois',   ic:'🪵',need:null,     n:'Bûcheron',ne:'Woodcutter',tool:'hache',say:['Du bois pour l\'hiver.','Cet arbre fera l\'affaire.','Ça fend bien !'],saye:['Wood for winter.','This tree will do.','Splits nicely!']},
  {k:'poules', ic:'🐔',need:'poule',  n:'Éleveuse',ne:'Keeper', tool:'panier',say:['Trois œufs ce matin !','Mes poules sont grasses.','Venez, mes belles !'],saye:['Three eggs this morning!','My hens are plump.','Come on, girls!']},
  {k:'potion', ic:'⚗️',need:'chaudron',n:'Apprenti druide',ne:'Druid apprentice',tool:'louche',say:['La potion bouillonne !','Il manque du gui.','Ne goûte pas !'],saye:['The potion bubbles!','We need mistletoe.','Do not taste it!']},
@@ -2538,6 +2597,9 @@ function toolMesh(kind){
   else if(kind==='lance'){ g.add(at(cyl(.3,.3,9,COL.wood,5),0,4.5,0)); g.add(at(cone(.6,1.8,0xd8dde0,6),0,9.6,0)); }
   else if(kind==='seau'||kind==='panier'){ g.add(at(cyl(1.1,.85,1.8,kind==='seau'?0x8a9098:0xb98a4a,8),0,1,0)); }
   else if(kind==='chope'){ g.add(at(cyl(.9,.9,1.7,0xd8b45c,8),0,1,0)); }
+  else if(kind==='arc'){ const bw=new THREE.Mesh(new THREE.TorusGeometry(2.4,.22,5,10,Math.PI*1.2),mat(COL.wood));
+    bw.rotation.y=Math.PI/2; g.add(at(bw,0,2.6,0));
+    g.add(at(cyl(.12,.12,4.6,0xd8d0c0,4),0,2.6,0)); }
   else if(kind==='louche'){ g.add(at(cyl(.25,.25,4.5,COL.wood,5),0,2.2,0)); g.add(at(sph(.9,0x8a9098,0),0,4.6,0)); }
   return g;
 }
@@ -2595,6 +2657,30 @@ const B3={
     g.add(at(box(1.4,13,1.4,COL.wood),-5,9.5,0)); g.add(at(box(1.4,13,1.4,COL.wood),5,9.5,0));
     const r=cone(9,6,COL.thatchDark,4); r.rotation.y=Math.PI/4; g.add(at(r,0,19,0));
     g.add(at(cyl(.5,.5,10,COL.woodDark,6).rotateZ(Math.PI/2),0,15.6,0)); return g; },
+  chasseur(simple){ const g=house(15,13,10,10,COL.thatchDark,simple);
+    // séchoir à peaux + râtelier de lances
+    g.add(at(box(.9,9,.9,COL.wood),9,4.5,4)); g.add(at(box(.9,9,.9,COL.wood),9,4.5,-4));
+    g.add(at(box(.8,.8,9,COL.woodDark),9,8.6,0));
+    const pelt=new THREE.Mesh(new THREE.PlaneGeometry(5,4.6),
+      new THREE.MeshLambertMaterial({color:0x8a6a48,side:THREE.DoubleSide}));
+    g.add(at(pelt,9,6,0));
+    g.add(at(cone(1.4,3,0xe8e0d0,6),-8,1.5,5));      // trophée / crâne
+    return g; },
+  fermier(simple){ const g=house(16,14,10,10,null,simple);
+    // parcelle labourée + épouvantail
+    const fld=new THREE.Mesh(new THREE.PlaneGeometry(26,18),matT(0xc2ae52,TX.dirt,3,2));
+    fld.rotation.x=-Math.PI/2; fld.position.set(0,.25,17); fld.receiveShadow=true; g.add(fld);
+    for(let i=0;i<10;i++) g.add(at(cyl(.3,.4,4.6,0xc8b44a,4),(i%5-2)*4.6,2.3,13+(i<5?0:7)));
+    g.add(at(cyl(.5,.5,9,COL.wood,5),9,4.5,17));
+    g.add(at(box(7,.7,.7,COL.wood),9,7.6,17));
+    g.add(at(sph(1.5,0xd8c060,0),9,9.4,17));
+    return g; },
+  bucheron(simple){ const g=house(13,12,9,9,COL.thatchDark,simple);
+    g.add(at(logpile(1.1),10,0,6));
+    const st=cyl(3,3.2,3,COL.wood,10); g.add(at(st,-9,1.5,6));   // billot
+    const ax=box(.5,5,.5,COL.wood); ax.rotation.z=.7; g.add(at(ax,-9,4,6));
+    g.add(at(box(2,1.8,.4,0xb9c2c8),-10.4,5.8,6));
+    return g; },
   menhir(){ const g=new THREE.Group(); const m=box(7,22,6,COL.stone);
     m.position.y=11; m.rotation.z=0.06; m.rotation.y=0.4; g.add(m); return g; },
   sanglier(){ const g=new THREE.Group();
@@ -2794,7 +2880,7 @@ Object.assign(B3,{
     fl.name='flag'; g.add(at(fl,-2,14.5,-2));
     return g; }
 });
-Object.assign(P3,{ camp:[-62,-30], entrainement:[58,-30], guerriers:[-40,20],
+Object.assign(P3,{ chasseur:[-84,-58], fermier:[74,52], bucheron:[-92,44], camp:[-62,-30], entrainement:[58,-30], guerriers:[-40,20],
   tour:[70,-58], muraille:[0,0], catapulte:[44,-52], chefguerre:[-24,-16] });
 
 /* ---------- construction de la scène ---------- */
@@ -2822,15 +2908,20 @@ function buildVillage(scene){
   // emplacements automatiques des huttes : spirale qui s'éloigne du centre
   const hutSpot=i=>{ const a=2.399*i+0.7, r=52+Math.sqrt(i)*26;
     return [Math.cos(a)*r, Math.sin(a)*r*0.92]; };
-  const nh=hutCount();
-  for(let i=0;i<nh;i++){
-    const key=i?'hutte#'+i:'hutte';
-    const p=(S.vpos&&S.vpos[key])||(i?hutSpot(i):(P3.hutte||[-33,-33]));
-    const g=B3.hutte(i>=3); g.position.set(p[0],0,p[1]); g.rotation.y=(i*0.7)%6.28;
-    scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
-  }
+  let spiral=0;
+  SHOP.filter(x=>x.stack).forEach(it=>{
+    const n2=nOwned(it.id);
+    for(let i=0;i<n2;i++){
+      const key=i?it.id+'#'+i:it.id;
+      const base=P3[it.id]||[-33,-33];
+      const p=(S.vpos&&S.vpos[key])||(i?hutSpot(spiral+i):base);
+      const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]); g.rotation.y=(i*0.7)%6.28;
+      scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
+    }
+    spiral+=n2;
+  });
   SHOP.forEach(it=>{
-    if(it.id==='hutte') return;   // déjà traitées ci-dessus
+    if(it.stack) return;   // déjà traités ci-dessus
     const p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     if(owned.includes(it.id)){
       const g=B3[it.id](); g.position.set(p[0],0,p[1]); scene.add(g); anim.push(g);
@@ -3189,7 +3280,7 @@ function miniInit(){
 }
 /* ---------- village gaulois + boutique ---------- */
 function scrVillage(){
-  collectTribute();
+  collectProduction(); collectTribute();
   const owned=S.village, ap=armyPct(), pw=armyPower();
   const vill=SHOP.filter(i=>i.cat!=='army'), army=SHOP.filter(i=>i.cat==='army');
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
@@ -3674,6 +3765,11 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
 window.G=G;
 applyLang();
 touchDaily();
+(function(){ const pr=collectProduction();
+  if(pr&&(pr.gained.food||pr.gained.wood)) setTimeout(()=>toast(
+    t('🏹 Tes producteurs ont récolté <b>+'+pr.gained.food+' 🌾</b> et <b>+'+pr.gained.wood+' 🪵</b> en '+pr.hours+' h (le village a mangé '+pr.up+' 🌾).',
+      '🏹 Your producers gathered <b>+'+pr.gained.food+' 🌾</b> and <b>+'+pr.gained.wood+' 🪵</b> in '+pr.hours+'h (the village ate '+pr.up+' 🌾).')),1500);
+})();
 (function(){ const g=collectTribute(); if(g) setTimeout(()=>toast(
   t('🪙 Le village prospère t\'a rapporté <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> pendant ton absence !',
     '🪙 Your thriving village earned you <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> while you were away!')),700); })();
