@@ -1806,7 +1806,7 @@ function renderHud(){
 }
 
 /* ---------- panneaux SVG ---------- */
-function signSvg(t){
+function signSvg(key){
   const s={
    stop:'<svg width="110" height="110" viewBox="0 0 100 100"><polygon points="30,3 70,3 97,30 97,70 70,97 30,97 3,70 3,30" fill="#C1121F" stroke="#fff" stroke-width="5"/><text x="50" y="60" font-family="Arial,sans-serif" font-size="24" font-weight="bold" fill="#fff" text-anchor="middle">STOP</text></svg>',
    yield:'<svg width="110" height="100" viewBox="0 0 100 90"><polygon points="4,4 96,4 50,86" fill="#fff"/><polygon points="12,9 88,9 50,74" fill="#C1121F"/><polygon points="23,15 77,15 50,60" fill="#fff"/><text x="50" y="31" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#C1121F" text-anchor="middle">YIELD</text></svg>',
@@ -1834,13 +1834,50 @@ function signSvg(t){
    yellowx:'<svg width="96" height="96" viewBox="0 0 96 96"><rect x="3" y="3" width="90" height="90" rx="8" fill="#111" stroke="#444" stroke-width="3"/><line x1="24" y1="24" x2="72" y2="72" stroke="#FFC61A" stroke-width="11"><animate attributeName="opacity" values="1;.15;1" dur="1s" repeatCount="indefinite"/></line><line x1="72" y1="24" x2="24" y2="72" stroke="#FFC61A" stroke-width="11"><animate attributeName="opacity" values="1;.15;1" dur="1s" repeatCount="indefinite"/></line></svg>',
    yellowarrow:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#3A0E0F"/><circle cx="30" cy="65" r="15" fill="#332B00"/><circle cx="30" cy="100" r="15" fill="#241D00"/><path d="M40 100 h-10 v-7 l-12 10 12 10 v-7 h10 z" fill="#FFC61A"><animate attributeName="opacity" values="1;.2;1" dur=".7s" repeatCount="indefinite"/></path></svg>',
    slow:'<svg width="112" height="104" viewBox="0 0 112 104"><polygon points="56,6 106,96 6,96" fill="#F58220" stroke="#C1121F" stroke-width="7"/></svg>',
+   pedsignal:'<svg width="104" height="112" viewBox="0 0 104 112"><rect x="3" y="3" width="98" height="106" rx="6" fill="#1A1A1A" stroke="#444" stroke-width="3"/>'
+     +'<text x="52" y="62" font-size="42" text-anchor="middle">\u270B</text>'
+     +'<text x="52" y="94" font-family="Arial,sans-serif" font-size="20" font-weight="bold" fill="#F58220" text-anchor="middle">12</text></svg>',
+   regul:'<svg width="106" height="126" viewBox="0 0 106 126"><rect x="3" y="3" width="100" height="120" rx="4" fill="#fff" stroke="#111" stroke-width="4"/><text x="53" y="38" font-family="Arial,sans-serif" font-size="19" font-weight="bold" fill="#111" text-anchor="middle">KEEP</text><text x="53" y="62" font-family="Arial,sans-serif" font-size="19" font-weight="bold" fill="#111" text-anchor="middle">RIGHT</text><path d="M38 84 h22 v-10 l16 17 -16 17 v-10 h-22 z" fill="#111"/></svg>',
+   doubleyellow:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="70" y="8" width="4" height="94" fill="#F0C020"/><rect x="78" y="8" width="4" height="94" fill="#F0C020"/></svg>',
+   brokenyellow:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="73" y="10" width="5" height="14" fill="#F0C020"/><rect x="73" y="36" width="5" height="14" fill="#F0C020"/><rect x="73" y="62" width="5" height="14" fill="#F0C020"/><rect x="73" y="88" width="5" height="14" fill="#F0C020"/></svg>',
+   mixedyellow:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="70" y="8" width="4" height="94" fill="#F0C020"/><rect x="78" y="10" width="4" height="14" fill="#F0C020"/><rect x="78" y="36" width="4" height="14" fill="#F0C020"/><rect x="78" y="62" width="4" height="14" fill="#F0C020"/><rect x="78" y="88" width="4" height="14" fill="#F0C020"/></svg>',
+   brokenwhite:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="73" y="10" width="5" height="14" fill="#E8E8E8"/><rect x="73" y="36" width="5" height="14" fill="#E8E8E8"/><rect x="73" y="62" width="5" height="14" fill="#E8E8E8"/><rect x="73" y="88" width="5" height="14" fill="#E8E8E8"/></svg>',
+   solidwhite:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="73" y="8" width="5" height="94" fill="#E8E8E8"/></svg>',
+   twowayleft:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="52" y="8" width="4" height="94" fill="#F0C020"/><rect x="94" y="8" width="4" height="94" fill="#F0C020"/><rect x="60" y="12" width="4" height="12" fill="#F0C020"/><rect x="60" y="44" width="4" height="12" fill="#F0C020"/><rect x="60" y="76" width="4" height="12" fill="#F0C020"/><rect x="86" y="12" width="4" height="12" fill="#F0C020"/><rect x="86" y="44" width="4" height="12" fill="#F0C020"/><rect x="86" y="76" width="4" height="12" fill="#F0C020"/><path d="M72 30 v-8 l-11 12 11 12 v-8 h6 v-8 z" fill="#E8E8E8"/><path d="M78 78 v-8 l11 12 -11 12 v-8 h-6 v-8 z" fill="#E8E8E8"/></svg>',
+   stopline:'<svg width="150" height="110" viewBox="0 0 150 110"><rect x="3" y="3" width="144" height="104" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="13" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="132" y="8" width="5" height="94" fill="#E8E8E8"/><rect x="24" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="44" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="64" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="84" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="104" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="120" y="18" width="10" height="26" fill="#E8E8E8"/><rect x="20" y="60" width="112" height="9" fill="#E8E8E8"/><text x="76" y="92" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#E8E8E8" text-anchor="middle">STOP</text></svg>',
+   lanearrow:'<svg width="120" height="126" viewBox="0 0 120 126"><rect x="3" y="3" width="114" height="120" rx="4" fill="#2A2E33" stroke="#111" stroke-width="3"/><rect x="11" y="8" width="5" height="110" fill="#E8E8E8"/><rect x="104" y="8" width="5" height="110" fill="#E8E8E8"/><path d="M52 108 v-34 h-18 v10 l-22 -20 22 -20 v10 h30 v54 z" fill="#E8E8E8"/></svg>',
+   siglight:'<svg width="64" height="130" viewBox="0 0 60 130"><rect x="5" y="5" width="50" height="120" rx="10" fill="#1A1A1A" stroke="#444" stroke-width="3"/><circle cx="30" cy="30" r="15" fill="#E5383B"/><circle cx="30" cy="65" r="15" fill="#FFC61A"/><circle cx="30" cy="100" r="15" fill="#33B268"/></svg>',
+   handleft:'<svg width="140" height="104" viewBox="0 0 140 104"><rect x="8" y="26" width="92" height="60" rx="9" fill="#3F6FB0" stroke="#111" stroke-width="3"/><rect x="20" y="36" width="46" height="30" rx="5" fill="#0E1720"/><circle cx="30" cy="90" r="10" fill="#222"/><circle cx="82" cy="90" r="10" fill="#222"/><rect x="60" y="46" width="72" height="10" rx="5" fill="#F0C9A0" stroke="#111" stroke-width="2"/><text x="70" y="20" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">← '+t('GAUCHE','LEFT')+'</text></svg>',
+   handright:'<svg width="140" height="118" viewBox="0 0 140 118"><rect x="8" y="40" width="92" height="60" rx="9" fill="#3F6FB0" stroke="#111" stroke-width="3"/><rect x="20" y="50" width="46" height="30" rx="5" fill="#0E1720"/><circle cx="30" cy="104" r="10" fill="#222"/><circle cx="82" cy="104" r="10" fill="#222"/><rect x="60" y="60" width="34" height="10" rx="5" fill="#F0C9A0" stroke="#111" stroke-width="2"/><rect x="86" y="14" width="10" height="52" rx="5" fill="#F0C9A0" stroke="#111" stroke-width="2"/><text x="70" y="14" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">'+t('DROITE','RIGHT')+' →</text></svg>',
+   handstop:'<svg width="140" height="118" viewBox="0 0 140 118"><rect x="8" y="14" width="92" height="60" rx="9" fill="#3F6FB0" stroke="#111" stroke-width="3"/><rect x="20" y="24" width="46" height="30" rx="5" fill="#0E1720"/><circle cx="30" cy="78" r="10" fill="#222"/><circle cx="82" cy="78" r="10" fill="#222"/><rect x="60" y="34" width="34" height="10" rx="5" fill="#F0C9A0" stroke="#111" stroke-width="2"/><rect x="86" y="40" width="10" height="52" rx="5" fill="#F0C9A0" stroke="#111" stroke-width="2"/><text x="70" y="112" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">'+t('STOP / RALENTIR','STOP / SLOW')+'</text></svg>',
+   advisory:'<svg width="112" height="150" viewBox="0 0 112 150"><rect x="21" y="21" width="70" height="70" transform="rotate(45 56 56)" fill="#FFC61A" stroke="#111" stroke-width="4" rx="6"/><path d="M44 78 q0 -22 18 -30 l0 -8 14 12 -14 12 0 -8 q-10 6 -10 22 z" fill="#111"/><rect x="24" y="104" width="64" height="42" fill="#FFC61A" stroke="#111" stroke-width="4" rx="4"/><text x="56" y="124" font-family="Arial,sans-serif" font-size="17" font-weight="bold" fill="#111" text-anchor="middle">35</text><text x="56" y="140" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#111" text-anchor="middle">M.P.H.</text></svg>',
+   rrsignal:'<svg width="140" height="136" viewBox="0 0 140 136"><rect x="66" y="40" width="8" height="94" fill="#5A5A5A"/><circle cx="42" cy="34" r="14" fill="#E5383B" stroke="#111" stroke-width="3"><animate attributeName="opacity" values="1;.15;1" dur="1s" repeatCount="indefinite"/></circle><circle cx="98" cy="34" r="14" fill="#7C1215" stroke="#111" stroke-width="3"><animate attributeName="opacity" values=".15;1;.15" dur="1s" repeatCount="indefinite"/></circle><g transform="rotate(-26 70 78)"><rect x="18" y="70" width="104" height="17" fill="#fff" stroke="#111" stroke-width="3" rx="3"/></g><g transform="rotate(26 70 78)"><rect x="18" y="70" width="104" height="17" fill="#fff" stroke="#111" stroke-width="3" rx="3"/></g></svg>',
+   schoolbus:'<svg width="160" height="104" viewBox="0 0 160 104"><rect x="10" y="24" width="128" height="52" rx="8" fill="#FFC61A" stroke="#111" stroke-width="3"/><rect x="20" y="32" width="26" height="22" rx="3" fill="#0E1720"/><rect x="54" y="32" width="26" height="22" rx="3" fill="#0E1720"/><rect x="88" y="32" width="26" height="22" rx="3" fill="#0E1720"/><circle cx="40" cy="82" r="12" fill="#222"/><circle cx="112" cy="82" r="12" fill="#222"/><circle cx="22" cy="18" r="9" fill="#E5383B" stroke="#111" stroke-width="2"><animate attributeName="opacity" values="1;.15;1" dur=".8s" repeatCount="indefinite"/></circle><circle cx="126" cy="18" r="9" fill="#E5383B" stroke="#111" stroke-width="2"><animate attributeName="opacity" values=".15;1;.15" dur=".8s" repeatCount="indefinite"/></circle><rect x="138" y="40" width="20" height="24" fill="#C1121F" stroke="#fff" stroke-width="2" rx="3"/><text x="148" y="56" font-family="Arial,sans-serif" font-size="8" font-weight="bold" fill="#fff" text-anchor="middle">STOP</text></svg>',
    oneway:'<svg width="150" height="60" viewBox="0 0 150 60"><rect x="3" y="3" width="144" height="54" rx="4" fill="#111" stroke="#fff" stroke-width="3"/><path d="M96 30 h22 v-9 l18 9 -18 9 v-9 z" fill="#fff"/><text x="52" y="37" font-family="Arial,sans-serif" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle">ONE WAY</text></svg>'
   };
-  return s[t]||'';
+  return s[key]||'';
 }
 
 /* ---------- détection automatique du panneau lié à une question ---------- */
 const SIGN_RULES=[
+  // --- marquages au sol : ce sont eux que le manuel décrit le plus mal
+  ['twowayleft', /two-way left[- ]turn|center lane .*left turn|shared left[- ]turn/],
+  ['stopline',   /(white|solid) line painted across|stop line/],
+  ['lanearrow',  /arrow painted on the pavement|pavement.*arrow|lane.*arrow painted/],
+  ['mixedyellow',/one solid and one broken|solid and one dashed|solid yellow line on your side|two centerlines/],
+  ['doubleyellow',/two solid yellow|double (solid )?yellow/],
+  ['brokenyellow',/broken .*yellow|dashed .*yellow/],
+  ['brokenwhite',/broken white|dashed white/],
+  ['solidwhite', /solid white line between/],
+  // --- feux et gestes
+  ['siglight',   /order of the colors|colors on a vertical traffic light|top to bottom/],
+  ['handleft',   /arm extended straight out/],
+  ['handright',  /arm bent at the elbow.*up|hand pointing up/],
+  ['handstop',   /arm pointing downward|hand pointing down/],
+  ['rrsignal',   /(red lights|flashing lights).*(railroad|crossing)|railroad crossing with flashing/],
+  ['schoolbus',  /school bus with flashing|stopped school bus|school bus.*red lights/],
+  ['advisory',   /under a curve warning|advisory speed|recommended safe speed/],
+  ['regul',      /white rectangular|regulatory sign|white sign(s)? with black/],
   ['crossbuck', /crossbuck/],
   ['rr',        /round(ed)? (yellow|advance)|railroad advance|advance warning sign.*(railroad|crossing)|rr sign|circular sign.*railroad/],
   ['pennant',   /pennant|no passing zone sign/],
@@ -1853,11 +1890,12 @@ const SIGN_RULES=[
   ['slow',      /slow[- ]moving vehicle|orange triangle/],
   ['work',      /orange (sign|cone|barrel|vest|flag)|orange signs|construction sign|work zone sign|road work/],
   ['service',   /blue sign|service sign|motorist service/],
-  ['guide',     /green sign|guide sign|exit sign|mileage sign/],
+  ['guide',     /green (road )?signs?|guide sign|exit sign|mileage sign/],
   ['recreation',/brown sign|recreation(al)? (area|sign)|cultural interest/],
   ['minspeed',  /minimum speed/],
   ['speed',     /speed limit sign|posted speed limit sign|regulatory speed/],
-  ['pedbike',   /fluorescent (yellow[- ]green|green)|pedestrian (crossing )?sign|bicycle (crossing )?sign|school zone sign/],
+  ['pedsignal', /pedestrian signal|don'?t walk|walk signal|countdown/],
+  ['pedbike',   /fluorescent (yellow[- ]green|green)|yellow-green|pedestrian (crossing )?signs?\b|bicycle (crossing )?signs?\b|school zone sign/],
   ['shield',    /route (marker|shield)|interstate (marker|shield)|shield[- ]shaped/],
   ['redx',      /red x|steady red x/],
   ['yellowx',   /yellow x|flashing yellow x/],
@@ -1880,12 +1918,29 @@ function signFor(q){
   }
   return '';
 }
+/* on ne montre pas toujours un panneau : marquage au sol, feu, geste du bras… */
+const SIGN_KIND={
+  doubleyellow:'mark', brokenyellow:'mark', mixedyellow:'mark', brokenwhite:'mark',
+  solidwhite:'mark', twowayleft:'mark', stopline:'mark', lanearrow:'mark',
+  siglight:'light', sigred:'light', sigyel:'light', arrow:'light', yellowarrow:'light', pedsignal:'light',
+  redx:'light', yellowx:'light', rrsignal:'light',
+  handleft:'hand', handright:'hand', handstop:'hand',
+  schoolbus:'veh', slow:'veh'
+};
+function signLabel(k){
+  const kind=SIGN_KIND[k]||'sign';
+  return {mark:t('🛣️ LE MARQUAGE','🛣️ THE MARKING'),
+          light:t('🚦 LE FEU','🚦 THE SIGNAL'),
+          hand:t('🖐️ LE GESTE','🖐️ THE HAND SIGNAL'),
+          veh:t('🚌 LE VÉHICULE','🚌 THE VEHICLE'),
+          sign:t('🪧 LE PANNEAU','🪧 THE SIGN')}[kind];
+}
 /* bloc affiché à la révélation de la réponse (pas de doublon si déjà montré) */
 function signReveal(q){
   if(q.s) return '';                       // déjà affiché au-dessus de la question
   const k=signFor(q), svg=k?signSvg(k):'';
   if(!svg) return '';
-  return '<div class="signrev"><span class="tag">'+t('🪧 LE PANNEAU','🪧 THE SIGN')+'</span>'
+  return '<div class="signrev"><span class="tag">'+signLabel(k)+'</span>'
     +'<div class="qsign" style="margin:8px 0 0">'+svg+'</div></div>';
 }
 
