@@ -127,11 +127,9 @@ h1.logo{font-family:var(--px);font-size:clamp(22px,7vw,34px);color:var(--bus);te
 .btn-shield{background:#12253F;border-color:var(--shield);color:#CFE2FB;box-shadow:0 4px 0 #00000088}
 .btn-stop{background:#2E0D0E;border-color:var(--stop);color:#FFD7D8;box-shadow:0 4px 0 #00000088}
 .btn-ghost{background:var(--lane2);border-color:var(--edge);color:var(--dim);box-shadow:0 4px 0 #00000055}
-.btnrow{display:flex;gap:8px}
-/* width:100% hérité de .btn faisait déborder la rangée : on repasse en flex partagé */
-.btnrow .btn{justify-content:center;text-align:center;flex:1 1 0;width:auto;min-width:0;
-  padding:13px 6px;gap:6px;overflow-wrap:anywhere}
-.btnrow .btn:last-child{flex:0 0 auto;padding:13px 12px}
+.btnrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
+.btnrow .btn{justify-content:center;text-align:center;width:auto;min-width:0;
+  padding:14px 8px;gap:8px;overflow-wrap:normal;word-break:keep-all;line-height:1.5}
 .menu{display:flex;flex-direction:column;gap:11px}
 
 /* ---------- world cards ---------- */
@@ -408,6 +406,12 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* occupant d'un bâtiment, sur sa fiche */
+.bldocc{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px;
+  border:2px solid var(--edge);border-radius:12px;background:var(--lane2);text-align:left}
+.bldocc .boic{font-size:22px;flex:none;line-height:1}
+.bldocc .botx{flex:1;min-width:0;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.bldocc .sbuy{flex:none}
 /* ---------- statistiques ---------- */
 .sbar{display:block;height:10px;border-radius:99px;background:#0C1017;border:2px solid var(--edge);overflow:hidden;flex:1;min-width:0}
 .sbar i{display:block;height:100%}
@@ -2107,7 +2111,7 @@ function scrHome(){
    +'<button class="btn btn-ghost" onclick="G.go(\'hard\')"><span class="ic">🏛️</span>'+t('Par cœur','By heart')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'stats\')"><span class="ic">📊</span>'+t('Stats','Stats')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'badges\')"><span class="ic">🏅</span>'+t('Trophées','Trophies')+'</button>'
-   +'<button class="btn btn-ghost" onclick="G.go(\'settings\')" aria-label="'+t('Réglages','Settings')+'"><span class="ic">⚙️</span></button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'settings\')"><span class="ic">⚙️</span>'+t('Réglages','Settings')+'</button>'
    +'</div></div>'
    +'<hr class="centerline">'
    +(function(){
@@ -4169,7 +4173,7 @@ function v3dHost(){
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
         : V3.order ? t('📣 touche le sol pour rassembler la troupe','📣 tap the ground to muster the squad')
-        : t('👆 glisse · pince = zoom','👆 drag · pinch = zoom'))+'</div>'
+        : t('👆 touche un bâtiment ou un villageois','👆 tap a building or a villager'))+'</div>'
     +'<div class="v3d-ctl">'
     +'<button onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
     +'<button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
@@ -4351,8 +4355,11 @@ function v3dInit(){
         v3dSetDist(V3.dist*0.62); SFX.click(); V3.lastTap=0;
       }else{
         V3.lastTap=now; V3.lastTapXY=[e.clientX,e.clientY];
-        if(!V3.edit){ const npc=pickNpc(e);
-          if(npc&&npc.userData.rec) showPerson(npc.userData.rec,npc); }
+        if(!V3.edit){
+          const npc=pickNpc(e);
+          if(npc&&npc.userData.rec) showPerson(npc.userData.rec,npc);
+          else{ const bld=pickAt(e); if(bld&&bld.userData.pid) showBuilding(bld.userData.pid); }
+        }
       }
     }
     V3.drag=false; V3.grab=null; V3.rotDrag=false; host.classList.remove('dragging'); };
@@ -4459,7 +4466,7 @@ function v3dInit(){
           const want=u.sp*nrj*Math.min(1,Math.max(0.35,(d-2.5)/9));
           u.v=(u.v||0)+(want-(u.v||0))*Math.min(1,3.2*dt);
           // on contourne ce qui barre la route au lieu de pousser dedans
-          const st2=steerAround(p.position.x,p.position.z,dx/d,dz/d,bodyR(p)*0.6,d);
+          const st2=steerAround(p.position.x,p.position.z,dx/d,dz/d,bodyR(p)*0.6,d,u);
           p.position.x+=st2[0]*u.v*dt; p.position.z+=st2[1]*u.v*dt;
           turnTo(p,p.position.x+st2[0]*10,p.position.z+st2[1]*10,dt,4.5);
           const cad=Math.max(0.35,u.v/u.sp);
@@ -4806,23 +4813,37 @@ function pushOutOfSolids(x,z,body){
 }
 /* contournement : plutôt que de s'écraser contre un mur, on le longe.
    On repère l'obstacle le plus proche DEVANT soi et on suit sa tangente. */
-function steerAround(x,z,ux,uz,body,goal){
+function steerAround(x,z,ux,uz,body,goal,u){
   const S2=V3.solids||[]; if(!S2.length) return [ux,uz];
-  let best=null, bd=1e9;
+  // On ne contourne QUE ce qui barre vraiment la route : un obstacle devant
+  // nous mais décalé sur le côté se dépasse tout seul. Sans ce filtre on
+  // s'écarte de tout ce qui traîne dans le cône de marche et on tourne autour
+  // du village au lieu d'arriver.
+  const LOOK=14;
+  let best=null, bd=1e9, blat=0;
   for(const o of S2){
     const dx=o.x-x, dz=o.z-z;
-    if(dx*ux+dz*uz<=0) continue;                 // il est derrière nous
-    const d=Math.hypot(dx,dz);
-    if(d>o.r+body+7) continue;                   // encore loin
-    if(goal!=null&&d>goal) continue;             // il est au-delà du but : on l'ignore
-    if(d<bd){ bd=d; best=o; }
+    const ahead=dx*ux+dz*uz;
+    if(ahead<=0) continue;                       // il est derrière nous
+    if(goal!=null&&ahead>goal+o.r) continue;     // il est au-delà du but
+    if(ahead>o.r+body+LOOK) continue;            // encore loin
+    const lat=Math.abs(dx*(-uz)+dz*ux);          // décalage latéral
+    if(lat>o.r+body+1.5) continue;               // on passe à côté sans le toucher
+    if(ahead<bd){ bd=ahead; best=o; blat=lat; }
   }
-  if(!best) return [ux,uz];
+  if(!best){ if(u) u.avoidO=null; return [ux,uz]; }
   const dx=x-best.x, dz=z-best.z, d=Math.hypot(dx,dz)||1;
-  let tx=-dz/d, tz=dx/d;                         // tangente à l'obstacle
-  if(tx*ux+tz*uz<0){ tx=-tx; tz=-tz; }           // du côté qui garde le cap
-  // on longe, mais on continue d'avancer vers le but : sinon on tourne en rond
-  const mx=tx*0.75+ux*0.7, mz=tz*0.75+uz*0.7;
+  const tx=-dz/d, tz=dx/d;                       // tangente à l'obstacle
+  // on choisit un côté UNE fois et on s'y tient tant que le même obstacle
+  // barre la route : sinon on hésite entre les deux et on tourne en rond
+  let side;
+  if(u&&u.avoidO===best) side=u.avoidS;
+  else{ side=(tx*ux+tz*uz>=0)?1:-1; if(u){ u.avoidO=best; u.avoidS=side; } }
+  // plus il est proche et plus il est pile en face, plus on braque
+  const near=Math.max(0,1-bd/(best.r+body+LOOK));
+  const face=Math.max(0,1-blat/(best.r+body+1.5));
+  const w=0.35+1.05*near*face;
+  const mx=tx*side*w+ux, mz=tz*side*w+uz;
   const m=Math.hypot(mx,mz)||1;
   return [mx/m,mz/m];
 }
@@ -5066,6 +5087,74 @@ function chronHtml(){
   return h+'</div></div>';
 }
 function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
+/* ---------- fiche d'un bâtiment ----------
+   Ce que c'est, à quoi ça sert, qui l'habite, ce que ça coûte et ce que ça rapporte. */
+function buildingLabel(key){
+  const base=String(key).split('#')[0], it=SHOP.find(x=>x.id===base);
+  if(!it) return String(key);
+  const num=String(key).includes('#') ? ' n°'+(+String(key).split('#')[1]+1) : (nOwned(base)>1?' n°1':'');
+  return t(it.n,it.ne)+num;
+}
+function showBuilding(key){
+  const base=String(key).split('#')[0], it=SHOP.find(x=>x.id===base);
+  if(!it){ toast(t('Rien à dire sur cet élément.','Nothing to say about this one.')); return; }
+  const occ=(S.people||[]).find(x=>x.home===key);
+  const n=nOwned(base);
+  const rows=[];
+  const row=(k,v)=>rows.push('<b>'+k+' :</b> '+v+'<br>');
+
+  // à quoi ça sert
+  if(it.d) row(t('Rôle','Purpose'),'<i>'+esc(t(it.d,it.de||it.d))+'</i>');
+  else if(HOUSED[base]!==undefined) row(t('Rôle','Purpose'),'<i>'+t('Loge un habitant du village','Houses a villager')+'</i>');
+  if(it.cat==='army') row(t('Catégorie','Category'),'⚔️ '+t('Militaire','Military'));
+
+  // production et besoins couverts
+  if(it.prod){
+    const IC={food:'🌾',wood:'🪵',iron:'⚙️'};
+    row(t('Production','Output'), Object.keys(it.prod).map(k=>'+'+it.prod[k]+' '+IC[k]+'/h').join(' · '));
+  }
+  const fills=NEEDS.filter(nd=>(nd.go||'').includes(base)||new RegExp(esc(t(it.n,it.ne)),'i').test(t(nd.src,nd.srce)));
+  if(fills.length) row(t('Comble le besoin','Fills the need'), fills.map(nd=>nd.ic+' '+esc(t(nd.n,nd.ne))).join(', '));
+  if(it.pw) row(t('Puissance militaire','Military power'),'+'+it.pw);
+
+  // ce qu'il a coûté
+  const rc=it.rc?Object.keys(it.rc).map(k=>it.rc[k]+' '+({food:'🌾',wood:'🪵',iron:'⚙️'})[k]).join(' · '):null;
+  row(t('Prix','Price'), priceOf(it)+' 🪙'+(rc?' + '+rc:''));
+  if(it.stack) row(t('Tu en possèdes','You own'), n+' '+(n>1?t('exemplaires','of these'):t('exemplaire','of these')));
+
+  // qui vit là
+  let who='';
+  if(occ){
+    const job=JOBS.find(j=>j.k===occ.job)||JOBS[JOBS.length-1];
+    const H=happinessOf(occ);
+    who='<div class="bldocc"><span class="boic">'+(job?job.ic:'🧑')+'</span>'
+      +'<span class="botx"><b>'+esc(nameOf(occ))+'</b><br>'
+      +'<span style="color:var(--dim)">'+esc(isChild(occ)?t('enfant','child'):t(job.n,job.ne))
+        +' · '+moodIcon(occ)+' '+H.pct+'%</span></span>'
+      +'<button class="sbuy" onclick="G.hideOverlay();G.showPerson('+JSON.stringify(occ.id).replace(/"/g,'&quot;')+')">'
+      +t('SA FICHE','PROFILE')+' →</button></div>';
+    // les enfants logent chez leurs parents
+    const kids=(S.people||[]).filter(x=>x.home===key&&x!==occ);
+    if(kids.length) row(t('Vivent aussi ici','Also living here'), kids.map(k=>esc(nameOf(k))).join(', '));
+  }else if(base in HOUSED){
+    who='<p class="small" style="margin:10px 0 0">'+t('Personne n\'habite encore ici.','Nobody lives here yet.')+'</p>';
+  }
+
+  // position
+  const g=V3.place&&V3.place[key];
+  if(g) row(t('Emplacement','Location'), Math.round(g.position.x)+', '+Math.round(g.position.z));
+
+  showOverlay(it.ic, buildingLabel(key),
+    '<div style="text-align:left;font-size:13.5px;line-height:1.7">'+rows.join('')+'</div>'
+    +who
+    +'<div class="menu" style="margin-top:12px">'
+    +(V3.edit?'':'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay();G.toggleEdit()">🔧 '
+       +t('Déplacer / orienter','Move / turn')+'</button>')
+    +(it.stack&&canAfford(it)&&S.coins>=priceOf(it)
+       ?'<button class="btn btn-exit" style="justify-content:center" onclick="G.hideOverlay();G.buy(\''+base+'\')">'
+        +it.ic+' '+t('En construire un autre','Build another')+' — '+priceOf(it)+' 🪙</button>':'')
+    +'</div>');
+}
 /* fait pivoter le bâtiment sélectionné (ou le dernier touché) */
 /* ---------- ordres à l'armée ---------- */
 function armyOrder(){
@@ -5707,7 +5796,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
-  v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall};
+  v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding};
 window.G=G;
 applyLang();
 touchDaily();
