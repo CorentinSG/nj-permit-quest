@@ -2482,41 +2482,127 @@ function v3dFocus(x,z){
 /* bulle de dialogue : un villageois « parle » au-dessus de la scène */
 /* ce qu'un habitant a envie de dire MAINTENANT : son rêve, son amour, son
    mentor, la faim du village, César qui approche… le métier n'arrive qu'après. */
-function lineFor(rec,job){
-  const L=[];                                   // [poids, fr, en]
-  const push=(w,fr,en)=>L.push([w,fr,en]);
+/* ---------- répliques ----------
+   Chaque réplique porte un identifiant. Un habitant ne redit pas ce qu'il a
+   déjà dit tant qu'il lui reste autre chose à raconter ; quand il a tout dit,
+   son carnet se vide et il peut recommencer. Le carnet est sauvegardé, donc
+   revenir au village ne le remet pas à zéro. */
+const SAID_MAX=40;
+function lineDeck(rec,job){
+  const L=[];                                   // {id, w, fr, en}
+  const push=(id,w,fr,en)=>L.push({id,w,fr,en});
   if(rec&&isChild(rec)){
     const par=parentsOf(rec);
-    if(par.length) push(6,'Quand je serai grand, je ferai comme '+nameOf(par[0])+' !',
+    if(par.length){
+      push('kid.parent',6,'Quand je serai grand, je ferai comme '+nameOf(par[0])+' !',
                           'When I grow up, I want to be like '+nameOf(par[0])+'!');
+      push('kid.hide',4,'On a le droit de se cacher dans la grange, dis ?','Are we allowed to hide in the barn?');
+    }
     const sib=childrenOf(par[0]||{}).filter(k=>k!==rec);
-    if(sib.length) push(4,'Attends-moi, '+nameOf(sib[0])+' !','Wait for me, '+nameOf(sib[0])+'!');
-    push(5,'Je grandis vite, tu as vu ?','I am growing fast, have you seen?');
+    if(sib.length) push('kid.sib',4,'Attends-moi, '+nameOf(sib[0])+' !','Wait for me, '+nameOf(sib[0])+'!');
+    push('kid.grow',5,'Je grandis vite, tu as vu ?','I am growing fast, have you seen?');
+    push('kid.frog',4,'J\'ai trouvé une grenouille. Je l\'appelle Bulle.','I found a frog. I call her Bubble.');
+    push('kid.why',4,'Pourquoi les menhirs sont lourds ?','Why are menhirs so heavy?');
+    push('kid.roman',4,'C\'est vrai que les Romains ont des jupes ?','Is it true the Romans wear skirts?');
+    push('kid.race',3,'Je cours plus vite que toi. Presque.','I run faster than you. Almost.');
   }else if(rec){
     const d=dreamOf(rec), lv=loveOf(rec), mt=mentorOf(rec), st=studentsOf(rec), bf=bestFriend(rec);
-    const m=moodOf(rec);
+    const m=moodOf(rec), tr=rec.tr;
     if(d&&rec.dreamAt&&Date.now()-rec.dreamAt<6*36e5)
-      push(9,'Je n\'y croyais plus : '+d.fr+'… merci, chef.','I had given up hope: '+d.en+'… thank you, chief.');
-    else if(d&&!rec.dreamAt)
-      push(4,'Un jour, '+d.fr+'. Un jour.','One day, '+d.en+'. One day.');
-    if(lv) push(5,'Tu as vu '+lv.name+' ce matin ? Moi oui.','Have you seen '+lv.name+' this morning? I have.');
-    if(mt) push(3,mt.name+' m\'a tout appris. Je lui dois bien ça.',mt.name+' taught me everything. I owe them that much.');
-    if(st.length) push(3,'Je forme '+st[0].name+'. Ça rentre, doucement.','I\'m training '+st[0].name+'. It\'s sinking in, slowly.');
-    if(bf&&bf.n>=10) push(3,'Avec '+bf.p.name+', on se comprend sans parler.','With '+bf.p.name+', we understand each other without a word.');
-    if(m<0.3) push(6,'Rien ne va aujourd\'hui. Rien.','Nothing is right today. Nothing.');
-    else if(m>0.85) push(4,'Quelle journée ! Tout me réussit.','What a day! Everything is going my way.');
-    if((S.res&&S.res.food===0)) push(8,'Il n\'y a plus rien à manger, chef…','There is nothing left to eat, chief…');
+      push('dream.done',9,'Je n\'y croyais plus : '+d.fr+'… merci, chef.','I had given up hope: '+d.en+'… thank you, chief.');
+    else if(d&&!rec.dreamAt){
+      push('dream.wish',4,'Un jour, '+d.fr+'. Un jour.','One day, '+d.en+'. One day.');
+      push('dream.ask',3,'Tu crois qu\'on verra ça de notre vivant ? '+d.fr+'…','Do you think we will live to see it? '+d.en+'…');
+    }
+    if(lv){
+      push('love.1',5,'Tu as vu '+nameOf(lv)+' ce matin ? Moi oui.','Have you seen '+nameOf(lv)+' this morning? I have.');
+      push('love.2',4,'Je garde toujours la meilleure part pour '+nameOf(lv)+'.','I always keep the best portion for '+nameOf(lv)+'.');
+      push('love.3',3,'On s\'est rencontrés près du feu. Je m\'en souviens comme d\'hier.',
+                     'We met by the fire. I remember it like yesterday.');
+    }
+    if(mt){
+      push('mentor.1',3,nameOf(mt)+' m\'a tout appris. Je lui dois bien ça.',nameOf(mt)+' taught me everything. I owe them that much.');
+      push('mentor.2',3,'La première fois, '+nameOf(mt)+' a bien ri de moi.','The first time, '+nameOf(mt)+' laughed at me plenty.');
+    }
+    if(st.length){
+      push('stu.1',3,'Je forme '+nameOf(st[0])+'. Ça rentre, doucement.','I\'m training '+nameOf(st[0])+'. It\'s sinking in, slowly.');
+      push('stu.2',3,nameOf(st[0])+' a failli y laisser un doigt. Il apprend.',nameOf(st[0])+' nearly lost a finger. They are learning.');
+    }
+    if(bf&&bf.n>=10){
+      push('bf.1',3,'Avec '+nameOf(bf.p)+', on se comprend sans parler.','With '+nameOf(bf.p)+', we understand each other without a word.');
+      push('bf.2',3,nameOf(bf.p)+' me doit trois tournées. Je compte.',nameOf(bf.p)+' owes me three rounds. I am counting.');
+    }
+    if(rec.rival){
+      const rv=(S.people||[]).find(x=>x.id===rec.rival);
+      if(rv){ push('rival.1',4,'Ne me parle pas de '+nameOf(rv)+'.','Do not mention '+nameOf(rv)+' to me.');
+              push('rival.2',3,'Un jour '+nameOf(rv)+' comprendra. Pas aujourd\'hui.','One day '+nameOf(rv)+' will understand. Not today.'); }
+    }
+    const kids=childrenOf(rec);
+    if(kids.length){
+      push('kids.1',4,nameOf(kids[0])+' a encore désobéi. Comme moi à son âge.',nameOf(kids[0])+' misbehaved again. Just like me at that age.');
+      push('kids.2',3,'Je bâtis tout ça pour eux, au fond.','I am building all this for them, really.');
+    }
+    if(m<0.3){
+      push('mood.low1',6,'Rien ne va aujourd\'hui. Rien.','Nothing is right today. Nothing.');
+      push('mood.low2',4,'J\'ai mal dormi. Et ça se voit, je sais.','I slept badly. And it shows, I know.');
+    }else if(m>0.85){
+      push('mood.hi1',4,'Quelle journée ! Tout me réussit.','What a day! Everything is going my way.');
+      push('mood.hi2',3,'Si tous les jours pouvaient ressembler à celui-là…','If only every day were like this one…');
+    }
+    if(S.res&&S.res.food===0){
+      push('hungry.1',8,'Il n\'y a plus rien à manger, chef…','There is nothing left to eat, chief…');
+      push('hungry.2',6,'On a fini les réserves hier soir. Hier SOIR.','We finished the stores last night. Last NIGHT.');
+    }
     const dj=daysToExam();
-    if(dj!==null&&dj>=0&&dj<=3) push(7,'Plus que '+dj+' jour'+(dj>1?'s':'')+' avant César. Tu es prêt ?','Only '+dj+' day'+(dj>1?'s':'')+' until Caesar. Are you ready?');
+    if(dj!==null&&dj>=0&&dj<=3){
+      push('exam.1',7,'Plus que '+dj+' jour'+(dj>1?'s':'')+' avant César. Tu es prêt ?','Only '+dj+' day'+(dj>1?'s':'')+' until Caesar. Are you ready?');
+      push('exam.2',5,'J\'ai aiguisé ma faux. On ne sait jamais.','I sharpened my scythe. One never knows.');
+    }
     const dd=daysIn(rec);
-    if(dd>=7&&dd%7===0) push(3,'Déjà '+dd+' jours que je suis ici. Le temps file.','Already '+dd+' days here. Time flies.');
+    if(dd>=7) push('here.'+Math.floor(dd/7),3,'Déjà '+dd+' jours que je suis ici. Le temps file.','Already '+dd+' days here. Time flies.');
+    // couleur de caractère : chacun a ses marottes
+    const TRLINE={
+      bavard:[['tr.bav1','Je te raconte ? Bon, je te raconte.','Shall I tell you? Right, I shall.'],
+              ['tr.bav2','On m\'a dit que… non, je ne devrais pas.','I heard that… no, I should not.']],
+      travailleur:[['tr.trav1','Il reste de la lumière, il reste du travail.','Daylight left means work left.'],
+                   ['tr.trav2','Le repos, c\'est pour l\'hiver.','Rest is for the winter.']],
+      gourmand:[['tr.gou1','On mange à quelle heure, au juste ?','So what time do we eat, exactly?'],
+                ['tr.gou2','J\'ai senti du sanglier. Je ne me trompe jamais.','I smelled boar. I am never wrong.']],
+      reveur:[['tr.rev1','Ce nuage a la forme d\'un casque romain.','That cloud looks like a Roman helmet.'],
+              ['tr.rev2','Tu crois qu\'il y a un village de l\'autre côté de la mer ?','Do you think there is a village across the sea?']],
+      grognon:[['tr.gro1','C\'était mieux avant. Bien mieux.','Things were better before. Much better.'],
+               ['tr.gro2','Ne me demande pas mon avis, tu ne l\'aimerais pas.','Do not ask my opinion, you would not like it.']],
+      courageux:[['tr.cou1','Qu\'ils viennent. Je serai devant.','Let them come. I will be at the front.'],
+                 ['tr.cou2','J\'ai déjà vu pire qu\'une légion.','I have seen worse than a legion.']],
+      curieux:[['tr.cur1','Pourquoi le ciel change de couleur, à ton avis ?','Why does the sky change colour, do you think?'],
+               ['tr.cur2','Et si on essayait autrement, pour voir ?','What if we tried it another way, just to see?']]
+    };
+    (TRLINE[tr]||[]).forEach(x=>push(x[0],4,x[1],x[2]));
   }
-  const jl=t(job.say,job.saye);
-  push(10,null,null);                            // repli : la réplique de métier
-  const tot=L.reduce((a,x)=>a+x[0],0);
-  let r=Math.random()*tot;
-  for(const x of L){ r-=x[0]; if(r<=0) return x[1]===null?jl[Math.floor(Math.random()*jl.length)]:t(x[1],x[2]); }
-  return jl[0];
+  // les répliques de métier, chacune avec son identifiant
+  const jl=t(job.say,job.saye), jk=job.k;
+  jl.forEach((txt,i)=>push('job.'+jk+'.'+i, 6, txt, txt));
+  return L;
+}
+/* tire une réplique jamais dite récemment */
+function lineFor(rec,job){
+  const L=lineDeck(rec,job);
+  if(!L.length) return '';
+  const said=(rec&&rec.said)||[];
+  let pool=L.filter(x=>said.indexOf(x.id)<0);
+  if(!pool.length){                       // tout a été dit : on repart d'une page blanche
+    if(rec) rec.said=[];
+    pool=L;
+  }
+  const tot=pool.reduce((a,x)=>a+x.w,0);
+  let r=Math.random()*tot, pick=pool[pool.length-1];
+  for(const x of pool){ r-=x.w; if(r<=0){ pick=x; break; } }
+  if(rec){
+    rec.said=(rec.said||[]).concat(pick.id);
+    if(rec.said.length>SAID_MAX) rec.said=rec.said.slice(-SAID_MAX);
+    V3.saveSoon=1;
+  }
+  return t(pick.fr,pick.en);
 }
 function villagerSay(p){
   const el=$('#v3dsay'); if(!el) return;
@@ -3708,19 +3794,26 @@ function buildVillage(scene){
             [152,100,1.15,1],[176,92,1,0],[200,110,1.2,0],[224,96,.9,1],[248,112,1.05,0],[272,94,1.15,0],
             [296,108,.9,1],[320,98,1.1,0],[344,114,1,0],[16,138,.9,1],[100,142,.95,0],[190,140,.9,0],
             [268,144,1,1],[330,136,.95,0],[60,150,.85,1],[230,152,.9,0]];
+  // décor fixe : on retient au passage ce qui doit rester infranchissable
+  V3.statics=[];
+  const solid=(x,z,r)=>V3.statics.push({x,z,r});
   TR.forEach(t=>{ const a=t[0]*Math.PI/180, R=t[1]*1.75, o=tree(t[2],t[3]);
-    o.position.set(Math.cos(a)*R,0,Math.sin(a)*R); o.rotation.y=a; scene.add(o); });
+    o.position.set(Math.cos(a)*R,0,Math.sin(a)*R); o.rotation.y=a; scene.add(o);
+    solid(o.position.x,o.position.z,4.4*t[2]); });
   // seconde couronne de forêt pour habiller le terrain agrandi
   for(let i=0;i<12;i++){ const a=(i*30+7)*Math.PI/180, R=250+((i*23)%54);
-    const o=tree(0.9+((i*11)%4)*0.12, i%3===0);
-    o.position.set(Math.cos(a)*R,0,Math.sin(a)*R); o.rotation.y=a; scene.add(o); }
+    const sc=0.9+((i*11)%4)*0.12, o=tree(sc, i%3===0);
+    o.position.set(Math.cos(a)*R,0,Math.sin(a)*R); o.rotation.y=a; scene.add(o);
+    solid(o.position.x,o.position.z,4.4*sc); }
   [[-58,-56,1],[62,-52,.8],[-70,30,.9],[64,58,1],[0,-72,.85]].forEach(r=>{
     const m=sph(3.4*r[2],COL.stoneDark,0); m.position.set(r[0],1.6*r[2],r[1]);
-    m.scale.y=.7; m.rotation.y=r[0]; scene.add(m); });
+    m.scale.y=.7; m.rotation.y=r[0]; scene.add(m);
+    solid(r[0],r[1],3.6*r[2]); });
   // buissons
   [[-62,-14,1],[58,-18,.9],[-30,58,1],[44,-46,.85],[-52,46,.95]].forEach(b=>{
     const g=new THREE.Group(); g.add(at(sph(3.6*b[2],COL.leaf2,0),0,2.4,0));
-    g.add(at(sph(2.6*b[2],COL.leaf,0),2.4,1.6,1)); g.position.set(b[0],0,b[1]); scene.add(g); });
+    g.add(at(sph(2.6*b[2],COL.leaf,0),2.4,1.6,1)); g.position.set(b[0],0,b[1]); scene.add(g);
+    solid(b[0],b[1],3.4*b[2]); });
 
   // accessoires : tonneaux, caisses, bottes de foin, bois, clôtures, étal, charrette
   const put=(o,x,z,ry,sc)=>{ o.position.set(x,0,z); if(ry)o.rotation.y=ry; if(sc)o.scale.setScalar(sc); scene.add(o); };
@@ -3743,6 +3836,7 @@ function buildVillage(scene){
     o.position.set(Math.cos(a)*r,0,Math.sin(a)*r); o.rotation.y=a; scene.add(o);
   }
   // --- habitants : chacun a un métier, un outil, un lieu de travail et des répliques ---
+  rebuildSolids();          // les obstacles sont connus avant de placer les postes
   const spots=[];
   // poste de travail calé sur le bâtiment RÉEL (le joueur peut le déplacer) :
   // on convertit l'offset local (dx,dz) en coordonnées monde via la rotation du groupe.
@@ -3777,13 +3871,17 @@ function buildVillage(scene){
   addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');   // lisière de forêt
   spots.push({x:-96,z:86,job:'chasse'},{x:104,z:-84,job:'chasse'});  // terrains de chasse
   if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
+  // un poste de travail ne doit pas tomber DANS le bâtiment : sinon l'habitant
+  // se ferait repousser en boucle et n'arriverait jamais
+  spots.forEach(sp=>{ const f=pushOutOfSolids(sp.x,sp.z,4.2); sp.x=f[0]; sp.z=f[1]; });
   const folk=syncPeople();
   const n=Math.min(16,folk.length), walkers=[];
   // lieux de repos : les huttes servent de maisons pour la nuit
   const homes=[]; for(let i=0;i<Math.max(1,hutCount());i++){
     const k=i?'hutte#'+i:'hutte';
     const g=V3.place&&V3.place[k];
-    homes.push(g?{x:g.position.x,z:g.position.z+12}:{x:-33,z:-21});
+    const hp=g?pushOutOfSolids(g.position.x,g.position.z+12,4.2):[-33,-21];
+    homes.push({x:hp[0],z:hp[1]});
   }
   for(let i=0;i<n;i++){
     const rec=folk[i];
@@ -3826,6 +3924,7 @@ function buildVillage(scene){
     scene.add(p); walkers.push(p);
   }
   built_spots=spots;
+  rebuildSolids();
   return {anim, walkers, spots:built_spots};
 }
 /* ---- espace vital : deux villageois ne peuvent plus se superposer ----
@@ -4160,7 +4259,7 @@ function v3dInit(){
   const up=e=>{
     if(V3.sel){ S.vpos=S.vpos||{};
       S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
-      save(); V3.sel=null;
+      save(); V3.sel=null; rebuildSolids();
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
     // simple tape : c'est une sélection, pas un déplacement
     else if(!V3.moved && e && performance.now()-(V3.tapT||0)<400){
@@ -4239,6 +4338,17 @@ function v3dInit(){
     built.walkers.forEach(p=>{
       const u=p.userData, ar=u.arms;
       u.timer-=dt;
+      // anti-blocage : vraiment coincé (aucun progrès pendant ~9 s), on vise ailleurs
+      if(u.state==='walk'){
+        u.stuckT=(u.stuckT||0)+dt;
+        if(u.stuckT>3){
+          const dnow=Math.hypot(u.tgt.x-p.position.x,u.tgt.z-p.position.z);
+          if(u.lastD!=null&&u.lastD-dnow<4){ u.strikes=(u.strikes||0)+1; }
+          else u.strikes=0;
+          u.lastD=dnow; u.stuckT=0;
+          if(u.strikes>=3){ u.strikes=0; u.timer=0; u.state='work'; }
+        }
+      }else{ u.stuckT=0; u.lastD=null; u.strikes=0; }
       // l'humeur règle le rythme : un habitant heureux travaille et marche plus vif
       const mo=u.rec?moodOf(u.rec):0.6, nrj=0.72+mo*0.56;
       if(u.badge&&u.badge.visible){
@@ -4268,8 +4378,10 @@ function v3dInit(){
           // vitesse progressive : on démarre en douceur et on ralentit en arrivant
           const want=u.sp*nrj*Math.min(1,Math.max(0.35,(d-2.5)/9));
           u.v=(u.v||0)+(want-(u.v||0))*Math.min(1,3.2*dt);
-          p.position.x+=dx/d*u.v*dt; p.position.z+=dz/d*u.v*dt;
-          turnTo(p,u.tgt.x,u.tgt.z,dt,4.5);
+          // on contourne ce qui barre la route au lieu de pousser dedans
+          const st2=steerAround(p.position.x,p.position.z,dx/d,dz/d,bodyR(p)*0.6,d);
+          p.position.x+=st2[0]*u.v*dt; p.position.z+=st2[1]*u.v*dt;
+          turnTo(p,p.position.x+st2[0]*10,p.position.z+st2[1]*10,dt,4.5);
           const cad=Math.max(0.35,u.v/u.sp);
           u.step=(u.step||0)+dt*8*cad;
           const sw=Math.sin(u.step)*0.8*cad;
@@ -4435,11 +4547,15 @@ function v3dInit(){
                               :(Math.random()<0.75?u.home:built.spots[Math.floor(Math.random()*built.spots.length)]);
             u.tgt.set(h.x+(Math.random()-0.5)*8,0,h.z+(Math.random()-0.5)*8); u.talk=null;
           }
+          // on ne se donne jamais un point d'arrivée situé dans un bâtiment
+          const free=pushOutOfSolids(u.tgt.x,u.tgt.z,bodyR(p)*0.6);
+          u.tgt.set(free[0],0,free[1]);
           u.state='walk';
         }
       }
     });
     separateWalkers(built.walkers,dt);
+    avoidSolids(built.walkers,dt);
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
     ren.render(scene,cam);
@@ -4573,6 +4689,78 @@ function relaxVillage(rounds){
     P.forEach(o2=>{ const R=Math.hypot(o2.g.position.x,o2.g.position.z);
       if(R>300){ o2.g.position.x=o2.g.position.x/R*300; o2.g.position.z=o2.g.position.z/R*300; moved=true; } });
     if(!moved) break;
+  }
+}
+/* ---------- obstacles que les habitants ne peuvent pas traverser ----------
+   Champs, sentiers et terrain d'entraînement se marchent dessus ; le reste est
+   solide. Le rayon solide est plus petit que l'emprise de placement : on veut
+   pouvoir longer un mur et se tenir devant sa porte, pas rebondir à 10 m. */
+const WALKABLE={ble:1, chemin:1, entrainement:1, muraille:1, palissade:1};
+function rebuildSolids(){
+  const out=(V3.statics||[]).slice();
+  Object.keys(V3.place||{}).forEach(k=>{
+    const base=String(k).split('#')[0];
+    if(NOCLIP[base]||WALKABLE[base]) return;
+    const g=V3.place[k]; if(!g) return;
+    out.push({x:g.position.x, z:g.position.z, r:footOf(k)*0.62});
+  });
+  V3.solids=out;
+}
+/* renvoie le point libre le plus proche de (x,z) */
+function pushOutOfSolids(x,z,body){
+  const S2=V3.solids||[];
+  for(let it=0;it<6;it++){
+    let moved=false;
+    for(const o of S2){
+      const need=o.r+(body||0);
+      const dx=x-o.x, dz=z-o.z;
+      let d=Math.hypot(dx,dz);
+      if(d>=need) continue;
+      if(d<0.001){ x=o.x+need; z=o.z; }
+      else{ const k=(need-d)/d; x+=dx*k; z+=dz*k; }
+      moved=true;
+    }
+    if(!moved) break;
+  }
+  return [x,z];
+}
+/* contournement : plutôt que de s'écraser contre un mur, on le longe.
+   On repère l'obstacle le plus proche DEVANT soi et on suit sa tangente. */
+function steerAround(x,z,ux,uz,body,goal){
+  const S2=V3.solids||[]; if(!S2.length) return [ux,uz];
+  let best=null, bd=1e9;
+  for(const o of S2){
+    const dx=o.x-x, dz=o.z-z;
+    if(dx*ux+dz*uz<=0) continue;                 // il est derrière nous
+    const d=Math.hypot(dx,dz);
+    if(d>o.r+body+7) continue;                   // encore loin
+    if(goal!=null&&d>goal) continue;             // il est au-delà du but : on l'ignore
+    if(d<bd){ bd=d; best=o; }
+  }
+  if(!best) return [ux,uz];
+  const dx=x-best.x, dz=z-best.z, d=Math.hypot(dx,dz)||1;
+  let tx=-dz/d, tz=dx/d;                         // tangente à l'obstacle
+  if(tx*ux+tz*uz<0){ tx=-tx; tz=-tz; }           // du côté qui garde le cap
+  // on longe, mais on continue d'avancer vers le but : sinon on tourne en rond
+  const mx=tx*0.75+ux*0.7, mz=tz*0.75+uz*0.7;
+  const m=Math.hypot(mx,mz)||1;
+  return [mx/m,mz/m];
+}
+/* chaque image : personne ne rentre dans un mur ni dans un tronc */
+function avoidSolids(walkers,dt){
+  const S2=V3.solids||[]; if(!S2.length) return;
+  const k=Math.min(1,22*dt);
+  for(const w of walkers){
+    const body=bodyR(w)*0.6;
+    for(const o of S2){
+      const need=o.r+body;
+      const dx=w.position.x-o.x, dz=w.position.z-o.z;
+      const d2=dx*dx+dz*dz;
+      if(d2>=need*need) continue;
+      const d=Math.sqrt(d2)||0.001;
+      const push=(need-d)/d*k;
+      w.position.x+=dx*push; w.position.z+=dz*push;
+    }
   }
 }
 /* place libre trouvée ? (pour signaler visuellement un chevauchement) */
