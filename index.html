@@ -362,17 +362,9 @@ html,body{overflow-x:hidden}
   opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .v3d-say.show{opacity:1;transform:translateY(0)}
 .v3d-say b{color:var(--bus)}
-.v3d-hint{position:absolute;left:10px;bottom:8px;z-index:1;font-size:10.5px;color:#fff;opacity:.85;
-  pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 178px);line-height:1.35}
+.v3d-hint{position:absolute;left:10px;bottom:14px;z-index:1;font-size:10.5px;color:#fff;opacity:.85;
+  pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 252px);line-height:1.3}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
-/* croix directionnelle pour se promener dans le village */
-.v3d-pad{position:absolute;left:8px;top:50%;transform:translateY(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:4px}
-.v3d-pad .padmid{display:flex;gap:4px;align-items:center}
-.v3d-pad button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;
-  background:#1B2E10CC;color:#C9E8A5;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
-.v3d-pad button:active{transform:translateY(1px)}
-.v3d-pad .padc{border-color:#C9E8A5;font-size:15px}
 /* orientation du bâtiment sélectionné, en mode placement */
 .v3d-rot{position:absolute;right:8px;top:8px;z-index:3;display:flex;align-items:center;gap:6px;
   background:#1B2E10D0;border:2px solid #7BAE3F;border-radius:10px;padding:4px 8px}
@@ -381,7 +373,8 @@ html,body{overflow-x:hidden}
   background:#0F1C08;color:#C9E8A5;font-size:15px;line-height:1}
 .v3d-rot button:active{transform:translateY(1px)}
 .v3d.editing .v3d-say{display:none}
-.v3d-ctl button{width:34px;height:34px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
+.v3d-ctl button{width:40px;height:40px;border:2px solid #7BAE3F;border-radius:10px;
+  background:#1B2E10D8;color:#C9E8A5;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .v3d-ctl button:active{transform:translateY(1px)}
 .v3mini{position:relative;flex:none;width:58px;height:52px}
 .v3mini canvas{display:block;width:58px;height:52px}
@@ -2474,25 +2467,18 @@ function v3dStop(){
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
 function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
-/* pas de déplacement au bouton, dans le repère de l'écran */
-function v3dNudge(sx,sz){ v3dPan(sx*V3.dist*0.16, sz*V3.dist*0.16); SFX.click(); }
 const ZMIN=70, ZMAX=430, PANMAX=230;
 function v3dSetDist(d){ V3.dist=Math.max(ZMIN,Math.min(ZMAX,d)); V3.auto=false; }
 function v3dZoom(dir){ v3dSetDist(V3.dist*(dir>0?1.25:0.8)); SFX.click(); }
-/* déplacement latéral : dx/dz sont exprimés dans le repère de l'ÉCRAN,
-   on les tourne selon l'orientation courante de la caméra */
-function v3dPan(sx,sz){
-  const c=Math.cos(V3.rot), si=Math.sin(V3.rot);
-  V3.px+=sx*c-sz*si; V3.pz+=-sx*si-sz*c;
-  const r=Math.hypot(V3.px,V3.pz);
-  if(r>PANMAX){ V3.px=V3.px/r*PANMAX; V3.pz=V3.pz/r*PANMAX; }
-  V3.auto=false;
-}
 /* recentrer : caméra d'origine, vue d'ensemble */
 function v3dReset(){ V3.px=0; V3.pz=0; V3.dist=265; V3.tilt=0.72; V3.auto=false; SFX.click();
   toast(t('🎯 Vue recentrée sur le village','🎯 View recentred on the village')); }
 /* suivre un habitant : la caméra se pose sur lui */
-function v3dFocus(x,z){ V3.px=x; V3.pz=z; if(V3.dist>190) V3.dist=150; V3.auto=false; }
+function v3dFocus(x,z){
+  const r=Math.hypot(x,z);
+  if(r>PANMAX){ x=x/r*PANMAX; z=z/r*PANMAX; }
+  V3.px=x; V3.pz=z; if(V3.dist>190) V3.dist=150; V3.auto=false;
+}
 /* bulle de dialogue : un villageois « parle » au-dessus de la scène */
 /* ce qu'un habitant a envie de dire MAINTENANT : son rêve, son amour, son
    mentor, la faim du village, César qui approche… le métier n'arrive qu'après. */
@@ -4009,20 +3995,13 @@ function v3dHost(){
     +'<div class="v3d-say" id="v3dsay"></div>'
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
-        : t('👆 glisse : tourner · 2 doigts : zoom + déplacer','👆 drag: rotate · 2 fingers: zoom + move'))+'</div>'
-    +'<div class="v3d-pad">'
-      +'<button onclick="G.v3dNudge(0,-1)" aria-label="'+t('avancer','move up')+'">▲</button>'
-      +'<span class="padmid">'
-        +'<button onclick="G.v3dNudge(-1,0)" aria-label="'+t('aller à gauche','move left')+'">◀</button>'
-        +'<button class="padc" onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
-        +'<button onclick="G.v3dNudge(1,0)" aria-label="'+t('aller à droite','move right')+'">▶</button>'
-      +'</span>'
-      +'<button onclick="G.v3dNudge(0,1)" aria-label="'+t('reculer','move down')+'">▼</button>'
-    +'</div>'
-    +'<div class="v3d-ctl"><button onclick="G.v3dZoom(-1)" aria-label="'+t('zoomer','zoom in')+'">＋</button>'
-    +'<button onclick="G.v3dZoom(1)" aria-label="'+t('dézoomer','zoom out')+'">－</button>'
+        : t('👆 glisse · pince = zoom','👆 drag · pinch = zoom'))+'</div>'
+    +'<div class="v3d-ctl">'
+    +'<button onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
     +'<button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
-    +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div>'
+    +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button>'
+    +'<button onclick="G.v3dZoom(1)" aria-label="'+t('dézoomer','zoom out')+'">－</button>'
+    +'<button onclick="G.v3dZoom(-1)" aria-label="'+t('zoomer','zoom in')+'">＋</button></div>'
     +(V3.edit?'<div class="v3d-rot"><button onclick="G.rotSel(-1)" aria-label="'+t('pivoter à gauche','turn left')+'">↺</button>'
       +'<span>'+t('ORIENTER','TURN')+'</span>'
       +'<button onclick="G.rotSel(1)" aria-label="'+t('pivoter à droite','turn right')+'">↻</button></div>':'')
@@ -4073,6 +4052,18 @@ function v3dInit(){
   // --- placement libre : rayon depuis le doigt vers la scène ---
   const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
   const plane=new THREE.Plane(new THREE.Vector3(0,1,0),0), hit=new THREE.Vector3();
+  /* position de la caméra en fonction de l'orbite, du zoom et du point visé.
+     Appelée aussi pendant un glissement : sans ça, le raycast du geste suivant
+     utiliserait encore l'ancienne caméra et le sol « glisserait » sous le doigt. */
+  const placeCam=()=>{
+    const d=V3.dist;
+    cam.position.set(V3.px+Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55),
+                     30+Math.sin(V3.tilt)*d*0.62,
+                     V3.pz+Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
+    cam.lookAt(V3.px, 8*Math.min(1,V3.dist/200), V3.pz+4);
+    cam.updateMatrixWorld(true);
+  };
+  V3.placeCam=placeCam;
   const toNdc=(e)=>{ const r=host.getBoundingClientRect();
     ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; };
   const pickAt=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
@@ -4087,18 +4078,60 @@ function v3dInit(){
     for(const h of hits){ let o=h.object; while(o&&!o.userData.npc) o=o.parent; if(o) return o; }
     return null; };
   V3.pickNpc=pickNpc;
+  /* ==========================================================
+     Contrôles pensés pour le pouce, comme dans un jeu de village :
+       1 doigt qui glisse  → on TIRE LE SOL, il reste collé au doigt
+       1 doigt qui tape    → on sélectionne (villageois / bâtiment)
+       2 doigts qui pincent→ zoom
+       2 doigts qui tournent→ rotation de la vue
+       double-tape         → zoom sur l'endroit touché
+     ========================================================== */
+  const MAXSTEP=90;                       // garde-fou : pas de saut absurde
+  // amène le point du sol touché au départ sous le doigt actuel
+  const dragGround=e=>{
+    if(!V3.grab) return;
+    const g=groundAt(e); if(!g) return;
+    let dx=V3.grab.x-g.x, dz=V3.grab.z-g.z;
+    const m=Math.hypot(dx,dz);
+    if(m>MAXSTEP){ dx=dx/m*MAXSTEP; dz=dz/m*MAXSTEP; }
+    V3.px+=dx; V3.pz+=dz;
+    const r=Math.hypot(V3.px,V3.pz);
+    if(r>PANMAX){ V3.px=V3.px/r*PANMAX; V3.pz=V3.pz/r*PANMAX; }
+    V3.auto=false;
+    placeCam();
+    // deuxième passe : la caméra ayant bougé, on affine pour coller au doigt
+    const g2=groundAt(e);
+    if(g2){
+      let ex=V3.grab.x-g2.x, ez=V3.grab.z-g2.z;
+      const m2=Math.hypot(ex,ez);
+      if(m2<MAXSTEP){
+        V3.px+=ex; V3.pz+=ez;
+        const r2=Math.hypot(V3.px,V3.pz);
+        if(r2>PANMAX){ V3.px=V3.px/r2*PANMAX; V3.pz=V3.pz/r2*PANMAX; }
+        placeCam();
+      }
+    }
+  };
   const down=e=>{
-    if(!V3.edit){ const npc=pickNpc(e); if(npc&&npc.userData.rec){
-      v3dFocus(npc.position.x,npc.position.z); showPerson(npc.userData.rec,npc); return; } }
-    if(V3.edit){
+    if(V3.pinch) return;
+    V3.tapX=e.clientX; V3.tapY=e.clientY; V3.tapT=performance.now(); V3.moved=false;
+    if(V3.edit){                                    // mode placement : on attrape un bâtiment
       const o=pickAt(e);
-      if(o){ V3.sel=o; V3.lastSel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false; host.classList.add('dragging');
+      if(o){ V3.sel=o; V3.lastSel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
+             host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
              if(e.cancelable) e.preventDefault(); return; }
     }
-    V3.drag=true; V3.panDrag=(e.button===1||e.button===2||e.shiftKey);
-    V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
+    // sinon : on empoigne le sol
+    V3.drag=true; V3.auto=false;
+    V3.grab=groundAt(e);
+    V3.lx=e.clientX; V3.ly=e.clientY;
+    V3.rotDrag=(e.button===1||e.button===2||e.shiftKey);   // ordinateur : clic droit = pivoter
+    host.classList.add('dragging');
+  };
   const move=e=>{
+    if(V3.pinch) return;
+    if(Math.abs(e.clientX-V3.tapX)>8||Math.abs(e.clientY-V3.tapY)>8) V3.moved=true;
     if(V3.sel){ const g=groundAt(e);
       if(g){ const r=Math.min(300,Math.hypot(g.x,g.z)), a=Math.atan2(g.z,g.x);
         const key=V3.sel.userData.pid, foot=footOf(key);
@@ -4115,38 +4148,54 @@ function v3dInit(){
         V3.sel.position.x=tx; V3.sel.position.z=tz;
         if(V3.ring){ V3.ring.position.set(tx,0.4,tz); V3.ring.scale.setScalar(foot/5); } }
       if(e.cancelable) e.preventDefault(); return; }
-    if(V3.pinch) return;
-    if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
-    const dx=t0.clientX-V3.lx, dy=t0.clientY-V3.ly;
-    if(V3.panDrag){                       // clic droit / molette enfoncée = déplacement
-      const k=V3.dist*0.0022; v3dPan(-dx*k,-dy*k);
-    }else{
-      V3.rot+=dx*0.008;
-      V3.tilt=Math.max(0.22,Math.min(1.4,V3.tilt-dy*0.005));
-    }
-    V3.lx=t0.clientX; V3.ly=t0.clientY; if(e.cancelable) e.preventDefault(); };
-  const up=()=>{
+    if(!V3.drag) return;
+    if(V3.rotDrag){                                  // ordinateur : pivoter / incliner
+      V3.rot+=(e.clientX-V3.lx)*0.008;
+      V3.tilt=Math.max(0.22,Math.min(1.4,V3.tilt-(e.clientY-V3.ly)*0.005));
+      V3.lx=e.clientX; V3.ly=e.clientY;
+    }else dragGround(e);
+    if(V3.moved) V3.lastTap=0;
+    if(e.cancelable) e.preventDefault();
+  };
+  const up=e=>{
     if(V3.sel){ S.vpos=S.vpos||{};
       S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
       save(); V3.sel=null;
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
-    V3.drag=false; V3.panDrag=false; host.classList.remove('dragging'); };
-  // molette (ordinateur) et pincement à deux doigts (téléphone)
+    // simple tape : c'est une sélection, pas un déplacement
+    else if(!V3.moved && e && performance.now()-(V3.tapT||0)<400){
+      const now=performance.now();
+      const near=V3.lastTapXY&&Math.hypot(e.clientX-V3.lastTapXY[0],e.clientY-V3.lastTapXY[1])<40;
+      if(now-(V3.lastTap||0)<300&&near){             // double-tape : on plonge sur l'endroit
+        const g=groundAt(e);
+        if(g){ V3.px=Math.max(-PANMAX,Math.min(PANMAX,g.x)); V3.pz=Math.max(-PANMAX,Math.min(PANMAX,g.z)); }
+        v3dSetDist(V3.dist*0.62); SFX.click(); V3.lastTap=0;
+      }else{
+        V3.lastTap=now; V3.lastTapXY=[e.clientX,e.clientY];
+        if(!V3.edit){ const npc=pickNpc(e);
+          if(npc&&npc.userData.rec) showPerson(npc.userData.rec,npc); }
+      }
+    }
+    V3.drag=false; V3.grab=null; V3.rotDrag=false; host.classList.remove('dragging'); };
+  // molette (ordinateur) : zoom
   const wheel=e=>{ v3dSetDist(V3.dist*(e.deltaY>0?1.12:0.89)); if(e.cancelable) e.preventDefault(); };
   const pinchD=e=>{ const a=e.touches[0], b2=e.touches[1];
     return Math.hypot(a.clientX-b2.clientX, a.clientY-b2.clientY); };
-  const midP=e=>({x:(e.touches[0].clientX+e.touches[1].clientX)/2,
-                  y:(e.touches[0].clientY+e.touches[1].clientY)/2});
-  const tstart=e=>{ if(e.touches&&e.touches.length===2){ V3.pinch=pinchD(e); V3.pinchD0=V3.dist;
-    V3.mid=midP(e); V3.drag=false; V3.sel=null; if(e.cancelable) e.preventDefault(); } };
+  const pinchA=e=>{ const a=e.touches[0], b2=e.touches[1];
+    return Math.atan2(b2.clientY-a.clientY, b2.clientX-a.clientX); };
+  /* deux doigts : pincer pour zoomer, tourner pour pivoter la vue */
+  const tstart=e=>{ if(e.touches&&e.touches.length===2){
+    V3.pinch=pinchD(e); V3.pinchD0=V3.dist; V3.ang=pinchA(e);
+    V3.drag=false; V3.grab=null; V3.sel=null; V3.moved=true;
+    if(e.cancelable) e.preventDefault(); } };
   const tmove=e=>{ if(V3.pinch&&e.touches&&e.touches.length===2){
     const d2=pinchD(e); if(d2>4) v3dSetDist(V3.pinchD0*(V3.pinch/d2));
-    // le milieu des deux doigts entraîne la caméra : on se promène dans le village
-    const m=midP(e), k=V3.dist*0.0022;
-    v3dPan(-(m.x-V3.mid.x)*k, -(m.y-V3.mid.y)*k);
-    V3.mid=m;
+    let da=pinchA(e)-V3.ang;
+    while(da>Math.PI) da-=Math.PI*2;
+    while(da<-Math.PI) da+=Math.PI*2;
+    V3.rot-=da; V3.ang=pinchA(e); V3.auto=false;
     if(e.cancelable) e.preventDefault(); } };
-  const tend=e=>{ if(!e.touches||e.touches.length<2){ V3.pinch=0; V3.mid=null; } };
+  const tend=e=>{ if(!e.touches||e.touches.length<2) V3.pinch=0; };
   host.addEventListener('wheel',wheel,{passive:false});
   host.addEventListener('contextmenu',e=>e.preventDefault());
   host.addEventListener('touchstart',tstart,{passive:false});
@@ -4168,12 +4217,7 @@ function v3dInit(){
     if(now-V3.lastTod>20000){ V3.lastTod=now;
       V3.phase=applyTimeOfDay(scene,sun,scene.children.find(o=>o.isHemisphereLight),fill,stars);
       sun.shadow.needsUpdate=true; }
-    const d=V3.dist;
-    // le point visé se déplace : on peut promener la caméra dans tout le village
-    cam.position.set(V3.px+Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55),
-                     30+Math.sin(V3.tilt)*d*0.62,
-                     V3.pz+Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
-    cam.lookAt(V3.px, 8*Math.min(1,V3.dist/200), V3.pz+4);
+    placeCam();
     // animations
     if(flame){ const s=1+Math.sin(tt*11)*0.16+Math.sin(tt*17)*0.08;
       flame.scale.set(s,1+Math.sin(tt*13)*0.2,s); flame.rotation.y=tt*2; }
@@ -5132,7 +5176,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
-  v3dZoom, v3dNudge, v3dReset, rotSel};
+  v3dZoom, v3dReset, rotSel};
 window.G=G;
 applyLang();
 touchDaily();
