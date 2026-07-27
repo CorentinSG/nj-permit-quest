@@ -1760,6 +1760,10 @@ function allTrackable(){
     if(S.qstat[id]||isFlagged(id)) out.push({q:drillQ(i), i:id}); });
   return out;
 }
+/* filet de sécurité : l'onglet se ferme ou passe en arrière-plan */
+function flushSave(){ save(); }
+addEventListener('pagehide',flushSave);
+addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushSave(); });
 function recordAnswer(qi,good){
   const s=qstat(qi);
   const wasError=s.box===1&&s.ko>0;
