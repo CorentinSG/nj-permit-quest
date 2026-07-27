@@ -362,9 +362,25 @@ html,body{overflow-x:hidden}
   opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .v3d-say.show{opacity:1;transform:translateY(0)}
 .v3d-say b{color:var(--bus)}
-.v3d-hint{position:absolute;left:10px;bottom:8px;font-size:10.5px;color:#fff;opacity:.85;
+.v3d-hint{position:absolute;left:10px;bottom:8px;z-index:1;font-size:10.5px;color:#fff;opacity:.85;
   pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 178px);line-height:1.35}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
+/* croix directionnelle pour se promener dans le village */
+.v3d-pad{position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.v3d-pad .padmid{display:flex;gap:4px;align-items:center}
+.v3d-pad button{width:32px;height:32px;border:2px solid #7BAE3F;border-radius:8px;
+  background:#1B2E10CC;color:#C9E8A5;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+.v3d-pad button:active{transform:translateY(1px)}
+.v3d-pad .padc{border-color:#C9E8A5;font-size:15px}
+/* orientation du bâtiment sélectionné, en mode placement */
+.v3d-rot{position:absolute;right:8px;top:8px;z-index:3;display:flex;align-items:center;gap:6px;
+  background:#1B2E10D0;border:2px solid #7BAE3F;border-radius:10px;padding:4px 8px}
+.v3d-rot span{font-family:var(--px);font-size:7px;letter-spacing:.5px;color:#C9E8A5}
+.v3d-rot button{width:30px;height:30px;border:2px solid #7BAE3F;border-radius:7px;
+  background:#0F1C08;color:#C9E8A5;font-size:15px;line-height:1}
+.v3d-rot button:active{transform:translateY(1px)}
+.v3d.editing .v3d-say{display:none}
 .v3d-ctl button{width:34px;height:34px;border:2px solid #7BAE3F;border-radius:8px;background:#1B2E10CC;color:#C9E8A5;font-size:15px;line-height:1}
 .v3d-ctl button:active{transform:translateY(1px)}
 .v3mini{position:relative;flex:none;width:58px;height:52px}
@@ -1204,6 +1220,7 @@ const defaults=()=>({
   xp:0, totalOk:0, totalKo:0, bestCombo:0, runsDone:0,
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
+  vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
   blitzBest:0,
@@ -2447,7 +2464,7 @@ function arenaWinHtml(w){
    géométrie low-poly générée à la volée.
    ============================================================ */
 let V3={ready:false, raf:0, ren:null, scene:null, cam:null, host:null,
-        rot:-0.55, tilt:0.72, dist:265, drag:false, auto:true, lx:0, ly:0,
+        rot:-0.55, tilt:0.72, dist:265, px:0, pz:0, drag:false, auto:true, lx:0, ly:0,
         mixers:[], t0:0, minis:[], edit:false, sel:null, place:{}, ring:null};
 
 function v3dStop(){
@@ -2457,9 +2474,25 @@ function v3dStop(){
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
 function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
-const ZMIN=70, ZMAX=430;
+/* pas de déplacement au bouton, dans le repère de l'écran */
+function v3dNudge(sx,sz){ v3dPan(sx*V3.dist*0.16, sz*V3.dist*0.16); SFX.click(); }
+const ZMIN=70, ZMAX=430, PANMAX=230;
 function v3dSetDist(d){ V3.dist=Math.max(ZMIN,Math.min(ZMAX,d)); V3.auto=false; }
 function v3dZoom(dir){ v3dSetDist(V3.dist*(dir>0?1.25:0.8)); SFX.click(); }
+/* déplacement latéral : dx/dz sont exprimés dans le repère de l'ÉCRAN,
+   on les tourne selon l'orientation courante de la caméra */
+function v3dPan(sx,sz){
+  const c=Math.cos(V3.rot), si=Math.sin(V3.rot);
+  V3.px+=sx*c-sz*si; V3.pz+=-sx*si-sz*c;
+  const r=Math.hypot(V3.px,V3.pz);
+  if(r>PANMAX){ V3.px=V3.px/r*PANMAX; V3.pz=V3.pz/r*PANMAX; }
+  V3.auto=false;
+}
+/* recentrer : caméra d'origine, vue d'ensemble */
+function v3dReset(){ V3.px=0; V3.pz=0; V3.dist=265; V3.tilt=0.72; V3.auto=false; SFX.click();
+  toast(t('🎯 Vue recentrée sur le village','🎯 View recentred on the village')); }
+/* suivre un habitant : la caméra se pose sur lui */
+function v3dFocus(x,z){ V3.px=x; V3.pz=z; if(V3.dist>190) V3.dist=150; V3.auto=false; }
 /* bulle de dialogue : un villageois « parle » au-dessus de la scène */
 /* ce qu'un habitant a envie de dire MAINTENANT : son rêve, son amour, son
    mentor, la faim du village, César qui approche… le métier n'arrive qu'après. */
@@ -3662,7 +3695,8 @@ function buildVillage(scene){
       // un chemin est à plat sur le sol : il ne bute contre rien et rien ne le repousse
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(key),key);
       const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]);
-      g.rotation.y=it.id==='chemin'?0:(i*0.7)%6.28;      // un sentier reste aligné
+      g.rotation.y=(S.vrot&&S.vrot[key]!=null) ? S.vrot[key]
+                 : (it.id==='chemin'?0:(i*0.7)%6.28);    // un sentier reste aligné
       scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
     }
     if(it.id!=='chemin') spiral+=n2;
@@ -3672,7 +3706,9 @@ function buildVillage(scene){
     let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     if(owned.includes(it.id)){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
-      const g=B3[it.id](); g.position.set(p[0],0,p[1]); scene.add(g); anim.push(g);
+      const g=B3[it.id](); g.position.set(p[0],0,p[1]);
+      if(S.vrot&&S.vrot[it.id]!=null) g.rotation.y=S.vrot[it.id];
+      scene.add(g); anim.push(g);
       if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
     }else if(it.id!=='palissade'){
       const m=new THREE.Mesh(new THREE.RingGeometry(4,5.2,12),
@@ -3805,6 +3841,29 @@ function buildVillage(scene){
   }
   built_spots=spots;
   return {anim, walkers, spots:built_spots};
+}
+/* ---- espace vital : deux villageois ne peuvent plus se superposer ----
+   Repoussement doux à chaque image (16 marcheurs = 120 paires, négligeable).
+   Le rayon reste sous la distance de conversation, sinon ils ne pourraient
+   plus se parler face à face. */
+function bodyR(w){ return 4.6*(w.scale&&w.scale.x?w.scale.x:1); }
+function separateWalkers(walkers,dt){
+  const k=Math.min(1,16*dt);          // réaction rapide mais sans à-coups
+  for(let i=0;i<walkers.length;i++){
+    const A=walkers[i], ra=bodyR(A);
+    for(let j=i+1;j<walkers.length;j++){
+      const B=walkers[j], need=ra+bodyR(B);
+      let dx=A.position.x-B.position.x, dz=A.position.z-B.position.z;
+      let d=Math.hypot(dx,dz);
+      if(d>=need) continue;
+      if(d<0.0001){                    // pile au même endroit : on écarte au hasard
+        const a=(i*2.399+j*1.7)%6.283; dx=Math.cos(a); dz=Math.sin(a); d=1;
+      }
+      const push=(need-d)/d*0.5*k;
+      A.position.x+=dx*push; A.position.z+=dz*push;
+      B.position.x-=dx*push; B.position.z-=dz*push;
+    }
+  }
 }
 /* ---- chaque habitant regarde autour de lui et réagit à ses voisins ---- */
 const BQ=new THREE.Quaternion();   // tampon réutilisé pour orienter les pastilles
@@ -3946,13 +4005,28 @@ function makeSmoke(scene,g){
   return out;
 }
 function v3dHost(){
-  return '<div class="v3d" id="v3d"><canvas id="v3dc"></canvas>'
+  return '<div class="v3d'+(V3.edit?' editing':'')+'" id="v3d"><canvas id="v3dc"></canvas>'
     +'<div class="v3d-say" id="v3dsay"></div>'
-    +'<div class="v3d-hint">'+t('👆 glisse pour tourner · pince pour zoomer','👆 drag to rotate · pinch to zoom')+'</div>'
+    +'<div class="v3d-hint">'+(V3.edit
+        ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
+        : t('👆 glisse : tourner · 2 doigts : zoom + déplacer','👆 drag: rotate · 2 fingers: zoom + move'))+'</div>'
+    +'<div class="v3d-pad">'
+      +'<button onclick="G.v3dNudge(0,-1)" aria-label="'+t('avancer','move up')+'">▲</button>'
+      +'<span class="padmid">'
+        +'<button onclick="G.v3dNudge(-1,0)" aria-label="'+t('aller à gauche','move left')+'">◀</button>'
+        +'<button class="padc" onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
+        +'<button onclick="G.v3dNudge(1,0)" aria-label="'+t('aller à droite','move right')+'">▶</button>'
+      +'</span>'
+      +'<button onclick="G.v3dNudge(0,1)" aria-label="'+t('reculer','move down')+'">▼</button>'
+    +'</div>'
     +'<div class="v3d-ctl"><button onclick="G.v3dZoom(-1)" aria-label="'+t('zoomer','zoom in')+'">＋</button>'
     +'<button onclick="G.v3dZoom(1)" aria-label="'+t('dézoomer','zoom out')+'">－</button>'
     +'<button onclick="G.v3dTurn(-25)" aria-label="'+t('tourner à gauche','rotate left')+'">⟲</button>'
-    +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div></div>';
+    +'<button onclick="G.v3dTurn(25)" aria-label="'+t('tourner à droite','rotate right')+'">⟳</button></div>'
+    +(V3.edit?'<div class="v3d-rot"><button onclick="G.rotSel(-1)" aria-label="'+t('pivoter à gauche','turn left')+'">↺</button>'
+      +'<span>'+t('ORIENTER','TURN')+'</span>'
+      +'<button onclick="G.rotSel(1)" aria-label="'+t('pivoter à droite','turn right')+'">↻</button></div>':'')
+    +'</div>';
 }
 function v3dInit(){
   const host=$('#v3d'), cv=$('#v3dc');
@@ -4014,14 +4088,16 @@ function v3dInit(){
     return null; };
   V3.pickNpc=pickNpc;
   const down=e=>{
-    if(!V3.edit){ const npc=pickNpc(e); if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); return; } }
+    if(!V3.edit){ const npc=pickNpc(e); if(npc&&npc.userData.rec){
+      v3dFocus(npc.position.x,npc.position.z); showPerson(npc.userData.rec,npc); return; } }
     if(V3.edit){
       const o=pickAt(e);
-      if(o){ V3.sel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false; host.classList.add('dragging');
+      if(o){ V3.sel=o; V3.lastSel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false; host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
              if(e.cancelable) e.preventDefault(); return; }
     }
-    V3.drag=true; V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
+    V3.drag=true; V3.panDrag=(e.button===1||e.button===2||e.shiftKey);
+    V3.auto=false; const t0=e.touches?e.touches[0]:e; V3.lx=t0.clientX; V3.ly=t0.clientY; host.classList.add('dragging'); };
   const move=e=>{
     if(V3.sel){ const g=groundAt(e);
       if(g){ const r=Math.min(300,Math.hypot(g.x,g.z)), a=Math.atan2(g.z,g.x);
@@ -4041,26 +4117,38 @@ function v3dInit(){
       if(e.cancelable) e.preventDefault(); return; }
     if(V3.pinch) return;
     if(!V3.drag) return; const t0=e.touches?e.touches[0]:e;
-    V3.rot+=(t0.clientX-V3.lx)*0.008;
-    V3.tilt=Math.max(0.25,Math.min(1.35,V3.tilt-(t0.clientY-V3.ly)*0.005));
+    const dx=t0.clientX-V3.lx, dy=t0.clientY-V3.ly;
+    if(V3.panDrag){                       // clic droit / molette enfoncée = déplacement
+      const k=V3.dist*0.0022; v3dPan(-dx*k,-dy*k);
+    }else{
+      V3.rot+=dx*0.008;
+      V3.tilt=Math.max(0.22,Math.min(1.4,V3.tilt-dy*0.005));
+    }
     V3.lx=t0.clientX; V3.ly=t0.clientY; if(e.cancelable) e.preventDefault(); };
   const up=()=>{
     if(V3.sel){ S.vpos=S.vpos||{};
       S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
-      save(); V3.sel=null; if(V3.ring) V3.ring.visible=false;
+      save(); V3.sel=null;
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
-    V3.drag=false; host.classList.remove('dragging'); };
+    V3.drag=false; V3.panDrag=false; host.classList.remove('dragging'); };
   // molette (ordinateur) et pincement à deux doigts (téléphone)
   const wheel=e=>{ v3dSetDist(V3.dist*(e.deltaY>0?1.12:0.89)); if(e.cancelable) e.preventDefault(); };
   const pinchD=e=>{ const a=e.touches[0], b2=e.touches[1];
     return Math.hypot(a.clientX-b2.clientX, a.clientY-b2.clientY); };
+  const midP=e=>({x:(e.touches[0].clientX+e.touches[1].clientX)/2,
+                  y:(e.touches[0].clientY+e.touches[1].clientY)/2});
   const tstart=e=>{ if(e.touches&&e.touches.length===2){ V3.pinch=pinchD(e); V3.pinchD0=V3.dist;
-    V3.drag=false; V3.sel=null; if(e.cancelable) e.preventDefault(); } };
+    V3.mid=midP(e); V3.drag=false; V3.sel=null; if(e.cancelable) e.preventDefault(); } };
   const tmove=e=>{ if(V3.pinch&&e.touches&&e.touches.length===2){
     const d2=pinchD(e); if(d2>4) v3dSetDist(V3.pinchD0*(V3.pinch/d2));
+    // le milieu des deux doigts entraîne la caméra : on se promène dans le village
+    const m=midP(e), k=V3.dist*0.0022;
+    v3dPan(-(m.x-V3.mid.x)*k, -(m.y-V3.mid.y)*k);
+    V3.mid=m;
     if(e.cancelable) e.preventDefault(); } };
-  const tend=e=>{ if(!e.touches||e.touches.length<2) V3.pinch=0; };
+  const tend=e=>{ if(!e.touches||e.touches.length<2){ V3.pinch=0; V3.mid=null; } };
   host.addEventListener('wheel',wheel,{passive:false});
+  host.addEventListener('contextmenu',e=>e.preventDefault());
   host.addEventListener('touchstart',tstart,{passive:false});
   host.addEventListener('touchmove',tmove,{passive:false});
   host.addEventListener('touchend',tend);
@@ -4081,8 +4169,11 @@ function v3dInit(){
       V3.phase=applyTimeOfDay(scene,sun,scene.children.find(o=>o.isHemisphereLight),fill,stars);
       sun.shadow.needsUpdate=true; }
     const d=V3.dist;
-    cam.position.set(Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55), 30+Math.sin(V3.tilt)*d*0.62, Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
-    cam.lookAt(0,8*Math.min(1,V3.dist/200),4);
+    // le point visé se déplace : on peut promener la caméra dans tout le village
+    cam.position.set(V3.px+Math.sin(V3.rot)*d*Math.cos(V3.tilt*0.55),
+                     30+Math.sin(V3.tilt)*d*0.62,
+                     V3.pz+Math.cos(V3.rot)*d*Math.cos(V3.tilt*0.55));
+    cam.lookAt(V3.px, 8*Math.min(1,V3.dist/200), V3.pz+4);
     // animations
     if(flame){ const s=1+Math.sin(tt*11)*0.16+Math.sin(tt*17)*0.08;
       flame.scale.set(s,1+Math.sin(tt*13)*0.2,s); flame.rotation.y=tt*2; }
@@ -4224,7 +4315,7 @@ function v3dInit(){
           if(o){
             turnTo(p,o.position.x,o.position.z,dt,3.4);      // on se tourne progressivement
             const dd=Math.hypot(o.position.x-p.position.x,o.position.z-p.position.z);
-            if(dd>7.5){                                       // on finit de se rapprocher, en ralentissant
+            if(dd>10.5){                                      // on finit de se rapprocher, en ralentissant
               const sp=Math.min(3.4,(dd-7)*1.3);
               p.position.x+=(o.position.x-p.position.x)/dd*sp*dt;
               p.position.z+=(o.position.z-p.position.z)/dd*sp*dt;
@@ -4304,6 +4395,7 @@ function v3dInit(){
         }
       }
     });
+    separateWalkers(built.walkers,dt);
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
     ren.render(scene,cam);
@@ -4607,10 +4699,20 @@ function chronHtml(){
   return h+'</div></div>';
 }
 function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
+/* fait pivoter le bâtiment sélectionné (ou le dernier touché) */
+function rotSel(dir){
+  const g=V3.sel||V3.lastSel;
+  if(!g){ toast(t('👆 Touche d\'abord un bâtiment.','👆 Tap a building first.')); return; }
+  g.rotation.y+=dir*Math.PI/12;                 // 15° par appui
+  S.vrot=S.vrot||{};
+  S.vrot[g.userData.pid]=+(((g.rotation.y%6.283)+6.283)%6.283).toFixed(3);
+  save(); SFX.click();
+  if(V3.sun) V3.sun.shadow.needsUpdate=true;
+}
 function toggleEdit(){
   V3.edit=!V3.edit;
   if(!V3.edit&&V3.ring) V3.ring.visible=false;
-  V3.sel=null; render();
+  V3.sel=null; V3.lastSel=null; render();
   toast(V3.edit?t('🔧 Mode placement : glisse les bâtiments','🔧 Placement mode: drag the buildings')
                 :t('✅ Village enregistré','✅ Village saved'));
 }
@@ -5029,7 +5131,8 @@ document.addEventListener('keydown',e=>{
 const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
-  setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay, v3dZoom};
+  setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
+  v3dZoom, v3dNudge, v3dReset, rotSel};
 window.G=G;
 applyLang();
 touchDaily();
