@@ -372,6 +372,17 @@ html,body{overflow-x:hidden}
 .v3d-rot button{width:30px;height:30px;border:2px solid #7BAE3F;border-radius:7px;
   background:#0F1C08;color:#C9E8A5;font-size:15px;line-height:1}
 .v3d-rot button:active{transform:translateY(1px)}
+/* ordres à la troupe */
+.armyord{border-top:1px dashed var(--edge);margin-top:12px}
+.formrow{display:flex;gap:8px}
+.formbtn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 4px;border-radius:10px;border:2px solid var(--edge);background:var(--lane2);
+  color:var(--dim);font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.formbtn .fic{font-size:17px;line-height:1}
+.formbtn.on{border-color:var(--stop);background:#2A0E10;color:#FFB3B5}
+.formbtn:active{transform:translateY(2px)}
+.v3d.ordering{cursor:crosshair}
+.v3d.ordering .v3d-say{display:none}
 .v3d.editing .v3d-say{display:none}
 .v3d-ctl button{width:40px;height:40px;border:2px solid #7BAE3F;border-radius:10px;
   background:#1B2E10D8;color:#C9E8A5;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
@@ -397,6 +408,30 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* ---------- statistiques ---------- */
+.sbar{display:block;height:10px;border-radius:99px;background:#0C1017;border:2px solid var(--edge);overflow:hidden;flex:1;min-width:0}
+.sbar i{display:block;height:100%}
+.srow{display:flex;align-items:center;gap:9px;margin-top:10px;font-size:12.5px}
+.srow>span:first-child{flex:0 0 42%;min-width:0;overflow-wrap:anywhere;color:var(--dim)}
+.srow b{flex:none;font-family:var(--px);font-size:9px;min-width:52px;text-align:right}
+.profrow{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;margin-top:8px;border:2px solid var(--edge)}
+.profrow.good{background:#0D2A18;border-color:var(--exitD)}
+.profrow.bad{background:#2A1012;border-color:var(--stopD)}
+.profrow .pic{font-size:24px;flex:none;line-height:1.1}
+.profrow .ptx{flex:1;min-width:0;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}
+.domrow{padding:10px 0;border-bottom:1px dashed var(--edge)}
+.domrow:last-child{border-bottom:0}
+.domtop{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.domtop .dic{font-size:17px;flex:none}
+.domtop .dnm{flex:1;min-width:0;font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.domtop .dpc{flex:none;font-family:var(--px);font-size:11px}
+.dmeta{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.5;overflow-wrap:anywhere}
+.covbar{display:flex;height:16px;border-radius:99px;overflow:hidden;background:#0C1017;border:2px solid var(--edge)}
+.covbar i{display:block;height:100%}
+.c-tamed{background:#33B268}.c-warm{background:#E0A800}.c-hot{background:#E5383B}.c-none{background:#2A3140}
+.covleg{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:9px;font-size:11.5px;color:var(--dim)}
+.covleg span{display:flex;align-items:center;gap:5px}
+.covleg i{width:11px;height:11px;border-radius:3px;display:block;flex:none}
 /* jauge de bonheur individuelle */
 .happy{margin:2px 0 14px;padding:12px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2)}
 .happyhead{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--px);font-size:9px;
@@ -1214,6 +1249,7 @@ const defaults=()=>({
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
+  army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
   flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
   blitzBest:0,
@@ -2036,7 +2072,7 @@ function render(){
   const fn={home:scrHome, worlds:scrWorlds, run:scrRun, boss:scrBoss, blitz:scrBlitz,
     exam:scrExam, examEnd:scrExamEnd, grimoire:scrGrimoire, exams:scrExams,
     village:scrVillage, hard:scrHard, nemesis:scrNemesis,
-    badges:scrBadges, settings:scrSettings}[CUR.screen]||scrHome;
+    badges:scrBadges, settings:scrSettings, stats:scrStats}[CUR.screen]||scrHome;
   app.innerHTML='<div class="screen">'+fn()+'</div>';
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
   if(CUR.screen==='village'){ v3dInit(); miniInit(); }
@@ -2069,6 +2105,7 @@ function scrHome(){
    +'<div class="btnrow">'
    +'<button class="btn btn-ghost" onclick="G.go(\'grimoire\')"><span class="ic">📜</span>'+t('Grimoire','Grimoire')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'hard\')"><span class="ic">🏛️</span>'+t('Par cœur','By heart')+'</button>'
+   +'<button class="btn btn-ghost" onclick="G.go(\'stats\')"><span class="ic">📊</span>'+t('Stats','Stats')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'badges\')"><span class="ic">🏅</span>'+t('Trophées','Trophies')+'</button>'
    +'<button class="btn btn-ghost" onclick="G.go(\'settings\')" aria-label="'+t('Réglages','Settings')+'"><span class="ic">⚙️</span></button>'
    +'</div></div>'
@@ -3592,6 +3629,26 @@ const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[
   taverne:[47,3], ble:[31,34], banquet:[0,52], poule:[-34,34], forge:[-48,3],
   chaudron:[-19,16], druide:[-20,2], chef:[20,14], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
 
+/* ---------- formations ----------
+   Trois ordres possibles. Chaque emplacement porte aussi le cap du guerrier,
+   pour qu'une ligne regarde toutes dans la même direction. */
+const FORMATIONS=[
+  {k:'ligne', ic:'▬', n:'En ligne',   ne:'Line'},
+  {k:'carre', ic:'▣', n:'En carré',   ne:'Square'},
+  {k:'coin',  ic:'▲', n:'En pointe',  ne:'Wedge'}
+];
+function formationOf(){ return (S.army&&S.army.f)||'ligne'; }
+function formationSlots(n){
+  const f=formationOf(), out=[];
+  for(let i=0;i<n;i++){
+    if(f==='carre'){ const c=i%2, r=Math.floor(i/2);
+      out.push([(c-0.5)*11, (r-0.5)*11, 0]);
+    }else if(f==='coin'){ const r=Math.floor((Math.sqrt(8*i+1)-1)/2), c=i-r*(r+1)/2;
+      out.push([(c-r/2)*11, r*10, 0]);
+    }else{ out.push([(i-(n-1)/2)*11, 0, 0]); }
+  }
+  return out;
+}
 /* guerrier gaulois : casque, bouclier, lance */
 function warrior(i,plume){
   const g=new THREE.Group();
@@ -3637,9 +3694,11 @@ Object.assign(B3,{
     [-5,5].forEach(x=>g.add(at(cyl(.8,.9,6,COL.wood,6),4+x,3,7)));
     return g; },
   guerriers(){ const g=new THREE.Group();
-    [[-6,-4,0],[6,-3,1],[-4,6,2],[7,6,3]].forEach((p,i)=>{
-      const w=warrior(i+2,false); w.position.set(p[0],0,p[1]); w.rotation.y=i*1.4;
-      w.name='guard'; w.userData.p=i*0.7; g.add(w); });
+    // la formation choisie décide de la disposition et de l'orientation
+    const F=formationSlots(4);
+    F.forEach((p,i)=>{
+      const w=warrior(i+2,false); w.position.set(p[0],0,p[1]);
+      w.rotation.y=p[2]; w.name='guard'; w.userData.p=i*0.7; g.add(w); });
     return g; },
   tour(){ const g=new THREE.Group();
     g.add(at(cyl(6,7.5,26,COL.stone,10),0,13,0));
@@ -3776,10 +3835,17 @@ function buildVillage(scene){
   SHOP.forEach(it=>{
     if(it.stack) return;   // déjà traités ci-dessus
     let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
+    // l'armée obéit à son ordre de rassemblement
+    if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null){
+      p=[S.army.x+(it.id==='chefguerre'?0:0), S.army.z+(it.id==='chefguerre'?-14:0)];
+    }
     if(owned.includes(it.id)){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
       const g=B3[it.id](); g.position.set(p[0],0,p[1]);
       if(S.vrot&&S.vrot[it.id]!=null) g.rotation.y=S.vrot[it.id];
+      // la troupe fait face à l'extérieur du village : c'est de là que vient César
+      if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null)
+        g.rotation.y=Math.atan2(S.army.x,S.army.z);
       scene.add(g); anim.push(g);
       if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
     }else if(it.id!=='palissade'){
@@ -3789,6 +3855,14 @@ function buildVillage(scene){
     }
   });
   relaxVillage();          // plus rien ne se traverse
+  // la troupe obéit à l'ordre reçu : elle n'est pas déplacée par la relaxation
+  if(S.army&&S.army.x!=null){
+    [['guerriers',0,0],['chefguerre',0,-14]].forEach(([id,dx,dz])=>{
+      const g=V3.place[id]; if(!g) return;
+      g.position.set(S.army.x+dx, 0, S.army.z+dz);
+      g.rotation.y=Math.atan2(S.army.x,S.army.z);
+    });
+  }
   // forêt + rochers
   const TR=[[8,96,1.1,0],[32,108,.9,1],[56,94,1.2,0],[80,112,1,1],[104,98,1.1,0],[128,114,.85,0],
             [152,100,1.15,1],[176,92,1,0],[200,110,1.2,0],[224,96,.9,1],[248,112,1.05,0],[272,94,1.15,0],
@@ -4090,10 +4164,11 @@ function makeSmoke(scene,g){
   return out;
 }
 function v3dHost(){
-  return '<div class="v3d'+(V3.edit?' editing':'')+'" id="v3d"><canvas id="v3dc"></canvas>'
+  return '<div class="v3d'+(V3.edit?' editing':'')+(V3.order?' ordering':'')+'" id="v3d"><canvas id="v3dc"></canvas>'
     +'<div class="v3d-say" id="v3dsay"></div>'
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
+        : V3.order ? t('📣 touche le sol pour rassembler la troupe','📣 tap the ground to muster the squad')
         : t('👆 glisse · pince = zoom','👆 drag · pinch = zoom'))+'</div>'
     +'<div class="v3d-ctl">'
     +'<button onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
@@ -4214,6 +4289,10 @@ function v3dInit(){
   const down=e=>{
     if(V3.pinch) return;
     V3.tapX=e.clientX; V3.tapY=e.clientY; V3.tapT=performance.now(); V3.moved=false;
+    if(V3.order){                                   // ordre de rassemblement en cours
+      const g=groundAt(e);
+      if(g){ rallyAt(g.x,g.z); if(e.cancelable) e.preventDefault(); return; }
+    }
     if(V3.edit){                                    // mode placement : on attrape un bâtiment
       const o=pickAt(e);
       if(o){ V3.sel=o; V3.lastSel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
@@ -4259,6 +4338,7 @@ function v3dInit(){
   const up=e=>{
     if(V3.sel){ S.vpos=S.vpos||{};
       S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
+      if(String(V3.sel.userData.pid).split('#')[0]==='chemin') orientPath(V3.sel.userData.pid);
       save(); V3.sel=null; rebuildSolids();
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
     // simple tape : c'est une sélection, pas un déplacement
@@ -4763,6 +4843,33 @@ function avoidSolids(walkers,dt){
     }
   }
 }
+/* ---------- un sentier se raccorde tout seul ----------
+   Une dalle posée à côté d'une autre pivote pour prolonger le chemin. Le grand
+   axe de la dalle est son axe X local ; pour l'orienter selon (dx,dz) il faut
+   theta = atan2(-dz, dx). On arrondit au multiple de 45° pour des virages nets. */
+const PATH_LINK=40;
+function orientPath(key){
+  const g=V3.place&&V3.place[key]; if(!g) return null;
+  let best=null, bd=PATH_LINK;
+  Object.keys(V3.place).forEach(k=>{
+    if(k===key||String(k).split('#')[0]!=='chemin') return;
+    const o2=V3.place[k];
+    const d=Math.hypot(o2.position.x-g.position.x, o2.position.z-g.position.z);
+    if(d<bd){ bd=d; best=o2; }
+  });
+  if(!best) return null;
+  const dx=g.position.x-best.position.x, dz=g.position.z-best.position.z;
+  let a=Math.atan2(-dz,dx);
+  const step=Math.PI/4;
+  a=Math.round(a/step)*step;
+  g.rotation.y=a;
+  S.vrot=S.vrot||{}; S.vrot[key]=+(((a%6.283)+6.283)%6.283).toFixed(3);
+  // la dalle voisine s'aligne aussi, pour que le raccord soit franc
+  const nk=best.userData.pid;
+  if(nk&&(S.vrot[nk]==null||true)){ best.rotation.y=a;
+    S.vrot[nk]=+(((a%6.283)+6.283)%6.283).toFixed(3); }
+  return a;
+}
 /* place libre trouvée ? (pour signaler visuellement un chevauchement) */
 function overlaps(x,z,r,exceptKey){
   return occupants(exceptKey).some(o=>Math.hypot(x-o.x,z-o.z)<r+o.r-0.5);
@@ -4789,7 +4896,9 @@ function scrVillage(){
    +'<p class="small" style="margin-top:8px">'+(ap>=100?t('🏆 Village imprenable. Rome peut venir.','🏆 Impregnable village. Let Rome come.')
       :ap>=50?t('Défenses solides — continue, il reste des failles.','Solid defenses — keep going, there are still gaps.')
       :t('Village vulnérable ! Construis la forge, puis le camp militaire.','Village vulnerable! Build the forge, then the military camp.'))
-   +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p></div>'
+   +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p>'
+   +(owned.includes('guerriers')?armyOrdersHtml():'')
+   +'</div>'
    +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
@@ -4896,6 +5005,32 @@ function happyHtml(rec){
   }
   return h+'</div>';
 }
+/* ---------- ordres à la troupe ---------- */
+function armyOrdersHtml(){
+  const a=S.army||{}, placed=(a.x!=null);
+  let h='<div class="armyord"><div class="eyebrow" style="margin:12px 0 8px">📣 '
+   +t('ORDRES À LA TROUPE','ORDERS TO THE SQUAD')+'</div>'
+   +'<div class="formrow">';
+  FORMATIONS.forEach(f=>{
+    h+='<button class="formbtn'+(formationOf()===f.k?' on':'')+'" onclick="G.setFormation(\''+f.k+'\')">'
+      +'<span class="fic">'+f.ic+'</span>'+esc(t(f.n,f.ne))+'</button>';
+  });
+  h+='</div>'
+   +'<div class="menu" style="margin-top:10px">'
+   +'<button class="btn '+(V3.order?'btn-bus':'btn-stop')+'" style="justify-content:center" onclick="G.armyOrder()">'
+     +(V3.order?t('👆 TOUCHE LE SOL…','👆 TAP THE GROUND…'):t('📣 ORDONNER LE RASSEMBLEMENT','📣 ORDER THE MUSTER'))+'</button>'
+   +(placed?'<button class="btn btn-ghost" style="justify-content:center" onclick="G.armyRecall()">🏕️ '
+     +t('Rompre les rangs','Fall out')+'</button>':'')
+   +'</div>'
+   +'<p class="small" style="margin:8px 0 0">'
+   +(placed
+     ? t('Troupe en position à <b>'+Math.round(a.x)+', '+Math.round(a.z)+'</b>, face à l\'extérieur.',
+         'Squad in position at <b>'+Math.round(a.x)+', '+Math.round(a.z)+'</b>, facing outward.')
+     : t('La troupe patrouille librement. Donne-lui un point de rassemblement et elle s\'y rangera en ordre.',
+         'The squad patrols freely. Give it a rally point and it will form up there.'))
+   +'</p></div>';
+  return h;
+}
 /* liste des habitants sous le village */
 function peopleHtml(){
   const list=S.people||[];
@@ -4932,6 +5067,38 @@ function chronHtml(){
 }
 function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
 /* fait pivoter le bâtiment sélectionné (ou le dernier touché) */
+/* ---------- ordres à l'armée ---------- */
+function armyOrder(){
+  if(!S.village.includes('guerriers')){
+    toast(t('⚔️ Recrute d\'abord une escouade de guerriers.','⚔️ Recruit a warrior squad first.')); return; }
+  V3.order=!V3.order; V3.edit=false; V3.sel=null;
+  render();
+  toast(V3.order
+    ? t('📣 Touche le sol : la troupe ira s\'y ranger.','📣 Tap the ground: the squad will form up there.')
+    : t('⚔️ Ordre annulé.','⚔️ Order cancelled.'));
+}
+function setFormation(k){
+  S.army=S.army||{x:null,z:null,f:'ligne'};
+  S.army.f=k; save(); SFX.click();
+  const f=FORMATIONS.find(x=>x.k===k)||FORMATIONS[0];
+  toast(f.ic+' '+t('Formation : '+f.n,'Formation: '+f.ne));
+  if(CUR.screen==='village') render();
+}
+function rallyAt(x,z){
+  S.army=S.army||{x:null,z:null,f:'ligne'};
+  const r=Math.hypot(x,z);
+  if(r>250){ x=x/r*250; z=z/r*250; }
+  S.army.x=+x.toFixed(1); S.army.z=+z.toFixed(1);
+  save(); SFX.win(); V3.order=false;
+  toast(t('⚔️ La troupe se met en position !','⚔️ The squad takes position!'));
+  render();
+}
+function armyRecall(){
+  S.army=S.army||{x:null,z:null,f:'ligne'};
+  S.army.x=null; S.army.z=null; save(); SFX.click();
+  toast(t('🏕️ La troupe regagne son cantonnement.','🏕️ The squad returns to quarters.'));
+  render();
+}
 function rotSel(dir){
   const g=V3.sel||V3.lastSel;
   if(!g){ toast(t('👆 Touche d\'abord un bâtiment.','👆 Tap a building first.')); return; }
@@ -4942,7 +5109,7 @@ function rotSel(dir){
   if(V3.sun) V3.sun.shadow.needsUpdate=true;
 }
 function toggleEdit(){
-  V3.edit=!V3.edit;
+  V3.edit=!V3.edit; V3.order=false;
   if(!V3.edit&&V3.ring) V3.ring.visible=false;
   V3.sel=null; V3.lastSel=null; render();
   toast(V3.edit?t('🔧 Mode placement : glisse les bâtiments','🔧 Placement mode: drag the buildings')
@@ -4983,6 +5150,8 @@ function buy(id){
     toast(it.ic+' <b>'+esc(arrival.name)+'</b> '+t('s\'installe : ','moves in: ')+esc(where)
       +'<br><i style="color:var(--dim)">« '+esc(t(arrival.bio||'',arrival.bioe||''))+' »</i>');
   }else if(it.id==='chemin'){
+    const n2=nOwned('chemin'), key=n2>1?'chemin#'+(n2-1):'chemin';
+    const a=orientPath(key); if(a!=null) save();
     toast(it.ic+' '+t('Dalle posée au centre du village — touche <b>DÉPLACER</b> pour la glisser où tu veux.',
                       'Slab laid at the centre of the village — tap <b>MOVE</b> to drag it wherever you like.'));
   }else{
@@ -5298,6 +5467,180 @@ function scrGrimoire(){
   return html;
 }
 
+/* ============================================================
+   STATISTIQUES DÉTAILLÉES
+   ============================================================ */
+/* bilan d'un domaine : la campagne par zone, plus les chiffres du Blitz */
+function domainStats(){
+  const out=WORLDS.map(w=>{
+    let ok=0, ko=0, seen=0, tamed=0, hot=0;
+    const idx=Q.map((q,i)=>i).filter(i=>Q[i].w===w.id);
+    idx.forEach(i=>{ const st=S.qstat[i]; if(!st) return;
+      seen++; ok+=st.ok||0; ko+=st.ko||0;
+      if(st.box>=3) tamed++; if(st.box===1&&st.ko>0) hot++; });
+    const tot=ok+ko;
+    return {id:w.id, ic:w.icon, name:wn(w), total:idx.length, seen, ok, ko, tot,
+            acc:tot?ok/tot:null, mastery:mastery(w.id), tamed, hot};
+  });
+  // le Blitz compte comme un domaine à part entière
+  let bok=0, bko=0, bseen=0, btamed=0, bhot=0;
+  DRILLS.forEach((d,i)=>{ const st=S.qstat[drillId(i)]; if(!st) return;
+    bseen++; bok+=st.ok||0; bko+=st.ko||0;
+    if(st.box>=3) btamed++; if(st.box===1&&st.ko>0) bhot++; });
+  const btot=bok+bko;
+  out.push({id:'blitz', ic:'⚡', name:t('Les Petites Règles','The Little Rules'),
+            total:DRILLS.length, seen:bseen, ok:bok, ko:bko, tot:btot,
+            acc:btot?bok/btot:null, mastery:DRILLS.length?Math.round(btamed/DRILLS.length*100):0,
+            tamed:btamed, hot:bhot});
+  return out;
+}
+/* couverture globale de la banque */
+function coverage(){
+  const total=Q.length+DRILLS.length;
+  let seen=0, tamed=0, hot=0, warm=0;
+  const scan=id=>{ const st=S.qstat[id]; if(!st) return;
+    seen++; if(st.box>=3) tamed++; else if(st.box===1&&st.ko>0) hot++; else warm++; };
+  Q.forEach((q,i)=>scan(i));
+  DRILLS.forEach((d,i)=>scan(drillId(i)));
+  return {total, seen, tamed, hot, warm, never:total-seen};
+}
+/* estimation de la préparation, honnête : couverture ET fiabilité */
+function readiness(){
+  const c=coverage();
+  const tot=S.totalOk+S.totalKo;
+  const acc=tot?S.totalOk/tot:0;
+  const cov=c.total?c.seen/c.total:0;
+  const solid=c.total?c.tamed/c.total:0;
+  const exam=S.examBest?Math.min(1,S.examBest/45):0;
+  const r=Math.round((cov*0.2+acc*0.3+solid*0.3+exam*0.2)*100);
+  return {pct:Math.max(0,Math.min(100,r)), cov, acc, solid, exam};
+}
+function pctBar(pct,col){
+  return '<span class="sbar"><i style="width:'+Math.max(0,Math.min(100,pct))+'%;background:'+col+'"></i></span>';
+}
+function scrStats(){
+  const dom=domainStats().filter(d=>d.tot>0).sort((a,b)=>(b.acc||0)-(a.acc||0));
+  const untouched=domainStats().filter(d=>!d.tot);
+  const cov=coverage(), rd=readiness();
+  const tot=S.totalOk+S.totalKo;
+  const acc=tot?Math.round(S.totalOk/tot*100):0;
+  const worst=nemesisPool().filter(o=>o.ko>0).slice(0,12);
+  const best=dom[0], weak=dom[dom.length-1];
+
+  let h='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button>'
+   +'<div class="scrtitle">'+t('Statistiques','Statistics')+'</div></div>';
+
+  if(!tot) return h+'<div class="panel" style="text-align:center"><div style="font-size:50px">📊</div>'
+   +'<p class="small" style="margin-top:8px">'+t('Aucune réponse enregistrée pour l\'instant.<br>Joue une mission ou un Blitz : tout sera mesuré ici, domaine par domaine.',
+      'No answers recorded yet.<br>Play a mission or a Blitz: everything will be measured here, domain by domain.')+'</p>'
+   +'<div class="menu" style="margin-top:14px"><button class="btn btn-exit" style="justify-content:center" onclick="G.go(\'worlds\')">🗺️ '
+   +t('Aller jouer','Go play')+'</button></div></div>';
+
+  // ---- préparation générale
+  h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🎓 '+t('PRÊT POUR BAYONNE ?','READY FOR BAYONNE?')+'</div>'
+   +'<div class="gprog-top"><span>'+t('Estimation globale','Overall estimate')+'</span><b>'+rd.pct+'%</b></div>'
+   +'<div class="xp-lane" style="height:14px"><div class="xp-fill" style="width:'+rd.pct+'%;background:linear-gradient(90deg,var(--exitD),var(--exit))"></div><div class="xp-dash"></div></div>'
+   +'<div class="srow"><span>'+t('Banque parcourue','Bank covered')+'</span>'+pctBar(rd.cov*100,'#3F6FB0')+'<b>'+Math.round(rd.cov*100)+'%</b></div>'
+   +'<div class="srow"><span>'+t('Précision','Accuracy')+'</span>'+pctBar(rd.acc*100,'#33B268')+'<b>'+Math.round(rd.acc*100)+'%</b></div>'
+   +'<div class="srow"><span>'+t('Questions domptées','Questions tamed')+'</span>'+pctBar(rd.solid*100,'#E0A800')+'<b>'+Math.round(rd.solid*100)+'%</b></div>'
+   +'<div class="srow"><span>'+t('Meilleur examen blanc','Best mock exam')+'</span>'+pctBar(rd.exam*100,'#B45CE0')+'<b>'+S.examBest+'/50</b></div>'
+   +'</div>';
+
+  // ---- chiffres clés
+  h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">📊 '+t('EN CHIFFRES','THE NUMBERS')+'</div>'
+   +'<div class="statrow s4" style="margin:6px 0 0">'
+   +'<div class="stat"><div class="v">'+tot+'</div><div class="l">'+t('réponses','answers')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--exit)">'+acc+'%</div><div class="l">'+t('précision','accuracy')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--zone)">'+S.bestCombo+'</div><div class="l">'+t('meilleur combo','best combo')+'</div></div>'
+   +'<div class="stat"><div class="v">'+S.runsDone+'</div><div class="l">'+t('missions','missions')+'</div></div>'
+   +'</div>'
+   +'<div class="statrow s4" style="margin:8px 0 0">'
+   +'<div class="stat"><div class="v">'+S.perfectRuns+'</div><div class="l">'+t('sans faute','flawless')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--exit)">'+S.fixedErrors+'</div><div class="l">'+t('erreurs corrigées','errors fixed')+'</div></div>'
+   +'<div class="stat"><div class="v">'+S.examsTaken+'</div><div class="l">'+t('examens blancs','mock exams')+'</div></div>'
+   +'<div class="stat"><div class="v" style="color:var(--bus)">'+S.dayStreak+'</div><div class="l">'+t('jours d\'affilée','day streak')+'</div></div>'
+   +'</div></div>';
+
+  // ---- forces et faiblesses
+  if(best&&weak&&best!==weak){
+    h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🎯 '+t('TON PROFIL','YOUR PROFILE')+'</div>'
+     +'<div class="profrow good"><span class="pic">'+best.ic+'</span><span class="ptx"><b>'+t('Domaine le plus sûr','Strongest domain')+'</b><br>'
+       +esc(best.name)+' — '+Math.round(best.acc*100)+'% '+t('de réussite sur','correct out of')+' '+best.tot+'</span></div>'
+     +'<div class="profrow bad"><span class="pic">'+weak.ic+'</span><span class="ptx"><b>'+t('Domaine à travailler','Domain to work on')+'</b><br>'
+       +esc(weak.name)+' — '+Math.round(weak.acc*100)+'% '+t('de réussite sur','correct out of')+' '+weak.tot+'</span></div>'
+     +'<div class="menu" style="margin-top:10px">'
+     +(weak.id!=='blitz'
+       ?'<button class="btn btn-exit" style="justify-content:center" onclick="G.startRun(\''+weak.id+'\')">🎯 '+t('S\'entraîner sur ','Drill ')+esc(weak.name)+'</button>'
+       :'<button class="btn btn-bus" style="justify-content:center" onclick="G.startBlitz()">⚡ '+t('Refaire un Blitz','Another Blitz')+'</button>')
+     +'</div></div>';
+  }
+
+  // ---- détail par domaine
+  h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🗺️ '+t('DOMAINE PAR DOMAINE','DOMAIN BY DOMAIN')+'</div>';
+  dom.forEach(d=>{
+    const a=Math.round((d.acc||0)*100);
+    const col=a>=85?'linear-gradient(90deg,#155C33,#33B268)':a>=65?'linear-gradient(90deg,#7A5A00,#E0A800)':'linear-gradient(90deg,#7C1215,#E5383B)';
+    h+='<div class="domrow"><div class="domtop"><span class="dic">'+d.ic+'</span>'
+     +'<span class="dnm">'+esc(d.name)+'</span><b class="dpc">'+a+'%</b></div>'
+     +'<span class="sbar"><i style="width:'+a+'%;background:'+col+'"></i></span>'
+     +'<div class="dmeta">'+t(d.ok+' bonnes · '+d.ko+' ratées',d.ok+' right · '+d.ko+' wrong')
+       +' · '+t('maîtrise','mastery')+' '+d.mastery+'%'
+       +' · '+d.seen+'/'+d.total+' '+t('vues','seen')
+       +(d.hot?' · <b style="color:var(--stop)">'+d.hot+' '+t('à venger','to avenge')+'</b>':'')
+       +'</div></div>';
+  });
+  if(untouched.length) h+='<p class="small" style="margin-top:10px">'
+   +t('Jamais touché : ','Never touched: ')+untouched.map(d=>d.ic+' '+esc(d.name)).join(', ')+'</p>';
+  h+='</div>';
+
+  // ---- couverture de la banque
+  h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">📚 '+t('COUVERTURE DE LA BANQUE','QUESTION BANK COVERAGE')+'</div>'
+   +'<div class="covbar">'
+     +'<i class="c-tamed" style="width:'+(cov.tamed/cov.total*100)+'%"></i>'
+     +'<i class="c-warm" style="width:'+(cov.warm/cov.total*100)+'%"></i>'
+     +'<i class="c-hot" style="width:'+(cov.hot/cov.total*100)+'%"></i>'
+   +'</div>'
+   +'<div class="covleg">'
+     +'<span><i class="c-tamed"></i>'+cov.tamed+' '+t('domptées','tamed')+'</span>'
+     +'<span><i class="c-warm"></i>'+cov.warm+' '+t('en cours','in progress')+'</span>'
+     +'<span><i class="c-hot"></i>'+cov.hot+' '+t('à venger','to avenge')+'</span>'
+     +'<span><i class="c-none"></i>'+cov.never+' '+t('jamais vues','never seen')+'</span>'
+   +'</div>'
+   +'<p class="small" style="margin-top:8px">'+t('Banque totale : <b>'+cov.total+'</b> questions ('+Q.length+' + '+DRILLS.length+' chiffres du Blitz).',
+      'Total bank: <b>'+cov.total+'</b> questions ('+Q.length+' + '+DRILLS.length+' Blitz numbers).')+'</p></div>';
+
+  // ---- examens blancs
+  h+='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🎓 '+t('EXAMENS BLANCS','MOCK EXAMS')+'</div>'
+   +'<div class="srow"><span>🎓 '+t('Officiel (50 Q)','Official (50 Q)')+'</span>'+pctBar(S.examBest/50*100,'#3F6FB0')+'<b>'+S.examBest+'/50</b></div>'
+   +'<div class="srow"><span>⚡ '+t('Éclair (25 Q)','Lightning (25 Q)')+'</span>'+pctBar(S.examEclairBest/25*100,'#E0A800')+'<b>'+S.examEclairBest+'/25</b></div>'
+   +'<div class="srow"><span>💀 '+t('Hardcore (30 Q)','Hardcore (30 Q)')+'</span>'+pctBar(S.examHardBest/30*100,'#E5383B')+'<b>'+S.examHardBest+'/30</b></div>'
+   +'<div class="srow"><span>⚡ '+t('Record Blitz','Blitz best')+'</span>'+pctBar(Math.min(100,S.blitzBest/30*100),'#B45CE0')+'<b>'+S.blitzBest+'</b></div>'
+   +'<p class="small" style="margin-top:8px">'+(S.examPassed
+      ?t('✅ Tu as déjà décroché la barre des 40/50. Recommence jusqu\'à ce que ce soit systématique.',
+         '✅ You have already cleared the 40/50 bar. Repeat until it is systematic.')
+      :t('⚠️ La barre du MVC est à <b>40/50</b>. Pas encore atteinte en examen blanc.',
+         '⚠️ The MVC bar is <b>40/50</b>. Not reached yet in a mock exam.'))+'</p></div>';
+
+  // ---- pires questions
+  if(worst.length){
+    h+='<div class="panel"><div class="eyebrow">😈 '+t('TES PIRES QUESTIONS','YOUR WORST QUESTIONS')+'</div>'
+     +'<p class="small" style="margin:0 0 10px">'+t('Classées par taux d\'échec. Touche pour voir la réponse.','Ranked by failure rate. Tap to see the answer.')+'</p>';
+    worst.forEach(o=>{
+      const pct=Math.round(o.rate*100);
+      h+='<details class="hcard nem '+(o.box>=3?'tamed':o.box===1?'hot':'warm')+'"><summary>'
+       +'<span class="nembadge">'+pct+'%</span> '+esc(U(o.q.q))
+       +'<div class="nemmeta">'+t('raté '+o.ko+'× sur '+o.tot+' tentative'+(o.tot>1?'s':''),'missed '+o.ko+'× of '+o.tot+' attempt'+(o.tot>1?'s':''))
+       +(isDrillId(String(o.i))?' · ⚡ Blitz':'')+'</div></summary>'
+       +'<div class="hans">✔ '+esc(U(o.q.a[0]))+'</div>'
+       +'<div class="small" style="margin-top:5px">'+U(qx(o.q))+'</div>'
+       +'<div class="flagrow">'+flagBtn(o.i)+'</div></details>';
+    });
+    h+='<div class="menu" style="margin-top:12px"><button class="btn btn-stop" style="justify-content:center" onclick="G.startNemesisRun()">🎯 '
+     +t('LES TRAVAILLER ×10','DRILL THEM ×10')+'</button></div></div>';
+  }
+  return h;
+}
+
 /* ---------- badges ---------- */
 function scrBadges(){
   let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Trophées','Trophies')+'</div></div><div class="badges">';
@@ -5364,7 +5707,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
-  v3dZoom, v3dReset, rotSel};
+  v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall};
 window.G=G;
 applyLang();
 touchDaily();
