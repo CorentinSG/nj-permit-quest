@@ -1310,6 +1310,31 @@ var DOPT={
 function dshow(o){ return S.lang==='en' ? U(DOPT[o]||o) : U(o); }
 // Affichage du prompt d'un drill (bilingue).
 function dp(d){ return t(d.p, d.pe||d.p); }
+/* ---------- les chiffres du Blitz entrent dans le circuit des questions ----------
+   Un drill n'a ni énoncé complet ni explication : on en fabrique une question
+   à la volée, avec l'identifiant stable « d<index> ». Elle peut alors être
+   ratée, classée, marquée et ré-entraînée comme n'importe quelle autre. */
+function stripTags(x){ return String(x).replace(/<[^>]+>/g,''); }
+function drillId(i){ return 'd'+i; }
+function isDrillId(id){ return typeof id==='string' && /^d\d+$/.test(id); }
+function drillIndex(id){ return isDrillId(id) ? +id.slice(1) : -1; }
+function drillQ(i){
+  const d=DRILLS[i]; if(!d) return null;
+  const ask=stripTags(t(d.p, d.pe||d.p)).replace(/\s*:\s*$/,'');
+  return {
+    w:'blitz', drill:i,
+    q: ask + (/___/.test(ask) ? '' : ' :'),
+    a: [dshow(d.a)].concat(d.o.map(dshow)),
+    x: '⚡ ' + t('Chiffre du Blitz. La bonne réponse est ','Blitz number. The correct answer is ')
+       + '<b>'+dshow(d.a)+'</b>. '
+       + t('Ces valeurs tombent telles quelles à l\'examen : apprends-les par cœur.',
+           'These values appear verbatim on the test: learn them by heart.'),
+    xe:'⚡ Blitz number. The correct answer is <b>'+dshow(d.a)+'</b>. '
+       +'These values appear verbatim on the test: learn them by heart.'
+  };
+}
+/* accès unifié : un identifiant est soit un index de Q, soit « d<n> » */
+function qById(id){ return isDrillId(id) ? drillQ(drillIndex(id)) : Q[id]; }
 // XEN : traductions anglaises des explications de questions (clé = texte anglais q).
 var XEN={};
 Object.assign(XEN,{
@@ -1726,14 +1751,21 @@ function pickQuestions(wid,n){
   return shuffle(weighted.slice(0,n).map(x=>x.o));
 }
 function errorPool(){
-  return Q.map((q,i)=>({q,i})).filter(o=>{ const s=S.qstat[o.i]; return s&&s.box===1&&s.ko>0; });
+  return allTrackable().filter(o=>{ const s=S.qstat[o.i]; return s&&s.box===1&&s.ko>0; });
+}
+/* toutes les questions pistables : la banque principale + les chiffres du Blitz */
+function allTrackable(){
+  const out=Q.map((q,i)=>({q,i}));
+  DRILLS.forEach((d,i)=>{ const id=drillId(i);
+    if(S.qstat[id]||isFlagged(id)) out.push({q:drillQ(i), i:id}); });
+  return out;
 }
 function recordAnswer(qi,good){
   const s=qstat(qi);
   const wasError=s.box===1&&s.ko>0;
   if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++;
-    gainCoins(2+(allNeedsMet()?1:0));
-    gainRes(CUR.screen==='run'?'food':CUR.screen==='boss'?'iron':null); }
+    gainCoins(CUR.screen==='blitz' ? (allNeedsMet()?1:0) : 2+(allNeedsMet()?1:0));
+    gainRes(CUR.screen==='run'?'food':CUR.screen==='boss'?'iron':CUR.screen==='blitz'?'wood':null); }
   else{ s.ko++; s.box=1; }
   if(good){
     S.totalOk++; touchDaily(); S.daily.ok++;
@@ -2082,7 +2114,8 @@ function scrRun(){
   const c=CUR, q=c.qs[c.i].q;
   if(!c.order) c.order=optOrder(q);
   const w=WORLDS.find(x=>x.id===q.w);
-  let html='<div class="qmeta"><div class="qprog">'+w.icon+' '+(c.i+1)+'/'+c.qs.length+'</div>'
+  const wic=w?w.icon:(q.drill!=null?'⚡':'🎯');
+  let html='<div class="qmeta"><div class="qprog">'+wic+' '+(c.i+1)+'/'+c.qs.length+'</div>'
    +(c.combo>=3?'<div class="combo"><span class="f">🔥</span>COMBO ×'+comboMult(c.combo)+'</div>':'')
    +'</div>'
    +'<div class="qbar"><i style="width:'+(c.i/c.qs.length*100)+'%"></i></div>'
@@ -4657,7 +4690,7 @@ function flagBtn(i,compact){
    +'</button>';
 }
 function nemesisPool(){
-  return Q.map((q,i)=>({q,i}))
+  return allTrackable()
     .map(o=>{ const s=S.qstat[o.i], man=isFlagged(o.i);
       if((!s||!s.ko)&&!man) return null;
       const ko=(s&&s.ko)||0, ok=(s&&s.ok)||0, tot=ok+ko, rate=tot?ko/tot:0;
@@ -4768,7 +4801,7 @@ function scrBlitz(){
      +'</div></div>';
   }
   // phase 'play'
-  const d=c.deck[c.di];
+  const d=c.deck[c.di].d;
   return '<div class="blitzhead"><div class="timer'+(c.t<=10?' low':'')+'" id="timer">'+c.t+'s</div>'
    +'<div class="blitzscore">🏆 '+c.score+(c.streak>=3?' <span style="color:var(--zone)">🔥'+c.streak+'</span>':'')+'</div></div>'
    +'<div class="qcard"><div class="drillp"><span>'+dp(d)+'</span></div>'
@@ -4778,7 +4811,7 @@ function scrBlitz(){
 }
 function startBlitz(){
   stopTimers();
-  const deck=shuffle(DRILLS);
+  const deck=blitzDeck();
   S.res=S.res||{food:0,wood:0,iron:0};
   CUR={screen:'blitz', phase:'play', deck, di:0, t:60, score:0, streak:0,
        res0:{food:S.res.food||0, wood:S.res.wood||0, iron:S.res.iron||0}, coins0:S.coins};
@@ -4787,10 +4820,12 @@ function startBlitz(){
 }
 function nextDrill(){
   const c=CUR;
-  if(c.di>=c.deck.length){ c.deck=shuffle(DRILLS); c.di=0; }
-  const d=c.deck[c.di];
+  if(c.di>=c.deck.length){ c.deck=blitzDeck(); c.di=0; }
+  const d=c.deck[c.di].d;
   c.opts=shuffle([d.a, ...d.o]);
 }
+/* le paquet garde l'index d'origine de chaque drill, pour pouvoir le pister */
+function blitzDeck(){ return shuffle(DRILLS.map((d,i)=>({d,i}))); }
 function startBlitzTimer(){
   stopTimers();
   blitzTimer=setInterval(()=>{
@@ -4803,11 +4838,13 @@ function startBlitzTimer(){
   },1000);
 }
 function blitzAnswer(i,ev){
-  const c=CUR, d=c.deck[c.di];
+  const c=CUR, entry=c.deck[c.di], d=entry.d;
   const good=c.opts[i]===d.a;
+  // un chiffre raté au Blitz compte comme n'importe quelle autre erreur :
+  // il entre dans les statistiques et remonte donc dans la Bête Noire
+  recordAnswer(drillId(entry.i), good);
   if(good){
     c.score++; c.streak++;
-    gainRes('wood'); gainCoins(allNeedsMet()?1:0);
     SFX.ok(); gainXp(4,ev);
     if(c.streak%5===0){ gainXp(20); toast(t('🔥 Série de '+c.streak+' ! <b>+20 XP</b>','🔥 Streak of '+c.streak+'! <b>+20 XP</b>')); }
   }else{
@@ -4898,7 +4935,7 @@ function scrExamEnd(){
   if(wrong.length){
     html+='<div class="panel"><div class="eyebrow">'+t('TES ERREURS DU JOUR','YOUR MISTAKES')+'</div>';
     wrong.forEach(a=>{
-      const q=Q[a.qi];
+      const q=qById(a.qi); if(!q) return;
       html+='<div style="padding:10px 0;border-bottom:1px dashed var(--edge)">'
        +'<div style="font-size:14px;font-weight:600;margin-bottom:5px">'+esc(U(q.q))+'</div>'
        +'<div style="font-size:13px;color:var(--exit);margin-bottom:4px">✔ '+esc(U(q.a[0]))+'</div>'
