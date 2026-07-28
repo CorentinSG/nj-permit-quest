@@ -1253,6 +1253,7 @@ const defaults=()=>({
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
+  vacated:{},          // logement libéré par un emménagement -> quand
   army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
   flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
@@ -3054,12 +3055,21 @@ function syncPeople(){
   // le fondateur d'abord
   if(!S.people.length){ const r=ROSTER[0], f=newPerson(0,'founder','feu');
     f.name=r.n; f.tr=r.tr; f.f=!!r.f; f.bio=r.bio; f.bioe=r.bioe; S.people.push(f); }
+  // les couples qui durent emménagent ensemble AVANT le recensement :
+  // le toit qu'ils libèrent est aussitôt proposé à un nouveau venu
+  settleCouples();
   keys.forEach(k=>{ if(k==='founder') return;
     if(!S.people.some(p=>p.home===k)){
       const np=newPerson(S.people.length,k,jobForBuilding(k));
       S.people.push(np);
       np.dream=pickDream();
-      remember(np,'🏡 '+t('Est arrivé au village.','Arrived in the village.'),'🏡 Arrived in the village.');
+      const libre=S.vacated&&S.vacated[k];
+      if(libre){ delete S.vacated[k];
+        remember(np,'🏡 '+t('S\'est installé dans un logement laissé libre.','Settled into a home left empty.'),
+                    '🏡 Settled into a home left empty.');
+        chron('🏡 '+nameOf(np)+t(' s\'installe dans le logement libéré.',' settles into the freed-up home.'),
+              '🏡 '+nameOf(np)+' settles into the freed-up home.');
+      }else remember(np,'🏡 '+t('Est arrivé au village.','Arrived in the village.'),'🏡 Arrived in the village.');
       assignMentor(np);
     } });
   S.people.forEach(r=>{ if(isChild(r)) return;
@@ -3092,7 +3102,7 @@ function relate(A,B){
     remember(B,'💫 '+t('Inséparable de ','Inseparable from ')+A.name+'.','💫 Inseparable from '+A.name+'.'); }
   // coup de foudre : lien fort, pas déjà en couple, et sexes différents
   if(n>=20&&!A.love&&!B.love&&A.f!==B.f&&Math.random()<0.35){
-    A.love=B.id; B.love=A.id;
+    A.love=B.id; B.love=A.id; A.loveAt=B.loveAt=Date.now();
     chron('💛 '+A.name+' et '+B.name+' filent le parfait amour !','💛 '+A.name+' and '+B.name+' have fallen in love!');
     remember(A,'💛 '+t('Est tombé amoureux de ','Fell in love with ')+B.name+'.','💛 Fell in love with '+B.name+'.');
     remember(B,'💛 '+t('Est tombé amoureux de ','Fell in love with ')+A.name+'.','💛 Fell in love with '+A.name+'.');
@@ -3212,10 +3222,58 @@ function newChild(A,B){
     home:A.home, job:'enfant', love:null, born:Date.now(), bond:{}, chats:0,
     mood:0.8, mem:[], parents:[A.id,B.id], grown:0, mentor:null, dream:null};
 }
-/* un couple installé peut fonder une famille */
+/* ---------- emménager ensemble ----------
+   Un couple qui dure finit par ne plus faire qu'un feu : l'un rejoint l'autre,
+   et le toit laissé vide accueillera un nouveau venu au prochain recensement.
+   On choisit le logement le plus « beau » (l'ordre de la boutique fait foi),
+   et à égalité celui du plus ancien du village, pour que ce soit stable. */
+const MOVE_IN_DELAY=6*36e5;               // six heures d'amour avant le déménagement
+function homeRank(key){
+  const base=String(key||'').split('#')[0];
+  if(base==='founder') return 1e6;        // on ne déloge jamais le chef
+  const i=SHOP.findIndex(x=>x.id===base);
+  return i<0?-1:i;
+}
+function moveInTogether(A,B){
+  if(!A||!B||A.love!==B.id||B.love!==A.id) return false;
+  if(isChild(A)||isChild(B)) return false;
+  if(!A.home||!B.home||A.home===B.home) return false;
+  if(Date.now()-Math.max(A.loveAt||0,B.loveAt||0)<MOVE_IN_DELAY) return false;
+  // qui garde son toit ?
+  let keep=A, leave=B;
+  const ra=homeRank(A.home), rb=homeRank(B.home);
+  if(rb>ra||(rb===ra&&(B.born||0)<(A.born||0))){ keep=B; leave=A; }
+  const old=leave.home;
+  leave.home=keep.home;
+  // les enfants suivent le parent qui déménage
+  childrenOf(leave).forEach(k=>{ if(k.home===old) k.home=keep.home; });
+  S.vacated=S.vacated||{};
+  S.vacated[old]=Date.now();              // le prochain habitant saura pourquoi c'est libre
+  const hn=homeLabel(keep);
+  remember(leave,'📦 '+t('A emménagé avec ','Moved in with ')+nameOf(keep)+'.','📦 Moved in with '+nameOf(keep)+'.');
+  remember(keep,'📦 '+nameOf(leave)+t(' a emménagé ici.',' moved in here.'),'📦 '+nameOf(leave)+' moved in here.');
+  nudgeMood(A,0.25); nudgeMood(B,0.25);
+  chron('📦 '+nameOf(leave)+t(' a emménagé chez ',' moved in with ')+nameOf(keep)+' ('+hn+').',
+        '📦 '+nameOf(leave)+' moved in with '+nameOf(keep)+' ('+hn+').');
+  V3.saveSoon=1;
+  return true;
+}
+/* tous les couples séparés qui doivent se rejoindre le font */
+function settleCouples(){
+  const P=S.people||[]; const done={};
+  P.forEach(A=>{
+    if(!A.love||done[A.id]) return;
+    const B=P.find(x=>x.id===A.love);
+    if(!B||B.love!==A.id) return;
+    done[A.id]=done[B.id]=1;
+    moveInTogether(A,B);
+  });
+}
+/* un couple installé sous le même toit peut fonder une famille */
 function tryBaby(A,B){
   if(!A||!B||A.love!==B.id) return false;
   if(isChild(A)||isChild(B)) return false;
+  if(A.home!==B.home) return false;                          // on fonde un foyer, pas un couloir
   if((S.people||[]).length>=40) return false;
   if(childrenOf(A).filter(k=>!k.grown).length>=2) return false;
   if(Date.now()-(A.lastBaby||0)<12*36e5) return false;       // pas plus d'un enfant par demi-journée
@@ -4357,8 +4415,21 @@ function v3dInit(){
         V3.lastTap=now; V3.lastTapXY=[e.clientX,e.clientY];
         if(!V3.edit){
           const npc=pickNpc(e);
-          if(npc&&npc.userData.rec) showPerson(npc.userData.rec,npc);
-          else{ const bld=pickAt(e); if(bld&&bld.userData.pid) showBuilding(bld.userData.pid); }
+          if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); }
+          else{
+            const bld=pickAt(e);
+            if(bld&&bld.userData.pid) showBuilding(bld.userData.pid);
+            else{
+              // le doigt est large et les toits sont petits : à défaut d'un
+              // toucher pile dessus, on prend ce qu'il y a de plus proche
+              const g=groundAt(e);
+              if(g){
+                const w=nearestWalker(g.x,g.z,14);
+                if(w&&w.userData.rec) showPerson(w.userData.rec,w);
+                else{ const k=nearestBuilding(g.x,g.z); if(k) showBuilding(k); }
+              }
+            }
+          }
         }
       }
     }
@@ -4783,6 +4854,28 @@ function relaxVillage(rounds){
    solide. Le rayon solide est plus petit que l'emprise de placement : on veut
    pouvoir longer un mur et se tenir devant sa porte, pas rebondir à 10 m. */
 const WALKABLE={ble:1, chemin:1, entrainement:1, muraille:1, palissade:1};
+/* ---------- toucher « au plus proche » ----------
+   Sur un téléphone le doigt couvre plus large qu'un toit de hutte. Si le rayon
+   ne touche rien, on regarde ce qui se trouve autour du point du sol visé. */
+function nearestBuilding(x,z){
+  let best=null, bd=1e9;
+  Object.keys(V3.place||{}).forEach(k=>{
+    const g=V3.place[k]; if(!g) return;
+    const r=footOf(k)*0.7+10;
+    const d=Math.hypot(g.position.x-x, g.position.z-z);
+    if(d<r&&d<bd){ bd=d; best=k; }
+  });
+  return best;
+}
+function nearestWalker(x,z,r){
+  const W=(V3.built&&V3.built.walkers)||[];
+  let best=null, bd=r;
+  for(const w of W){
+    const d=Math.hypot(w.position.x-x, w.position.z-z);
+    if(d<bd){ bd=d; best=w; }
+  }
+  return best;
+}
 function rebuildSolids(){
   const out=(V3.statics||[]).slice();
   Object.keys(V3.place||{}).forEach(k=>{
@@ -5098,7 +5191,6 @@ function buildingLabel(key){
 function showBuilding(key){
   const base=String(key).split('#')[0], it=SHOP.find(x=>x.id===base);
   if(!it){ toast(t('Rien à dire sur cet élément.','Nothing to say about this one.')); return; }
-  const occ=(S.people||[]).find(x=>x.home===key);
   const n=nOwned(base);
   const rows=[];
   const row=(k,v)=>rows.push('<b>'+k+' :</b> '+v+'<br>');
@@ -5122,22 +5214,31 @@ function showBuilding(key){
   row(t('Prix','Price'), priceOf(it)+' 🪙'+(rc?' + '+rc:''));
   if(it.stack) row(t('Tu en possèdes','You own'), n+' '+(n>1?t('exemplaires','of these'):t('exemplaire','of these')));
 
-  // qui vit là
+  // qui vit là : le foyer entier, couple et enfants
+  const foyer=(S.people||[]).filter(x=>x.home===key);
+  foyer.sort((a,b)=>(isChild(a)?1:0)-(isChild(b)?1:0)||(a.born||0)-(b.born||0));
   let who='';
-  if(occ){
-    const job=JOBS.find(j=>j.k===occ.job)||JOBS[JOBS.length-1];
-    const H=happinessOf(occ);
-    who='<div class="bldocc"><span class="boic">'+(job?job.ic:'🧑')+'</span>'
-      +'<span class="botx"><b>'+esc(nameOf(occ))+'</b><br>'
-      +'<span style="color:var(--dim)">'+esc(isChild(occ)?t('enfant','child'):t(job.n,job.ne))
-        +' · '+moodIcon(occ)+' '+H.pct+'%</span></span>'
-      +'<button class="sbuy" onclick="G.hideOverlay();G.showPerson('+JSON.stringify(occ.id).replace(/"/g,'&quot;')+')">'
-      +t('SA FICHE','PROFILE')+' →</button></div>';
-    // les enfants logent chez leurs parents
-    const kids=(S.people||[]).filter(x=>x.home===key&&x!==occ);
-    if(kids.length) row(t('Vivent aussi ici','Also living here'), kids.map(k=>esc(nameOf(k))).join(', '));
+  if(foyer.length){
+    row(t('Foyer','Household'), foyer.length+' '+(foyer.length>1?t('habitants','residents'):t('habitant','resident')));
+    who=foyer.map(r=>{
+      const job=JOBS.find(j=>j.k===r.job)||JOBS[JOBS.length-1];
+      const H=happinessOf(r);
+      const lv=loveOf(r);
+      const sub=esc(isChild(r)?t('enfant','child'):t(job.n,job.ne))
+        +(lv&&lv.home===key?' · 💛 '+t('en couple avec ','with ')+esc(nameOf(lv)):'')
+        +' · '+moodIcon(r)+' '+H.pct+'%';
+      return '<div class="bldocc"><span class="boic">'+(isChild(r)?'🧒':(job?job.ic:'🧑'))+'</span>'
+        +'<span class="botx"><b>'+esc(nameOf(r))+'</b><br>'
+        +'<span style="color:var(--dim)">'+sub+'</span></span>'
+        +'<button class="sbuy" onclick="G.hideOverlay();G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
+        +t('SA FICHE','PROFILE')+' →</button></div>';
+    }).join('');
   }else if(base in HOUSED){
-    who='<p class="small" style="margin:10px 0 0">'+t('Personne n\'habite encore ici.','Nobody lives here yet.')+'</p>';
+    who='<p class="small" style="margin:10px 0 0">'
+      +(S.vacated&&S.vacated[key]
+        ?t('Logement libre : ses occupants ont emménagé ailleurs. Un nouveau venu s\'y installera.',
+           'Empty home: its occupants moved in elsewhere. A newcomer will settle here.')
+        :t('Personne n\'habite encore ici.','Nobody lives here yet.'))+'</p>';
   }
 
   // position
@@ -5796,7 +5897,8 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startBlitz, blitzAnswer, startExam, examAnswer, quitExam, startErrors,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
-  v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding};
+  v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
+  moveInTogether, settleCouples, nearestBuilding};
 window.G=G;
 applyLang();
 touchDaily();
