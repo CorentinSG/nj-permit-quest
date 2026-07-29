@@ -406,6 +406,20 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* doléances du village */
+.questbox .qrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--edge)}
+.questbox .qrow:first-of-type{border-top:0}
+.questbox .qic{font-size:20px;flex:none;line-height:1}
+.questbox .qtx{flex:1;min-width:0;font-size:12.5px;line-height:1.45;overflow-wrap:anywhere}
+.questbox .qbar{display:block;height:7px;border-radius:4px;background:var(--lane2);
+  border:1px solid var(--edge);margin:5px 0 4px;overflow:hidden}
+.questbox .qbar i{display:block;height:100%;background:linear-gradient(90deg,#7a5c12,#E0A800)}
+.questbox .qsub{display:block;color:var(--dim);font-size:11.5px}
+.questbox .qrow.done .qbar i{background:linear-gradient(90deg,#155C33,#33B268)}
+.questbox .qrow.claimed{opacity:.5}
+.questbox .qok{color:var(--exit);font-size:18px;flex:none}
+.questbox .qwait{color:var(--dim);flex:none}
+.questbox .sbuy{flex:none}
 /* occupant d'un bâtiment, sur sa fiche */
 .bldocc{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px;
   border:2px solid var(--edge);border-radius:12px;background:var(--lane2);text-align:left}
@@ -1408,6 +1422,7 @@ const defaults=()=>({
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
   combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
+  quests:{day:'', list:[]},   // les doléances du jour
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   vacated:{},          // logement libéré par un emménagement -> quand
   army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
@@ -1874,6 +1889,188 @@ function needsHtml(){
          'Fill all three bars to unlock the <b>prosperity bonus</b> (+1 🪙 per correct answer). Needs grow as the village grows.'))+'</p></div>';
   return h;
 }
+/* ============================================================
+   LES DOLÉANCES DU VILLAGE
+   ------------------------------------------------------------
+   Jusqu'ici le village ne demandait jamais rien : on y venait pour dépenser,
+   puis on repartait. Chaque jour, trois habitants formulent maintenant une
+   requête concrète — et ces requêtes visent ce que tu révises le moins bien.
+   Le village devient la raison de retourner travailler, et le travail vise
+   juste. Tout est calculé à partir des compteurs déjà existants : aucune
+   boucle, aucun timer, rien qui puisse faire ramer.
+   ============================================================ */
+const QUEST_SLOTS=3;
+/* le domaine où tu es le plus faible, celui qu'on te fera travailler */
+function weakestWorld(){
+  let worst=null, wm=101;
+  WORLDS.forEach(w=>{
+    const m=mastery(w.id);
+    if(m<wm){ wm=m; worst=w; }
+  });
+  return worst?{id:worst.id, name:wn(worst), ic:worst.icon, m:wm}:null;
+}
+/* un bâtiment dont quelqu'un rêve et qui n'existe pas encore */
+function dreamedBuilding(){
+  const wanted=(S.people||[]).map(r=>dreamOf(r)).filter(d=>d&&d.need&&!nOwned(d.need));
+  for(const d of wanted){
+    const it=SHOP.find(x=>x.id===d.need);
+    if(it&&(!it.req||S.village.includes(it.req))) return it;
+  }
+  return null;
+}
+/* fabrique une doléance d'un type donné, ou null si elle n'a pas de sens ici */
+function makeQuest(kind, asker){
+  const who=asker?asker.id:null;
+  const nm=asker?nameOf(asker):t('Le village','The village');
+  if(kind==='domain'){
+    const w=weakestWorld(); if(!w) return null;
+    return {k:'domain', w:w.id, who, need:8, got:0,
+      ic:w.ic, coins:60, res:'food', amt:6,
+      fr:nm+' veut '+8+' bonnes réponses en « '+w.name+' » — ton point faible ('+w.m+' %).',
+      en:nm+' wants '+8+' correct answers in "'+w.name+'" — your weakest area ('+w.m+'%).'};
+  }
+  if(kind==='tame'){
+    return {k:'tame', who, need:4, got:0, ic:'🎯', coins:70, res:'iron', amt:4,
+      fr:nm+' veut te voir dompter 4 questions : trois bonnes réponses chacune, et elles sont à toi.',
+      en:nm+' wants to see you tame 4 questions: three right answers each and they are yours.'};
+  }
+  if(kind==='fix'){
+    if(!errorPool().length) return null;
+    return {k:'fix', who, need:5, got:0, ic:'🩹', coins:55, res:'food', amt:5,
+      fr:nm+' veut que tu venges 5 anciennes erreurs dans la boîte à erreurs.',
+      en:nm+' wants you to avenge 5 old mistakes in the mistake box.'};
+  }
+  if(kind==='combo'){
+    const n=Math.max(8, Math.min(20, (S.bestCombo||0)+3));
+    return {k:'combo', who, need:n, got:0, ic:'🔥', coins:80, res:'iron', amt:3,
+      fr:nm+' veut voir un combo de '+n+' d\'affilée, toutes épreuves confondues.',
+      en:nm+' wants to see a combo of '+n+' in a row, across any test.'};
+  }
+  if(kind==='blitz'){
+    const n=Math.max(12, Math.min(30, (S.blitzBest||0)+2));
+    return {k:'blitz', who, need:n, got:0, ic:'⚡', coins:65, res:'wood', amt:8,
+      fr:nm+' veut '+n+' points en un seul Blitz de 60 secondes.',
+      en:nm+' wants '+n+' points in a single 60-second Blitz.'};
+  }
+  if(kind==='exam'){
+    return {k:'exam', who, need:80, got:0, ic:'🎓', coins:120, res:'iron', amt:6,
+      fr:nm+' veut te voir réussir un examen blanc à 80 % ou plus.',
+      en:nm+' wants to see you pass a mock exam at 80% or better.'};
+  }
+  if(kind==='build'){
+    const it=dreamedBuilding(); if(!it) return null;
+    return {k:'build', bld:it.id, who, need:1, got:0, ic:it.ic, coins:40, res:'wood', amt:6,
+      fr:nm+' rêve de voir « '+t(it.n,it.ne)+' » sortir de terre.',
+      en:nm+' dreams of seeing "'+t(it.n,it.ne)+'" built.'};
+  }
+  return null;
+}
+const QUEST_KINDS=['domain','fix','tame','combo','blitz','exam','build'];
+/* trois doléances par jour : le domaine faible d'abord, puis au hasard */
+function rollQuests(){
+  // le recensement d'abord : sinon personne n'a de nom à mettre sur la demande
+  if((S.village||[]).length&&!(S.people||[]).length) syncPeople();
+  const folk=(S.people||[]).filter(x=>!isChild(x));
+  const pool=shuffle(QUEST_KINDS.filter(k=>k!=='domain'));
+  const kinds=['domain'].concat(pool);
+  const out=[], used={};
+  for(const k of kinds){
+    if(out.length>=QUEST_SLOTS) break;
+    if(used[k]) continue;
+    const asker=folk.length?folk[Math.floor(Math.random()*folk.length)]:null;
+    const q=makeQuest(k, asker);
+    if(!q) continue;
+    used[k]=1; q.id=k+'-'+Date.now().toString(36)+out.length;
+    out.push(q);
+  }
+  return out;
+}
+function questsToday(){
+  S.quests=S.quests||{day:'', list:[]};
+  if(S.quests.day!==todayStr()){
+    S.quests={day:todayStr(), list:rollQuests()};
+    save();
+  }
+  return S.quests.list||[];
+}
+function questDone(q){ return q.got>=q.need; }
+function questClaimable(){ return questsToday().filter(q=>questDone(q)&&!q.claimed).length; }
+/* un seul point d'entrée : chaque épreuve signale ce qu'elle vient de produire */
+function questEvent(kind,val,extra){
+  const list=(S.quests&&S.quests.list)||[];
+  if(!list.length) return;
+  let touched=false;
+  list.forEach(q=>{
+    if(q.claimed||questDone(q)) return;
+    let v=null;
+    if(kind==='answer'&&q.k==='domain'&&extra&&extra.w===q.w) v=q.got+1;
+    else if(kind==='tamed'&&q.k==='tame') v=q.got+1;
+    else if(kind==='fixed'&&q.k==='fix') v=q.got+1;
+    else if(kind==='combo'&&q.k==='combo') v=Math.max(q.got,val);
+    else if(kind==='blitz'&&q.k==='blitz') v=Math.max(q.got,val);
+    else if(kind==='exam'&&q.k==='exam') v=Math.max(q.got,val);
+    else if(kind==='build'&&q.k==='build'&&val===q.bld) v=1;
+    if(v==null||v===q.got) return;
+    q.got=v; touched=true;
+    if(questDone(q)){
+      SFX.win();
+      toast('📜 '+t('Doléance accomplie — le village t\'attend !','Request fulfilled — the village awaits you!'));
+    }
+  });
+  if(touched) save();
+}
+/* on encaisse : pièces, matériaux, et un habitant plus heureux */
+function claimQuest(id){
+  const list=(S.quests&&S.quests.list)||[];
+  const q=list.find(x=>x.id===id);
+  if(!q||!questDone(q)||q.claimed) return;
+  q.claimed=true;
+  gainCoins(q.coins);
+  S.res=S.res||{food:0,wood:0,iron:0};
+  S.res[q.res]=(S.res[q.res]||0)+q.amt;
+  gainXp(40);
+  const asker=(S.people||[]).find(x=>x.id===q.who);
+  if(asker){
+    nudgeMood(asker,0.3);
+    remember(asker,'📜 '+t('Le chef a répondu à sa doléance.','The chief answered their request.'),
+                   '📜 The chief answered their request.');
+    chron('📜 '+nameOf(asker)+t(' est comblé : sa doléance a été entendue.',' is delighted: their request was heard.'),
+          '📜 '+nameOf(asker)+' is delighted: their request was heard.');
+  }
+  (S.people||[]).forEach(r=>nudgeMood(r,0.05));
+  save(); SFX.win(); confetti(70);
+  toast('📜 '+t('Doléance récompensée : <b>+'+q.coins+' 🪙</b> et +'+q.amt+' '+RES_IC[q.res],
+                'Request rewarded: <b>+'+q.coins+' 🪙</b> and +'+q.amt+' '+RES_IC[q.res]));
+  render();
+}
+const RES_IC={food:'🌾', wood:'🪵', iron:'⚙️'};
+/* le panneau des doléances, sur l'écran du village */
+function questHtml(){
+  const list=questsToday();
+  if(!list.length) return '';
+  const left=list.filter(q=>!q.claimed).length;
+  let h='<div class="panel questbox" style="margin-bottom:12px"><div class="eyebrow">📜 '
+   +t('DOLÉANCES DU VILLAGE','VILLAGE REQUESTS')+' · '+left+'/'+list.length+'</div>'
+   +'<p class="small" style="margin:0 0 10px">'
+   +t('Trois habitants te demandent quelque chose aujourd\'hui. Elles visent ce que tu révises le moins bien — et elles se renouvellent demain.',
+      'Three villagers are asking something of you today. They target what you revise least well — and they renew tomorrow.')
+   +'</p>';
+  list.forEach(q=>{
+    const done=questDone(q), pct=Math.min(100,Math.round(q.got/q.need*100));
+    h+='<div class="qrow'+(q.claimed?' claimed':(done?' done':''))+'">'
+     +'<span class="qic">'+q.ic+'</span>'
+     +'<span class="qtx"><b>'+esc(t(q.fr,q.en))+'</b>'
+     +'<span class="qbar"><i style="width:'+pct+'%"></i></span>'
+     +'<span class="qsub">'+Math.min(q.got,q.need)+'/'+q.need
+       +' · '+t('récompense','reward')+' '+q.coins+' 🪙 + '+q.amt+' '+RES_IC[q.res]+'</span></span>'
+     +(q.claimed
+        ?'<span class="qok">✔</span>'
+        :(done?'<button class="sbuy" onclick="G.claimQuest(\''+q.id+'\')">'+t('ENCAISSER','CLAIM')+'</button>'
+              :'<span class="qwait">…</span>'))
+     +'</div>';
+  });
+  return h+'</div>';
+}
 function gainXp(n,ev){
   const before=levelIdx();
   S.xp+=n;
@@ -1973,7 +2170,7 @@ addEventListener('pagehide',flushSave);
 addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushSave(); });
 function recordAnswer(qi,good){
   const s=qstat(qi);
-  const wasError=s.box===1&&s.ko>0;
+  const wasError=s.box===1&&s.ko>0, wasTamed=s.box>=3;
   if(good){ s.ok++; s.box=Math.min(3,(s.box||0)===0?2:s.box+1); if(wasError) S.fixedErrors++;
     gainCoins(CUR.screen==='blitz' ? (allNeedsMet()?1:0) : 2+(allNeedsMet()?1:0));
     gainRes(CUR.screen==='run'?'food':CUR.screen==='boss'?'iron':CUR.screen==='blitz'?'wood':null); }
@@ -1988,6 +2185,13 @@ function recordAnswer(qi,good){
       gainXp(50); toast(t('🎯 Objectif du jour atteint ! <b>+50 XP</b> · Série : '+S.dayStreak+' j','🎯 Daily goal reached! <b>+50 XP</b> · Streak: '+S.dayStreak+' d'));
     }
   } else S.totalKo++;
+  // les doléances se nourrissent des mêmes compteurs, sans boucle supplémentaire
+  if(good){
+    const w=isDrillId(qi)?'blitz':((Q[qi]&&Q[qi].w)||null);
+    if(w) questEvent('answer',1,{w});
+    if(wasError) questEvent('fixed',1);
+    if(!wasTamed&&s.box>=3) questEvent('tamed',1);
+  }
   save();
 }
 
@@ -2271,7 +2475,9 @@ function scrHome(){
    +'<button class="btn btn-shield" onclick="G.go(\'exams\')"><span class="ic">🎓</span><span>'+t('Examens blancs','Mock exams')+'<span class="sub">'+t('Officiel 50 Q · Éclair 25 Q · Hardcore 💀','Official 50 Q · Lightning 25 Q · Hardcore 💀')+(S.examBest?t(' · record : ',' · best: ')+S.examBest+'/50':'')+'</span></span></button>'
    +'<button class="btn btn-stop" onclick="G.startArena()"><span class="ic">🏟️</span><span>'+t('L\'Arène','The Arena')+'<span class="sub">'+t('3 boss d\'affilée, 3 ❤️ pour tout le tournoi · +100 🪙',
      '3 bosses in a row, 3 ❤️ for the whole tournament · +100 🪙')+(S.arenaWins?t(' · victoires : ',' · wins: ')+S.arenaWins:'')+'</span></span></button>'
-   +'<button class="btn btn-bus" onclick="G.go(\'village\')" style="background:#1E2A12;border-color:#7BAE3F;color:#C9E8A5"><span class="ic">🛖</span><span>'+t('Village gaulois','Gaulish village')+'<span class="sub">'+t('Boutique & construction : '+S.village.length+'/'+SHOP.length+' éléments · '+S.coins+' 🪙','Shop & building: '+S.village.length+'/'+SHOP.length+' items · '+S.coins+' 🪙')+'</span></span></button>'
+   +'<button class="btn btn-bus" onclick="G.go(\'village\')" style="background:#1E2A12;border-color:#7BAE3F;color:#C9E8A5"><span class="ic">🛖</span><span>'+t('Village gaulois','Gaulish village')+'<span class="sub">'+(function(){ const q=questClaimable();
+     return q?t('📜 '+q+' doléance'+(q>1?'s':'')+' à encaisser !','📜 '+q+' request'+(q>1?'s':'')+' to claim!')
+             :t('Boutique & construction : '+S.village.length+'/'+SHOP.length+' éléments · '+S.coins+' 🪙','Shop & building: '+S.village.length+'/'+SHOP.length+' items · '+S.coins+' 🪙'); })()+'</span></span></button>'
    +'<button class="btn btn-ghost" onclick="G.startErrors()"><span class="ic">🩹</span><span>'+t('Boîte à erreurs','Mistake box')+'<span class="sub">'+(errN?t(errN+' question'+(errN>1?'s':'')+' à venger',errN+' question'+(errN>1?'s':'')+' to avenge'):t('Aucune erreur en attente — propre !','No mistakes waiting — all clean!'))+'</span></span></button>'
    +(function(){ const np=nemesisPool(); return '<button class="btn btn-stop" onclick="G.go(\'nemesis\')" style="background:#2A1030;border-color:#B45CE0;color:#EBC7FA"><span class="ic">😈</span><span>'+t('Ma Bête Noire','My Nemesis')
      +'<span class="sub">'+(np.length?t(np.length+' question'+(np.length>1?'s':'')+' classée'+(np.length>1?'s':'')+' par taux d\'échec · pire : '+Math.round(np[0].rate*100)+'%',np.length+' question'+(np.length>1?'s':'')+' ranked by failure rate · worst: '+Math.round(np[0].rate*100)+'%')
@@ -2342,6 +2548,7 @@ function optOrder(q){
 function bumpCombo(good){
   S.combo=good?((S.combo||0)+1):0;
   if(S.combo>S.bestCombo) S.bestCombo=S.combo;
+  if(good) questEvent('combo',S.combo);
   return S.combo;
 }
 function startCombo(){ return S.combo||0; }
@@ -5345,6 +5552,7 @@ function scrVillage(){
    +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
    +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
    +'</div>'
+   +questHtml()
    +chronHtml()
    +peopleHtml()
    +needsHtml()
@@ -5376,10 +5584,28 @@ function scrVillage(){
        :'<button class="sbuy'+(can&&!lock&&okRes?'':' cant')+'" onclick="G.buy(\''+s2.id+'\')">'+cost+' 🪙</button>';
     return r+'</div>';
   };
-  v+='<div class="panel"><div class="eyebrow">🛒 '+t('VILLAGE — tes sesterces : ','VILLAGE — your sesterces: ')+S.coins+' 🪙</div>';
-  vill.forEach(x=>{ v+=row(x); });
-  v+='</div><div class="panel"><div class="eyebrow" style="color:var(--stop)">⚔️ '+t('ARMÉE — défendre le village','ARMY — defend the village')+'</div>';
-  army.forEach(x=>{ v+=row(x); });
+  /* Ce qu'on peut bâtir TOUT DE SUITE remonte en tête : sur un téléphone, la
+     boutique fait deux écrans et on ne voyait pas ce qui était à portée.
+     Le tri est stable, donc l'ordre des prix est conservé dans chaque groupe. */
+  const tier=it=>{
+    if(!it.stack&&S.village.includes(it.id)) return 3;              // déjà acquis
+    if(it.req&&!S.village.includes(it.req)) return 2;               // verrouillé
+    if(S.coins>=priceOf(it)&&canAfford(it)) return 0;               // à portée
+    return 1;                                                        // pas encore
+  };
+  const sortShop=a=>a.map((x,i)=>[x,i]).sort((p1,p2)=>(tier(p1[0])-tier(p2[0]))||(p1[1]-p2[1])).map(x=>x[0]);
+  const readyN=a=>a.filter(x=>tier(x)===0).length;
+  const nowV=readyN(vill), nowA=readyN(army);
+  v+='<div class="panel"><div class="eyebrow">🛒 '+t('VILLAGE — tes sesterces : ','VILLAGE — your sesterces: ')+S.coins+' 🪙</div>'
+   +'<p class="small" style="margin:0 0 10px">'+(nowV
+      ?t('<b>'+nowV+'</b> élément'+(nowV>1?'s':'')+' à ta portée — ils sont en tête de liste.',
+         '<b>'+nowV+'</b> item'+(nowV>1?'s':'')+' within reach — they are at the top of the list.')
+      :t('Rien à ta portée pour l\'instant : réponds juste pour gagner sesterces et matériaux.',
+         'Nothing within reach yet: answer correctly to earn sesterces and materials.'))+'</p>';
+  sortShop(vill).forEach(x=>{ v+=row(x); });
+  v+='</div><div class="panel"><div class="eyebrow" style="color:var(--stop)">⚔️ '+t('ARMÉE — défendre le village','ARMY — defend the village')+'</div>'
+   +(nowA?'<p class="small" style="margin:0 0 10px">'+t('<b>'+nowA+'</b> à ta portée.','<b>'+nowA+'</b> within reach.')+'</p>':'');
+  sortShop(army).forEach(x=>{ v+=row(x); });
   return v+'</div>';
 }
 /* retour au QG depuis n'importe quel écran, avec garde-fou si une épreuve est en cours */
@@ -5719,7 +5945,7 @@ function buy(id){
     syncPeople();                       // recense, reloge et réattribue les postes
     if(DWELL[id]) arrival=(S.people||[]).find(p=>!before.includes(p.id))||null;
   }
-  checkDreams();
+  checkDreams(); questEvent('build',id);
   save(); checkBadges();
   SFX.win(); confetti(S.village.length>=SHOP.length?250:60);
   if(arrival){
@@ -5949,7 +6175,7 @@ function blitzAnswer(i,ev){
 function endBlitz(){
   stopTimers();
   const c=CUR;
-  gainCoins(c.score); save();
+  gainCoins(c.score); questEvent('blitz',c.score); save();
   if(c.score>S.blitzBest){ S.blitzBest=c.score; save(); SFX.win(); confetti(100); }
   checkBadges();
   c.phase='end'; render();
@@ -5997,6 +6223,7 @@ function examAnswer(pos){
     S.examsTaken++;
     const score=c.answers.filter(a=>a.good).length;
     const pass=score>=c.need;
+    questEvent('exam',Math.round(score/c.qs.length*100));
     if(c.mode==='hard'){ if(score>S.examHardBest) S.examHardBest=score; }
     else if(c.mode==='nemesis'){ /* pas de record : le pool change tout le temps */ }
     else if(c.mode==='eclair'){ if(score>S.examEclairBest) S.examEclairBest=score; }
@@ -6295,7 +6522,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
-  moveInTogether, settleCouples, nearestBuilding};
+  moveInTogether, settleCouples, nearestBuilding, claimQuest};
 window.G=G;
 applyLang();
 touchDaily();
