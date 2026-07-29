@@ -812,7 +812,6 @@ const Q=[
 {w:'share',q:"When a school crossing guard holds up a stop signal, you must:",a:["Stop and stay stopped until the guard signals you through","Pass slowly at 10 mph","Yield only to children","Wait 3 seconds then go"],x:"Le crossing guard a autorité : arrêt COMPLET et on ne repart que sur SON signal, même si le passage semble vide.",xe:"The crossing guard has authority: FULL stop, and you go only on THEIR signal, even if the crossing looks clear."},
 
 /* --- survie expert --- */
-{w:'surv',q:"Your accelerator sticks while driving. You should:",a:["Shift to neutral, brake, and steer off the road — never turn the key to LOCK","Turn off the ignition immediately","Pump the gas pedal hard","Pull the parking brake at speed"],x:"Accélérateur coincé : point mort (neutral), freine, sors de la route. Couper la clé sur LOCK = volant verrouillé = crash.",xe:"Stuck accelerator: shift to NEUTRAL, brake, steer off. Turning the key to LOCK freezes the steering = crash."},
 {w:'surv',q:"With ABS brakes in an emergency stop, you should:",a:["Press hard and HOLD — never pump ABS","Pump rapidly","Brake and release every second","Use the parking brake instead"],x:"ABS : on ÉCRASE et on TIENT (les vibrations sont normales). Pomper, c'est pour les vieux freins classiques sur sol glissant.",xe:"ABS: STOMP and HOLD (the pulsing is normal). Pumping is for old conventional brakes on slick roads."},
 {w:'surv',q:"Your headlights suddenly fail at night. You should:",a:["Try the switch/dimmer, use parking and hazard lights, and pull off the road","Speed to the next exit","Follow another car's lights closely","Stop in your lane immediately"],x:"Phares morts : essaie l'interrupteur et l'inverseur codes/pleins phares, allume veilleuses + warnings, et sors de la chaussée.",xe:"Dead headlights: try the switch and dimmer, turn on parking + hazard lights, and get off the roadway."},
 {w:'surv',q:"If your hood flies up while driving:",a:["Look through the gap under the hood or out the side window, brake smoothly, pull off","Brake as hard as possible","Open your door to see ahead","Accelerate so it closes"],x:"Capot levé : regarde par la fente sous le capot ou par la vitre latérale, freine progressivement, range-toi.",xe:"Hood up: look through the gap under the hood or out the side window, brake smoothly, pull over."},
@@ -1009,7 +1008,163 @@ const Q=[
 {w:'gdl',q:"A probationary driver must enroll in a Probationary Driver Program after:",a:["Accumulating 4 or more points from moving violations during the probationary period","Any single moving violation","Turning 18","A first parking ticket"],x:"4 points ou plus pendant la période probatoire = stage Probationary Driver Program obligatoire. Piège : le seuil ordinaire de suspension, c'est 12 points.",xe:"4+ points during the probationary period = mandatory Probationary Driver Program. Trap: the ordinary suspension threshold is 12 points."},
 {w:'share',q:"To share the road safely with large trucks and buses, you must understand their limitations in:",a:["Visibility, stopping distance and maneuverability","Fuel consumption and cargo type","Driver schedules and rest breaks","Paint color and plate numbers"],x:"Trois limites d'un poids lourd : ce qu'il VOIT (No-Zones), la distance pour S'ARRÊTER, et sa capacité à MANŒUVRER (virages larges).",xe:"Three truck limitations: what it SEES (No-Zones), how far it needs to STOP, and how it MANEUVERS (wide turns)."},
 {w:'signs',q:"You are approaching an intersection and the light turns yellow. You should:",a:["Stop before entering the intersection if you can do so safely","Speed up to clear it before red","Sound your horn and continue","Stop immediately, even in the intersection"],x:"Jaune = arrête-toi SI tu peux le faire sans danger. Accélérer pour passer est exactement ce que le test sanctionne.",xe:"Yellow = stop IF you can do it safely. Speeding up to beat it is exactly what the test penalizes."},
-{w:'points',q:"New Jersey law limits vehicle idling to no more than:",a:["3 minutes","1 minute","10 minutes","There is no limit"],x:"Moteur au ralenti : 3 MINUTES maximum (loi anti-pollution). Au-delà, c'est verbalisable.",xe:"Idling: 3 MINUTES maximum (anti-pollution law). Beyond that, it's ticketable."}
+{w:'points',q:"New Jersey law limits vehicle idling to no more than:",a:["3 minutes","1 minute","10 minutes","There is no limit"],x:"Moteur au ralenti : 3 MINUTES maximum (loi anti-pollution). Au-delà, c'est verbalisable.",xe:"Idling: 3 MINUTES maximum (anti-pollution law). Beyond that, it's ticketable."},
+/* ---------- ajouts : chapitres du manuel MVC encore peu couverts ---------- */
+{w:'signs',q:"A steady RED ARROW at a traffic signal means:",
+ a:["Stop — you may not turn in the direction of the arrow until it changes","Turn in that direction after yielding","Proceed with caution in that direction","Stop, then turn when the way is clear"],
+ x:"Flèche rouge fixe = arrêt total. Contrairement au feu rouge rond, tu ne peux PAS tourner, même la voie libre. Tu attends que la flèche change.",
+ xe:"Steady red arrow = full stop. Unlike a round red light, you may NOT turn, even if it's clear. Wait for the arrow to change."},
+{w:'signs',q:"A yellow diamond showing two arrows pointing in OPPOSITE directions warns that:",
+ a:["Two-way traffic is ahead — the divided road ends","A two-way left-turn lane begins","You may pass on either side","Traffic merges from both sides"],
+ x:"La route divisée se termine : tu vas retrouver des voitures en face. Reste à droite et oublie tout dépassement.",
+ xe:"The divided road ends: oncoming traffic ahead. Keep right and forget about passing."},
+{w:'signs',q:"A U.S. route marker (a federal highway number) is shaped like:",
+ a:["A white shield with black numbers","A blue and red shield","A green rectangle","A round yellow disc"],
+ x:"Écusson blanc à chiffres noirs = route fédérale US. L'écusson bleu et rouge, lui, c'est une Interstate.",
+ xe:"White shield with black numbers = U.S. route. The blue-and-red shield is an Interstate."},
+{w:'signs',q:"An ORANGE diamond showing a person holding a flag means:",
+ a:["A flagger is directing traffic ahead — be ready to stop","A pedestrian crossing is ahead","A school crossing guard is on duty","Workers are on the shoulder only"],
+ x:"Orange = zone de travaux. Un signaleur va te faire signe : ses gestes priment sur les panneaux et sur les marquages.",
+ xe:"Orange = work zone. A flagger will direct you: their signals override signs and markings."},
+{w:'signs',q:"A yellow diamond sign showing a BICYCLE means:",
+ a:["Watch for bicyclists sharing this stretch of road","Bicycles are prohibited beyond this point","A bicycle-only lane begins","Bicycles must dismount ahead"],
+ x:"Losange jaune = avertissement. Des cyclistes circulent ici : ralentis et laisse 4 pieds en doublant.",
+ xe:"Yellow diamond = warning. Cyclists use this road: slow down and leave 4 feet when passing."},
+{w:'signs',q:"A white regulatory sign showing a symbol inside a red circle with a slash through it means:",
+ a:["The action shown is prohibited","The action shown is allowed with care","A hazard of that type is ahead","That service is available ahead"],
+ x:"Cercle rouge barré = interdiction. Blanc + rouge = la loi, pas un conseil : le non-respect est une infraction.",
+ xe:"Red circle with a slash = prohibited. White and red means law, not advice: ignoring it is a violation."},
+{w:'signs',q:"Your light is green, but traffic is backed up and you cannot get all the way through. You should:",
+ a:["Wait behind the stop line until you can clear the intersection","Move up into the intersection and wait there","Enter and stop on the crosswalk","Follow the car ahead as closely as possible"],
+ x:"On n'entre JAMAIS dans un carrefour qu'on ne peut pas dégager : bloquer l'intersection est une infraction et un carton assuré.",
+ xe:"Never enter an intersection you cannot clear: blocking it is a violation and a crash waiting to happen."},
+{w:'signs',q:"A yellow diamond showing a car with wavy lines under it means:",
+ a:["The road ahead is slippery when wet or icy","A car wash is ahead","The road is being repaved","Water may cover the road"],
+ x:"Chaussée glissante par temps humide ou gelé. Lève le pied AVANT le panneau, pas dedans.",
+ xe:"Slippery when wet or icy. Ease off the gas BEFORE the sign, not on it."},
+
+{w:'speed',q:"New Jersey law says you must REDUCE your speed when:",
+ a:["Approaching an intersection, curve, hill crest, narrow road or railroad crossing","Only when a lower limit is posted","Only when a police officer is visible","Only in rain or snow"],
+ x:"La loi impose de ralentir dans TOUS ces cas — carrefour, virage, sommet de côte, route étroite, passage à niveau — même sans panneau.",
+ xe:"The law requires slowing in ALL of these — intersection, curve, hill crest, narrow road, railroad crossing — even with no sign posted."},
+{w:'speed',q:"The 65 mph speed limit in New Jersey applies:",
+ a:["Only on sections of highway where 65 mph is actually posted","On every interstate in the state","On every divided highway","Anywhere outside a city"],
+ x:"65 mph n'existe QUE là où c'est affiché. Ailleurs sur autoroute, c'est 55. Ne suppose jamais.",
+ xe:"65 mph exists ONLY where it is posted. Elsewhere on the highway it's 55. Never assume."},
+{w:'speed',q:"Approaching a narrow bridge or an underpass, you should:",
+ a:["Slow down — there is less room to correct a mistake","Speed up to clear it quickly","Move to the centre of the roadway","Sound your horn and maintain speed"],
+ x:"Moins de largeur = moins de marge. Ralentis, reste bien dans ta voie et ne double pas.",
+ xe:"Less width means less margin. Slow down, hold your lane and do not pass."},
+{w:'speed',q:"Speeding fines in New Jersey are DOUBLED in:",
+ a:["School zones, construction zones and Safe Corridors","Residential streets only","Any 65 mph zone","Toll roads only"],
+ x:"Zone scolaire, zone de travaux, Safe Corridor : l'amende double. Trois endroits où on lève franchement le pied.",
+ xe:"School zone, construction zone, Safe Corridor: the fine doubles. Three places to genuinely ease off."},
+
+{w:'dist',q:"Which of these is an ILLEGAL place to park?",
+ a:["On a sidewalk, on a crosswalk, within an intersection or on a bridge","On any street with a curb","In front of your own house","On a road with a 25 mph limit"],
+ x:"Trottoir, passage piéton, carrefour, pont, tunnel : interdit partout, panneau ou pas.",
+ xe:"Sidewalk, crosswalk, intersection, bridge, tunnel: illegal everywhere, sign or no sign."},
+{w:'dist',q:"Parking in front of a public or private driveway is:",
+ a:["Illegal, even for a moment, and the vehicle may be towed","Legal if you stay with the vehicle","Legal for up to five minutes","Legal if no car is inside"],
+ x:"Bloquer une entrée est interdit, même en restant au volant. Remorquage à tes frais.",
+ xe:"Blocking a driveway is illegal even if you stay behind the wheel. Towed at your expense."},
+{w:'dist',q:"The distance your vehicle travels between the moment you SEE a hazard and the moment you press the brake is called:",
+ a:["Reaction distance","Braking distance","Stopping distance","Following distance"],
+ x:"Distance de réaction. Elle s'ajoute à la distance de freinage : les deux ensemble font la distance d'arrêt totale.",
+ xe:"Reaction distance. Add braking distance to it and you get total stopping distance."},
+{w:'dist',q:"You must use your turn signal:",
+ a:["Before every turn, lane change, and before pulling away from a curb","Only before turning at intersections","Only when other vehicles are nearby","Only on roads with a posted limit above 35 mph"],
+ x:"Le clignotant sert à ANNONCER, pas à commenter : virage, changement de voie, et même en quittant une place de stationnement.",
+ xe:"The signal announces, it doesn't comment: turns, lane changes, and even pulling out of a parking spot."},
+{w:'dist',q:"Before you leave your parked vehicle, New Jersey law requires you to:",
+ a:["Turn off the engine, remove the key and set the parking brake","Leave the engine running if you stay nearby","Leave the key in for a passenger","Leave it in neutral with the brake off"],
+ x:"Moteur coupé, clé retirée, frein de stationnement serré. Laisser tourner le moteur sans surveillance est une infraction.",
+ xe:"Engine off, key out, parking brake set. Leaving it running unattended is a violation."},
+{w:'dist',q:"If you must leave a disabled vehicle on the roadway at night, you should:",
+ a:["Turn on the hazard lights and set out warning devices behind the vehicle","Leave the headlights on high beam","Leave the vehicle dark so it is not hit","Stand in the lane to wave traffic around"],
+ x:"Feux de détresse + triangles/fusées en arrière du véhicule. Toi, tu attends HORS de la chaussée, derrière la glissière.",
+ xe:"Hazards on and warning devices set out behind the vehicle. You wait OFF the roadway, behind the barrier."},
+
+{w:'booze',q:"A DWI committed on or within 1,000 feet of school property brings:",
+ a:["Doubled penalties — longer suspension, higher fine and possible jail","The same penalty as anywhere else","A reduced penalty for a first offense","Only an additional fine of $100"],
+ x:"Aux abords d'une école, tout double : suspension, amende, prison. Le rayon est de 1 000 pieds.",
+ xe:"Near a school everything doubles: suspension, fine, jail. The radius is 1,000 feet."},
+{w:'booze',q:"Can you be charged with DWI in New Jersey while the car is parked?",
+ a:["Yes — if you are in actual physical control of the vehicle and intend to drive","No — the car must be moving","No — only if the engine is running","Only if you are in the driver's seat with the door open"],
+ x:"« Operating » ne veut pas dire « rouler ». Ivre, au volant, clé en main et l'intention de partir : ça suffit.",
+ xe:"'Operating' does not mean 'moving'. Drunk, behind the wheel, key in hand and meaning to drive: that's enough."},
+
+{w:'points',q:"The insurance surcharge for accumulating 6 or more points is billed:",
+ a:["Every year for three years","Once only","Every year for life","Only if you are convicted again"],
+ x:"La surtaxe tombe chaque année pendant TROIS ans. Un mauvais trimestre se paie trois fois.",
+ xe:"The surcharge is billed every year for THREE years. One bad quarter gets paid for three times."},
+{w:'points',q:"Parking tickets in New Jersey add:",
+ a:["No points — points are only for moving violations","One point each","Two points each","Points only after the third ticket"],
+ x:"Le stationnement coûte de l'argent, pas des points. Les points ne sanctionnent que les infractions en mouvement.",
+ xe:"Parking costs money, not points. Points only punish moving violations."},
+
+{w:'share',q:"You come upon a funeral procession. You must:",
+ a:["Not cut into or through it — the vehicles may proceed together","Pass it on the right at any time","Force your way through at a green light","Stop until it has completely passed"],
+ x:"On ne coupe jamais un cortège funéraire ; il franchit les carrefours groupé. Tu attends, ou tu passes derrière.",
+ xe:"Never cut into a funeral procession; it moves through intersections as a group. Wait, or go behind it."},
+{w:'share',q:"You come up behind slow-moving farm equipment on a rural road. You should:",
+ a:["Slow down and pass only where it is legal and you can see far enough ahead","Pass immediately on the right","Sound your horn until it pulls over","Follow closely so you can pass quickly"],
+ x:"Un engin agricole roule à 15-25 mph et tourne souvent dans un champ sans clignotant. Recule, attends la vraie visibilité.",
+ xe:"Farm equipment does 15-25 mph and often turns into a field with no signal. Back off and wait for real visibility."},
+{w:'share',q:"A vehicle is merging onto the highway from an entrance ramp. If it is safe, you should:",
+ a:["Move over one lane to give it room to merge","Speed up to close the gap","Slow to a stop in the right lane","Hold your lane and your speed no matter what"],
+ x:"Se décaler d'une voie est la courtoisie qui évite l'accident. Si c'est impossible, ajuste ta vitesse pour ouvrir un trou.",
+ xe:"Moving over one lane is the courtesy that prevents the crash. If you can't, adjust your speed to open a gap."},
+{w:'share',q:"A vehicle is already in the intersection when you arrive. You must:",
+ a:["Yield to it, even if you have a green light","Proceed, because a green light gives you the right of way","Sound your horn and continue","Enter beside it and pass"],
+ x:"Le vert donne l'autorisation d'avancer, jamais le droit d'emboutir. Celui qui est déjà engagé sort en premier.",
+ xe:"Green gives permission to go, never the right to hit. Whoever is already in the intersection clears it first."},
+{w:'share',q:"You are turning right and a bicyclist is going straight in a bike lane on your right. You must:",
+ a:["Yield and let the cyclist pass before you turn across the lane","Turn first because you are larger","Turn wide and let the cyclist go around you","Sound your horn and turn"],
+ x:"Le cycliste qui va tout droit garde la priorité sur celui qui coupe sa trajectoire. C'est LE piège du virage à droite.",
+ xe:"A cyclist going straight has priority over anyone crossing their path. This is THE right-turn trap."},
+{w:'share',q:"A school bus ahead turns on its flashing YELLOW lights. You should:",
+ a:["Slow down and prepare to stop — the red lights are coming next","Pass quickly before the red lights come on","Continue at the same speed","Stop immediately where you are"],
+ x:"Le jaune est un préavis : le rouge arrive dans quelques secondes. C'est le moment de ralentir, pas de doubler.",
+ xe:"Yellow is the warning: red is seconds away. That's the moment to slow, not to pass."},
+
+{w:'surv',q:"Your accelerator sticks while driving. You should:",
+ a:["Shift to neutral, brake, steer off the road, then turn off the engine","Turn off the engine right away while still moving fast","Pump the accelerator until it frees itself","Pull the parking brake at full speed"],
+ x:"Point mort d'abord : le moteur s'emballe dans le vide mais tu gardes direction et freins. Le moteur, tu le coupes UNE FOIS arrêté.",
+ xe:"Neutral first: the engine races harmlessly while you keep steering and brakes. Kill the engine ONCE stopped."},
+{w:'surv',q:"Your engine overheats. You should:",
+ a:["Pull off, turn the engine off and let it cool — never open the radiator cap while hot","Open the radiator cap right away to release pressure","Pour cold water on the engine block","Keep driving to the next service station"],
+ x:"Le circuit est sous pression : ouvrir le bouchon chaud, c'est un jet de liquide brûlant au visage. On attend que ça refroidisse.",
+ xe:"The system is pressurised: opening the cap hot means a jet of scalding coolant in your face. Let it cool."},
+{w:'surv',q:"Your vehicle catches fire. You should:",
+ a:["Pull over, shut off the engine, get everyone out and well away, then call for help","Drive to the nearest fire station","Open the hood to see the fire","Stay in the vehicle with the windows closed"],
+ x:"Un feu de voiture double de taille en une minute. On sort tout le monde, on s'éloigne, on appelle. Le véhicule, tant pis.",
+ xe:"A car fire doubles in a minute. Everyone out, well away, then call. The car is a write-off either way."},
+{w:'surv',q:"At the scene of a crash, you should:",
+ a:["Call the police, warn oncoming traffic, and not move the injured unless there is fire","Move all injured people to the shoulder at once","Leave once you have exchanged names","Move the vehicles before the police arrive"],
+ x:"Déplacer un blessé peut aggraver une lésion de la colonne. On appelle, on protège la zone, on ne touche que s'il y a le feu.",
+ xe:"Moving an injured person can worsen a spinal injury. Call, protect the scene, and only move someone if there is fire."},
+
+{w:'gdl',q:"Whenever you drive in New Jersey, you must carry:",
+ a:["Your driver license, the vehicle registration and the insurance ID card","Your driver license only","Your license and registration only","Your license and a copy of the title"],
+ x:"Les trois documents, à chaque trajet : permis, carte grise, attestation d'assurance. C'est le trio que le policier demande.",
+ xe:"All three, every trip: licence, registration, insurance card. That's the trio the officer asks for."},
+{w:'gdl',q:"If your auto insurance lapses, the MVC will:",
+ a:["Suspend your vehicle registration and your driving privilege","Send a warning only","Charge a small late fee","Do nothing until you are stopped"],
+ x:"Pas d'assurance = plus d'immatriculation ni de permis. L'assureur prévient la MVC automatiquement.",
+ xe:"No insurance means no registration and no licence. The insurer notifies the MVC automatically."},
+{w:'gdl',q:"A child may ride in the FRONT seat of a car in New Jersey only when they are:",
+ a:["At least 8 years old AND taller than 57 inches","At least 5 years old","At least 40 pounds","Able to buckle their own belt"],
+ x:"Moins de 8 ans OU moins de 57 pouces : siège adapté, à l'arrière. Les deux conditions doivent être remplies pour passer devant.",
+ xe:"Under 8 OR under 57 inches: proper restraint, in the back. Both conditions must be met to sit up front."},
+{w:'gdl',q:"A standard New Jersey vehicle registration must be renewed:",
+ a:["Every year","Every two years","Every four years","Only when you move"],
+ x:"Immatriculation : tous les ans. À ne pas confondre avec le permis (4 ans) ni le contrôle technique (2 ans).",
+ xe:"Registration: yearly. Don't confuse it with the licence (4 years) or the inspection (2 years)."},
+{w:'gdl',q:"A police officer signals you to pull over. You should:",
+ a:["Pull to the right, stay in the vehicle, keep your hands visible and provide your documents","Get out and walk back to the police car","Stop in the left lane","Keep driving to a lit parking lot several miles away"],
+ x:"À droite, moteur coupé, mains sur le volant, et on ne fouille dans la boîte à gants qu'à la demande de l'agent.",
+ xe:"Pull right, engine off, hands on the wheel, and only go into the glovebox when the officer asks."}
 ];
 
 /* ---------------- BLITZ : les Petites Règles™ (55) ---------------- */
@@ -1252,6 +1407,7 @@ const defaults=()=>({
   xp:0, totalOk:0, totalKo:0, bestCombo:0, runsDone:0,
   perfectRuns:0, fixedErrors:0,
   qstat:{},            // qid -> {box:1..3, ok, ko}
+  combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   vacated:{},          // logement libéré par un emménagement -> quand
   army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
@@ -2084,6 +2240,18 @@ function render(){
   if($('#cdlive')) startCd();
 }
 
+/* la série en cours suit le joueur d'un écran à l'autre : on la lui rappelle */
+function comboBanner(){
+  const k=S.combo||0;
+  if(k<3) return '';
+  return '<div class="panel" style="margin-bottom:12px;text-align:center;border-color:var(--zone)">'
+   +'<div class="combo" style="justify-content:center;font-size:12px"><span class="f">🔥</span>'
+   +t('COMBO ×'+k+' EN COURS','COMBO ×'+k+' RUNNING')+'</div>'
+   +'<p class="small" style="margin:6px 0 0">'
+   +t('Il continue sur n\'importe quelle épreuve. Une seule erreur et il retombe à zéro — butin ×'+lootMult(k)+' si tu le tiens.',
+      'It carries into any test. One wrong answer and it drops to zero — loot ×'+lootMult(k)+' if you hold it.')
+   +'</p></div>';
+}
 /* ---------- accueil ---------- */
 function scrHome(){
   const errN=errorPool().length;
@@ -2096,6 +2264,7 @@ function scrHome(){
    +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 English · feet</button>'
    +'</div>'
    +djLine
+   +comboBanner()
    +'<div class="menu">'
    +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>'+t('Campagne','Campaign')+'<span class="sub">'+t('8 zones, 8 boss — la carte du New Jersey','8 zones, 8 bosses — the map of New Jersey')+'</span></span></button>'
    +'<button class="btn btn-bus" onclick="G.go(\'blitz\',{phase:\'intro\'})"><span class="ic">⚡</span><span>Blitz 60s<span class="sub">'+t('Les Petites Règles™ — chiffres en rafale · record : ','The Little Rules™ — numbers in a rush · best: ')+S.blitzBest+'</span></span></button>'
@@ -2159,12 +2328,23 @@ function openWorld(wid){
 function startRun(wid){
   $('#overlay').classList.remove('show');
   const qs=pickQuestions(wid,10);
-  go('run',{wid, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
+  go('run',{wid, qs, i:0, ok:0, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 function optOrder(q){
   const idx=shuffle([0,1,2,3].slice(0,q.a.length));
   return idx; // ordre d'affichage : positions dans q.a
 }
+/* ---------- le combo est global ----------
+   Il se poursuit d'une série à l'autre — campagne, boss, arène, blitz, examen
+   blanc, boîte à erreurs — et ne retombe à zéro que sur une mauvaise réponse.
+   Chaque épreuve garde son propre compteur (c.combo) pour l'affichage, mais
+   les deux avancent ensemble. */
+function bumpCombo(good){
+  S.combo=good?((S.combo||0)+1):0;
+  if(S.combo>S.bestCombo) S.bestCombo=S.combo;
+  return S.combo;
+}
+function startCombo(){ return S.combo||0; }
 function comboMult(c){ return c>=10?3 : c>=5?2 : c>=3?1.5 : 1; }
 function scrRun(){
   const c=CUR, q=c.qs[c.i].q;
@@ -2206,13 +2386,12 @@ function answer(pos,ev){
   const good=c.order[pos]===0;
   recordAnswer(qi,good);
   if(good){
-    c.ok++; c.combo++;
-    if(c.combo>S.bestCombo){ S.bestCombo=c.combo; save(); }
+    c.ok++; c.combo=bumpCombo(true); save();
     const xp=Math.round(10*comboMult(c.combo));
     (c.combo>=3?SFX.combo:SFX.ok)();
     gainXp(xp,ev);
   }else{
-    c.combo=0; SFX.ko();
+    c.combo=bumpCombo(false); save(); SFX.ko();
     const shk=$('#app'); shk.classList.add('shake');
     setTimeout(()=>shk.classList.remove('shake'),380);
   }
@@ -2323,14 +2502,14 @@ function startErrors(){
   const pool=errorPool();
   if(!pool.length){ toast(t('🧹 Rien à venger — la boîte à erreurs est vide !','🧹 Nothing to avenge — the mistake box is empty!')); return; }
   const qs=shuffle(pool).slice(0,10);
-  go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
+  go('run',{wid:null, qs, i:0, ok:0, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 
 /* ---------- boss ---------- */
 function startBoss(wid){
   $('#overlay').classList.remove('show');
   const qs=pickQuestions(wid,20);
-  go('boss',{wid, qs, i:0, hp:100, hearts:3, combo:0, answered:false, picked:-1, order:null});
+  go('boss',{wid, qs, i:0, hp:100, hearts:3, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 function scrBoss(){
   const c=CUR, w=WORLDS.find(x=>x.id===c.wid);
@@ -2380,15 +2559,14 @@ function bossAnswer(pos,ev){
   const good=c.order[pos]===0;
   recordAnswer(qi,good);
   if(good){
-    c.combo++;
-    if(c.combo>S.bestCombo){ S.bestCombo=c.combo; save(); }
+    c.combo=bumpCombo(true); save();
     c.lastDmg=9+Math.min(c.combo,5)*3;
     c.hp=Math.max(0,c.hp-c.lastDmg);
     SFX.hit(); gainXp(10,ev);
     const bf=$('#bossface'); if(bf){ bf.classList.add('hit'); }
     fightFx(true,c.lastDmg,c.combo);
   }else{
-    c.combo=0; c.hearts--;
+    c.combo=bumpCombo(false); c.hearts--; save();
     SFX.ko();
     fightFx(false,0,0);
     const shk=$('#app'); shk.classList.add('shake');
@@ -2457,7 +2635,7 @@ function startArena(){
   $('#overlay').classList.remove('show');
   const ws=shuffle(WORLDS.slice()).slice(0,3);
   go('boss',{arena:true, stageList:ws.map(x=>x.id), stage:0, wid:ws[0].id,
-    qs:pickQuestions(null,40), i:0, hp:80, hearts:3, combo:0, answered:false, picked:-1, order:null});
+    qs:pickQuestions(null,40), i:0, hp:80, hearts:3, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 function arenaNext(){
   const c=CUR;
@@ -5469,7 +5647,7 @@ function startNemesisRun(){
   const deck=nemesisDeck(20);
   if(!deck.length){ toast(t('😇 Aucune question ratée à travailler !','😇 No missed questions to work on!')); return; }
   const qs=shuffle(deck).slice(0,10);
-  go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
+  go('run',{wid:null, qs, i:0, ok:0, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 function startNemesisExam(){
   const qs=shuffle(nemesisDeck(40)).slice(0,20);
@@ -5493,7 +5671,7 @@ function scrHard(){
 }
 function startHardRun(){
   const qs=shuffle(hardPool()).slice(0,10);
-  go('run',{wid:null, qs, i:0, ok:0, combo:0, answered:false, picked:-1, order:null});
+  go('run',{wid:null, qs, i:0, ok:0, combo:startCombo(), answered:false, picked:-1, order:null});
 }
 
 /* ---------- blitz ---------- */
@@ -5531,7 +5709,7 @@ function startBlitz(){
   stopTimers();
   const deck=blitzDeck();
   S.res=S.res||{food:0,wood:0,iron:0};
-  CUR={screen:'blitz', phase:'play', deck, di:0, t:60, score:0, streak:0,
+  CUR={screen:'blitz', phase:'play', deck, di:0, t:60, score:0, streak:startCombo(),
        res0:{food:S.res.food||0, wood:S.res.wood||0, iron:S.res.iron||0}, coins0:S.coins};
   nextDrill();
   render();
@@ -5562,11 +5740,11 @@ function blitzAnswer(i,ev){
   // il entre dans les statistiques et remonte donc dans la Bête Noire
   recordAnswer(drillId(entry.i), good);
   if(good){
-    c.score++; c.streak++;
+    c.score++; c.streak=bumpCombo(true);
     SFX.ok(); gainXp(4,ev);
     if(c.streak%5===0){ gainXp(20); toast(t('🔥 Série de '+c.streak+' ! <b>+20 XP</b>','🔥 Streak of '+c.streak+'! <b>+20 XP</b>')); }
   }else{
-    c.streak=0; SFX.ko();
+    c.streak=bumpCombo(false); SFX.ko();
     toast(t('❌ C\'était : <b>'+esc(dshow(d.a))+'</b>','❌ It was: <b>'+esc(dshow(d.a))+'</b>'));
   }
   c.di++; nextDrill(); render();
@@ -5616,6 +5794,7 @@ function examAnswer(pos){
   const good=c.order[pos]===0;
   c.answers.push({qi:c.qs[c.i].i, good});
   recordAnswer(c.qs[c.i].i, good);
+  bumpCombo(good);
   if(c.i+1<c.qs.length){ c.i++; c.order=null; render(); }
   else{
     S.examsTaken++;
