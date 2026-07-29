@@ -3181,8 +3181,57 @@ const TRAITS=[
  {k:'curieux', n:'curieux',ne:'curious',    d:'Pose des questions sur tout',de:'Asks questions about everything'}
 ];
 /* quel bâtiment loge quel métier */
+/* HOUSED : quel métier chaque bâtiment fait vivre. Un champ donne du travail,
+   il ne donne pas un toit — voir DWELL juste en dessous. */
 const HOUSED={hutte:null, chasseur:'chasse', fermier:'ferme', bucheron:'bois', forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
   puits:'eau', chaudron:'potion', camp:'garde', entrainement:'garde', banquet:'boire', feu:'feu'};
+/* ---------- où l'on DORT ----------
+   Seuls ces bâtiments sont des logements, et eux seuls font venir un habitant
+   de plus au village. On n'habite ni un champ, ni un puits, ni une forge : on
+   y travaille. Les noms de la boutique le disent déjà — hutte, maison de
+   chasseur, ferme, cabane du bûcheron. */
+const DWELL={hutte:1, chasseur:1, fermier:1, bucheron:1};
+function isDwelling(key){ return !!DWELL[String(key||'').split('#')[0]]; }
+/* un poste de travail par bâtiment de métier construit */
+function jobSlots(){
+  const out=[];
+  Object.keys(HOUSED).forEach(k=>{ const j=HOUSED[k]; if(!j) return;
+    const n=nOwned(k); for(let i=0;i<n;i++) out.push(j); });
+  return out;
+}
+/* Un nouveau lieu de travail ne fait venir personne : il ouvre un poste, et
+   c'est un habitant déjà là — en surnombre sur son métier — qui le prend. */
+function staffJobs(){
+  const slots=jobSlots();
+  const posts=j=>slots.filter(x=>x===j).length;
+  let moved=0;
+  for(let guard=0;guard<12;guard++){
+    const j=freeJob(); if(!j) break;
+    const taken={};
+    (S.people||[]).forEach(x=>{ if(!isChild(x)) taken[x.job]=(taken[x.job]||0)+1; });
+    const spare=(S.people||[]).find(x=>!isChild(x)&&x.job!==j
+      &&(taken[x.job]||0)>Math.max(1,posts(x.job)));
+    if(!spare) break;
+    if(!setJob(spare,j)) break;
+    moved++;
+  }
+  if(moved) V3.saveSoon=1;
+  return moved;
+}
+/* un métier dont le bâtiment existe et que personne ne tient encore */
+function freeJob(){
+  const slots=jobSlots(); if(!slots.length) return null;
+  const taken={};
+  (S.people||[]).forEach(x=>{ if(!isChild(x)) taken[x.job]=(taken[x.job]||0)+1; });
+  const seen={};
+  for(const j of shuffle(slots.slice())){
+    if(seen[j]||!jobAvailable(j)) continue;
+    seen[j]=1;
+    const posts=slots.filter(x=>x===j).length;
+    if((taken[j]||0)<posts) return j;
+  }
+  return null;
+}
 /* un métier n'est possible que si le bâtiment correspondant existe */
 function jobAvailable(k){
   const j=JOBS.find(x=>x.k===k);
@@ -3221,11 +3270,45 @@ function newPerson(i,home,jobK){
 function housingKeys(){
   const keys=['founder'];
   SHOP.forEach(it=>{
-    if(!(it.id in HOUSED)) return;
+    if(!DWELL[it.id]) return;
     if(it.stack){ for(let i=0;i<nOwned(it.id);i++) keys.push(i?it.id+'#'+i:it.id); }
     else if(S.village.includes(it.id)) keys.push(it.id);
   });
   return keys;
+}
+/* toutes les clés de bâtiment existantes, logement ou non : sert à ne jamais
+   effacer un habitant installé dans un ancien village */
+function allBuildingKeys(){
+  const keys=['founder'];
+  SHOP.forEach(it=>{
+    if(it.stack){ for(let i=0;i<nOwned(it.id);i++) keys.push(i?it.id+'#'+i:it.id); }
+    else if(S.village.includes(it.id)) keys.push(it.id);
+  });
+  return keys;
+}
+/* un logement peut abriter un couple et ses enfants, pas une colocation */
+function dwellingHasRoom(key){
+  return (S.people||[]).filter(x=>x.home===key&&!isChild(x)).length<2;
+}
+/* Anciennes sauvegardes : ceux qui « habitaient » un champ ou une forge sont
+   relogés dès qu'un vrai toit se libère. Personne n'est supprimé : tant qu'il
+   n'y a pas de place, ils restent où ils sont. */
+function rehouseWorkers(){
+  const stuck=(S.people||[]).filter(x=>x.home&&x.home!=='founder'&&!isDwelling(x.home)&&!isChild(x));
+  if(!stuck.length) return 0;
+  const homes=housingKeys().filter(k=>k!=='founder');
+  let n=0;
+  stuck.forEach(r=>{
+    const free=homes.find(k=>dwellingHasRoom(k));
+    if(!free) return;
+    const old=r.home;
+    r.home=free;
+    childrenOf(r).forEach(k=>{ if(k.home===old) k.home=free; });
+    remember(r,'🏡 '+t('A enfin un vrai toit.','Finally has a real roof.'),'🏡 Finally has a real roof.');
+    n++;
+  });
+  if(n) V3.saveSoon=1;
+  return n;
 }
 function syncPeople(){
   S.people=S.people||[];
@@ -3238,7 +3321,7 @@ function syncPeople(){
   settleCouples();
   keys.forEach(k=>{ if(k==='founder') return;
     if(!S.people.some(p=>p.home===k)){
-      const np=newPerson(S.people.length,k,jobForBuilding(k));
+      const np=newPerson(S.people.length,k,freeJob()||jobForBuilding(k));
       S.people.push(np);
       np.dream=pickDream();
       const libre=S.vacated&&S.vacated[k];
@@ -3253,12 +3336,15 @@ function syncPeople(){
   S.people.forEach(r=>{ if(isChild(r)) return;
     if(!r.dream) r.dream=pickDream(); if(r.mentor===undefined||r.mentor===null&&r.grown) assignMentor(r); });
   healRivalries(); growChildren(); checkDreams();
-  S.people=S.people.filter(p=>p.home==='founder'||keys.includes(p.home));
-  // un habitant de hutte dont le métier n'a plus de bâtiment se reconvertit
+  const alive=allBuildingKeys();
+  S.people=S.people.filter(p=>p.home==='founder'||alive.includes(p.home));
+  rehouseWorkers();
+  // un habitant dont le métier n'a plus de bâtiment se reconvertit
   S.people.forEach(p=>{
-    if(!p.home||p.home.split('#')[0]!=='hutte') return;
-    if(!jobAvailable(p.job)) p.job=jobForBuilding('hutte');
+    if(isChild(p)||jobAvailable(p.job)) return;
+    setJob(p, freeJob()||jobForBuilding(p.home||'hutte'));
   });
+  staffJobs();
   save(); return S.people;
 }
 /* chroniques du village : amours, amitiés, disputes */
@@ -3359,6 +3445,19 @@ function remember(rec,fr,en){
   if(rec.mem.length>6) rec.mem.length=6;
 }
 /* un nouvel arrivant se met dans les pas d'un ancien du même métier */
+/* Changer de métier, c'est changer d'atelier : le mentorat suit. On ne reste
+   pas l'élève d'un forgeron quand on part aux champs, et on ne garde pas des
+   élèves d'un métier qu'on ne pratique plus. */
+function setJob(rec,j){
+  if(!rec||!j||rec.job===j) return false;
+  rec.job=j;
+  rec.mentor=undefined; assignMentor(rec);
+  (S.people||[]).forEach(x=>{
+    if(x.mentor===rec.id&&x.job!==rec.job){ x.mentor=undefined; assignMentor(x); }
+  });
+  V3.saveSoon=1;
+  return true;
+}
 function assignMentor(rec){
   if(rec.mentor!==undefined) return;
   const olds=(S.people||[]).filter(x=>x!==rec&&x.job===rec.job
@@ -5439,7 +5538,9 @@ function showBuilding(key){
 
   // à quoi ça sert
   if(it.d) row(t('Rôle','Purpose'),'<i>'+esc(t(it.d,it.de||it.d))+'</i>');
-  else if(HOUSED[base]!==undefined) row(t('Rôle','Purpose'),'<i>'+t('Loge un habitant du village','Houses a villager')+'</i>');
+  // logement ou lieu de travail : la distinction décide si un habitant arrive
+  if(DWELL[base]) row(t('Type','Type'),'🏠 '+t('Logement — loge un habitant du village','Home — houses a villager'));
+  else if(HOUSED[base]) row(t('Type','Type'),'🔨 '+t('Lieu de travail — on n\'y dort pas','Workplace — nobody sleeps here'));
   if(it.cat==='army') row(t('Catégorie','Category'),'⚔️ '+t('Militaire','Military'));
 
   // production et besoins couverts
@@ -5475,7 +5576,7 @@ function showBuilding(key){
         +'<button class="sbuy" onclick="G.hideOverlay();G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
         +t('SA FICHE','PROFILE')+' →</button></div>';
     }).join('');
-  }else if(base in HOUSED){
+  }else if(DWELL[base]){
     who='<p class="small" style="margin:10px 0 0">'
       +(S.vacated&&S.vacated[key]
         ?t('Logement libre : ses occupants ont emménagé ailleurs. Un nouveau venu s\'y installera.',
@@ -5572,12 +5673,12 @@ function buy(id){
   if(it.stack){ S.stack=S.stack||{}; S.stack[id]=(S.stack[id]||0)+1;
                 if(!S.village.includes(id)) S.village.push(id); }
   else S.village.push(id);
-  // tout bâtiment habité fait arriver un personnage de la base
+  // seul un LOGEMENT fait arriver quelqu'un ; un champ ouvre juste un poste
   let arrival=null;
-  if(id in HOUSED){
+  {
     const before=(S.people||[]).map(p=>p.id);
-    syncPeople();
-    arrival=(S.people||[]).find(p=>!before.includes(p.id))||null;
+    syncPeople();                       // recense, reloge et réattribue les postes
+    if(DWELL[id]) arrival=(S.people||[]).find(p=>!before.includes(p.id))||null;
   }
   checkDreams();
   save(); checkBadges();
@@ -5592,6 +5693,14 @@ function buy(id){
     const a=orientPath(key); if(a!=null) save();
     toast(it.ic+' '+t('Dalle posée au centre du village — touche <b>DÉPLACER</b> pour la glisser où tu veux.',
                       'Slab laid at the centre of the village — tap <b>MOVE</b> to drag it wherever you like.'));
+  }else if(HOUSED[id]){
+    const j=JOBS.find(x=>x.k===HOUSED[id]);
+    const who=(S.people||[]).find(x=>x.job===HOUSED[id]&&!isChild(x));
+    toast(it.ic+' '+t('« '+t(it.n,it.ne)+' » construit ! ','"'+t(it.n,it.ne)+'" built! ')
+      +(who?t('<b>'+esc(nameOf(who))+'</b> y prend son poste de '+t(j.n,j.ne).toLowerCase()+'.',
+              '<b>'+esc(nameOf(who))+'</b> takes up the post of '+t(j.n,j.ne).toLowerCase()+'.')
+           :t('Un poste de '+t(j.n,j.ne).toLowerCase()+' attend un habitant — construis une hutte.',
+              'A '+t(j.n,j.ne).toLowerCase()+' post is waiting for a villager — build a hut.')));
   }else{
     toast(it.ic+' '+t('« '+t(it.n,it.ne)+' » construit au village !','"'+t(it.n,it.ne)+'" built in the village!'));
   }
