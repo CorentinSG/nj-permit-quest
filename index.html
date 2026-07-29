@@ -3874,6 +3874,45 @@ const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[
 /* ---------- formations ----------
    Trois ordres possibles. Chaque emplacement porte aussi le cap du guerrier,
    pour qu'une ligne regarde toutes dans la même direction. */
+const ARMY_R=20;                    // encombrement de la troupe rangée
+/* ---------- où la troupe peut-elle vraiment se ranger ? ----------
+   Repousser les guerriers un par un les sortait des murs mais cassait la
+   formation. On déplace donc la TROUPE ENTIÈRE : on essaie le point visé, puis
+   on tourne autour en spirale jusqu'à trouver une place où CHAQUE homme,
+   porte-enseigne compris, est au clair. La ligne reste une ligne. */
+function armySlotsWorld(x,z){
+  const rot=Math.atan2(x,z), cs=Math.cos(rot), sn=Math.sin(rot);
+  const out=formationSlots(4).map(pt=>[x+pt[0]*cs+pt[1]*sn, z-pt[0]*sn+pt[1]*cs]);
+  out.push([x, z-14]);                       // le chef et son enseigne
+  return out;
+}
+function armyFits(x,z){
+  const S2=V3.solids||[];
+  return armySlotsWorld(x,z).every(pt=>
+    S2.every(o=>Math.hypot(pt[0]-o.x, pt[1]-o.z)>=o.r+5.2));
+}
+/* replace la troupe une fois TOUS les obstacles connus */
+function settleArmy(){
+  if(!S.army||S.army.x==null) return;
+  const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
+  if(!a&&!c) return;
+  const sp=armySpot(S.army.x,S.army.z);
+  const rot=Math.atan2(sp[0],sp[1]);
+  if(a){ a.position.set(sp[0],0,sp[1]); a.rotation.y=rot; }
+  if(c){ c.position.set(sp[0],0,sp[1]-14); c.rotation.y=rot; }
+}
+function armySpot(x,z){
+  if(armyFits(x,z)) return [x,z];
+  for(let r=8;r<=150;r+=8){
+    for(let a=0;a<16;a++){
+      const th=a*Math.PI/8, nx=x+Math.cos(th)*r, nz=z+Math.sin(th)*r;
+      if(Math.hypot(nx,nz)>250) continue;
+      if(armyFits(nx,nz)) return [nx,nz];
+    }
+  }
+  const f=pushOutOfSolids(x,z,ARMY_R);       // village saturé : au moins on sort des murs
+  return [f[0],f[1]];
+}
 const FORMATIONS=[
   {k:'ligne', ic:'▬', n:'En ligne',   ne:'Line'},
   {k:'carre', ic:'▣', n:'En carré',   ne:'Square'},
@@ -4018,7 +4057,7 @@ Object.assign(B3,{
     arm.position.set(0,12,2); arm.rotation.x=-0.9; arm.name='arm'; g.add(arm);
     return g; },
   chefguerre(){ const g=new THREE.Group();
-    const w=warrior(0,true); w.scale.setScalar(1.25); g.add(w);
+    const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard'; g.add(w);
     g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
       new THREE.MeshLambertMaterial({color:0xd4b23c,side:THREE.DoubleSide}));
@@ -4079,7 +4118,7 @@ function buildVillage(scene){
     let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     // l'armée obéit à son ordre de rassemblement
     if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null){
-      p=[S.army.x+(it.id==='chefguerre'?0:0), S.army.z+(it.id==='chefguerre'?-14:0)];
+      p=[S.army.x, S.army.z+(it.id==='chefguerre'?-14:0)];
     }
     if(owned.includes(it.id)){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
@@ -4255,6 +4294,7 @@ function buildVillage(scene){
   }
   built_spots=spots;
   rebuildSolids();
+  settleArmy();
   return {anim, walkers, spots:built_spots};
 }
 /* ---- espace vital : deux villageois ne peuvent plus se superposer ----
@@ -4987,6 +5027,9 @@ const FOOT={
 /* enceintes et dallage : pas d'emprise au sol. Un chemin est à plat, on doit
    pouvoir le glisser sous un bâtiment ou coller deux dalles bout à bout. */
 const NOCLIP={muraille:1, palissade:1, chemin:1};
+/* la troupe est faite d'hommes, pas de murs : elle ne compte pas comme obstacle
+   — sans quoi elle se heurterait à elle-même en cherchant où se ranger */
+const NOTSOLID={guerriers:1, chefguerre:1};
 function footOf(key){
   const base=String(key).split('#')[0];
   return FOOT[base]||10;
@@ -5079,7 +5122,7 @@ function rebuildSolids(){
   const out=(V3.statics||[]).slice();
   Object.keys(V3.place||{}).forEach(k=>{
     const base=String(k).split('#')[0];
-    if(NOCLIP[base]||WALKABLE[base]) return;
+    if(NOCLIP[base]||WALKABLE[base]||NOTSOLID[base]) return;
     const g=V3.place[k]; if(!g) return;
     out.push({x:g.position.x, z:g.position.z, r:footOf(k)*0.62});
   });
@@ -5477,9 +5520,15 @@ function rallyAt(x,z){
   S.army=S.army||{x:null,z:null,f:'ligne'};
   const r=Math.hypot(x,z);
   if(r>250){ x=x/r*250; z=z/r*250; }
-  S.army.x=+x.toFixed(1); S.army.z=+z.toFixed(1);
+  // la troupe se range SUR le terrain, jamais dans un mur : le rayon couvre
+  // toute la formation, sinon les guerriers des ailes finiraient dans un toit
+  const free=armySpot(x,z);
+  const moved=Math.hypot(free[0]-x, free[1]-z)>1;
+  S.army.x=+free[0].toFixed(1); S.army.z=+free[1].toFixed(1);
   save(); SFX.win(); V3.order=false;
-  toast(t('⚔️ La troupe se met en position !','⚔️ The squad takes position!'));
+  toast(moved
+    ? t('⚔️ Pas de place ici — la troupe se range juste à côté.','⚔️ No room there — the squad forms up right beside it.')
+    : t('⚔️ La troupe se met en position !','⚔️ The squad takes position!'));
   render();
 }
 function armyRecall(){
