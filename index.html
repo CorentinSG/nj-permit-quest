@@ -3348,6 +3348,7 @@ function moodWord(rec){ const m=moodOf(rec);
 const CHATTINESS={bavard:0.9, curieux:0.75, gourmand:0.6, reveur:0.5, courageux:0.5, travailleur:0.28, grognon:0.22};
 function wantsToTalk(A,B,mode){
   if(!A||!B) return false;
+  if(mode==='sleep') return false;           // entre 23 h et 7 h, on dort
   let w=CHATTINESS[A.tr]!=null?CHATTINESS[A.tr]:0.5;
   const bond=(A.bond&&A.bond[B.id])||0;
   if(A.rival===B.id) return false;           // une rancune tenace : on ne s'adresse plus la parole
@@ -3489,13 +3490,14 @@ function bestFriend(p){
   return o?{p:o,n:bv}:null;
 }
 /* routine : ce que fait un habitant selon l'heure réelle */
-function routine(){
-  const h=new Date().getHours();
+/* l'emploi du temps du village, heure par heure : on dort de 23 h à 7 h */
+function routineAt(h){
   if(h>=23||h<7) return 'sleep';
   if(h>=12&&h<14) return 'eat';
   if(h>=19) return 'social';
   return 'work';
 }
+function routine(){ return routineAt(new Date().getHours()); }
 /* métiers : chacun a un lieu, un outil, une couleur et des répliques */
 const JOBS=[
  {k:'moisson',ic:'🌾',need:'ble',   n:'Paysan',ne:'Farmer',   tool:'faux',  say:['Belle récolte !','Le blé est mûr.','Encore un panier…'],saye:['Fine harvest!','The wheat is ripe.','One more basket…']},
@@ -4019,6 +4021,16 @@ function buildVillage(scene){
     const hp=g?pushOutOfSolids(g.position.x,g.position.z+12,4.2):[-33,-21];
     homes.push({x:hp[0],z:hp[1]});
   }
+  /* le lit de chacun : le seuil de SON logement. Un couple qui a emménagé
+     ensemble rentre donc au même toit, et les enfants chez leurs parents. */
+  const bedFor=(rec,i)=>{
+    // le chef dort près du feu, au milieu de son village
+    const key=(rec&&rec.home)==='founder' ? 'feu' : (rec&&rec.home);
+    const g=key&&V3.place&&V3.place[key];
+    if(!g) return homes[i%homes.length];
+    const hp=pushOutOfSolids(g.position.x, g.position.z+12, 4.2);
+    return {x:hp[0], z:hp[1]};
+  };
   for(let i=0;i<n;i++){
     const rec=folk[i];
     const p=person(rec.ci);
@@ -4052,8 +4064,12 @@ function buildVillage(scene){
       for(let b=0;b<3;b++) fx.add(at(cone(0.35,2.2,0x8ec44a,4),(b-1)*1.1,1.1,0));
       fx.position.set(0,0,3.4); fx.visible=false; p.add(fx);
     }
-    p.userData={ ...p.userData, id:i, rec, state:'work', tgt:new THREE.Vector3(st.x,0,st.z),
-                 timer:2+i*1.4, job, home:st, bed:homes[i%homes.length],
+    const night=routine()==='sleep';
+    const bd=bedFor(rec,i);
+    if(night) p.position.set(bd.x+(Math.random()-0.5)*8, 0, bd.z+(Math.random()-0.5)*8);
+    p.userData={ ...p.userData, id:i, rec, state:'work',
+                 tgt:new THREE.Vector3(night?bd.x:st.x, 0, night?bd.z:st.z),
+                 timer:2+i*1.4, job, home:st, bed:bd,
                  sp:7+((i*7)%5), talk:null, npc:1, fx, row:0,
                  badge, near:null, seen:{}, cool:0, avoid:{},
                  v:0, step:0, waveT:0, turnT:2, speaking:false, clash:0 };
@@ -4323,6 +4339,7 @@ function v3dInit(){
        double-tape         → zoom sur l'endroit touché
      ========================================================== */
   const MAXSTEP=90;                       // garde-fou : pas de saut absurde
+  const TAP_SLOP=16;                      // tolérance de tremblement pour un appui
   // amène le point du sol touché au départ sous le doigt actuel
   const dragGround=e=>{
     if(!V3.grab) return;
@@ -4350,7 +4367,8 @@ function v3dInit(){
   };
   const down=e=>{
     if(V3.pinch) return;
-    V3.tapX=e.clientX; V3.tapY=e.clientY; V3.tapT=performance.now(); V3.moved=false;
+    V3.tapX=e.clientX; V3.tapY=e.clientY; V3.tapT=performance.now();
+    V3.moved=false; V3.tapMax=0;
     if(V3.order){                                   // ordre de rassemblement en cours
       const g=groundAt(e);
       if(g){ rallyAt(g.x,g.z); if(e.cancelable) e.preventDefault(); return; }
@@ -4371,7 +4389,9 @@ function v3dInit(){
   };
   const move=e=>{
     if(V3.pinch) return;
-    if(Math.abs(e.clientX-V3.tapX)>8||Math.abs(e.clientY-V3.tapY)>8) V3.moved=true;
+    const drift=Math.hypot(e.clientX-V3.tapX, e.clientY-V3.tapY);
+    if(drift>V3.tapMax) V3.tapMax=drift;
+    if(drift>8) V3.moved=true;
     if(V3.sel){ const g=groundAt(e);
       if(g){ const r=Math.min(300,Math.hypot(g.x,g.z)), a=Math.atan2(g.z,g.x);
         const key=V3.sel.userData.pid, foot=footOf(key);
@@ -4404,7 +4424,7 @@ function v3dInit(){
       save(); V3.sel=null; rebuildSolids();
       if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
     // simple tape : c'est une sélection, pas un déplacement
-    else if(!V3.moved && e && performance.now()-(V3.tapT||0)<400){
+    else if(e && (V3.tapMax||0)<TAP_SLOP){
       const now=performance.now();
       const near=V3.lastTapXY&&Math.hypot(e.clientX-V3.lastTapXY[0],e.clientY-V3.lastTapXY[1])<40;
       if(now-(V3.lastTap||0)<300&&near){             // double-tape : on plonge sur l'endroit
@@ -4433,7 +4453,8 @@ function v3dInit(){
         }
       }
     }
-    V3.drag=false; V3.grab=null; V3.rotDrag=false; host.classList.remove('dragging'); };
+    V3.drag=false; V3.grab=null; V3.rotDrag=false; V3.tapMax=999;
+    host.classList.remove('dragging'); };
   // molette (ordinateur) : zoom
   const wheel=e=>{ v3dSetDist(V3.dist*(e.deltaY>0?1.12:0.89)); if(e.cancelable) e.preventDefault(); };
   const pinchD=e=>{ const a=e.touches[0], b2=e.touches[1];
@@ -4443,7 +4464,7 @@ function v3dInit(){
   /* deux doigts : pincer pour zoomer, tourner pour pivoter la vue */
   const tstart=e=>{ if(e.touches&&e.touches.length===2){
     V3.pinch=pinchD(e); V3.pinchD0=V3.dist; V3.ang=pinchA(e);
-    V3.drag=false; V3.grab=null; V3.sel=null; V3.moved=true;
+    V3.drag=false; V3.grab=null; V3.sel=null; V3.moved=true; V3.tapMax=999;
     if(e.cancelable) e.preventDefault(); } };
   const tmove=e=>{ if(V3.pinch&&e.touches&&e.touches.length===2){
     const d2=pinchD(e); if(d2>4) v3dSetDist(V3.pinchD0*(V3.pinch/d2));
