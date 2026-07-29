@@ -406,6 +406,15 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* comptoir du druide */
+.tradebox .trow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--edge)}
+.tradebox .trow:first-of-type{border-top:0}
+.tradebox .tic{font-size:22px;flex:none;line-height:1}
+.tradebox .ttx{flex:1;min-width:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.tradebox .sbuy{flex:none}
+/* charmes emportés dans une épreuve */
+.charms{display:flex;gap:8px;font-family:var(--px);font-size:10px;color:var(--dim);align-items:center}
+.charms span{border:1px solid var(--edge);border-radius:8px;padding:2px 6px;background:var(--lane2)}
 /* doléances du village */
 .questbox .qrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--edge)}
 .questbox .qrow:first-of-type{border-top:0}
@@ -1423,6 +1432,8 @@ const defaults=()=>({
   qstat:{},            // qid -> {box:1..3, ok, ko}
   combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
   quests:{day:'', list:[]},   // les doléances du jour
+  inv:{shield:0},      // talismans en poche
+  feast:0,             // festins payés d'avance : butin ×1,5 sur la prochaine série
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   vacated:{},          // logement libéré par un emménagement -> quand
   army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
@@ -1888,6 +1899,82 @@ function needsHtml(){
       :t('Comble les trois jauges pour débloquer le <b>bonus de prospérité</b> (+1 🪙 par bonne réponse). Les besoins montent quand le village s\'agrandit.',
          'Fill all three bars to unlock the <b>prosperity bonus</b> (+1 🪙 per correct answer). Needs grow as the village grows.'))+'</p></div>';
   return h;
+}
+/* ============================================================
+   LE COMPTOIR DU DRUIDE
+   ------------------------------------------------------------
+   Les sesterces n'avaient qu'un seul usage : bâtir. Une fois le village
+   complet, la monnaie ne servait plus à rien et le combo — désormais gardé
+   d'une épreuve à l'autre — devenait terrifiant : vingt bonnes réponses
+   effacées par une seule étourderie. Le comptoir donne un débouché aux
+   réserves ET rend le combo tenable.
+   ============================================================ */
+const TRADE=[
+ {id:'shield', ic:'🛡️', n:'Talisman de Toutatis', ne:'Talisman of Toutatis',
+  p:130, rc:{iron:4},
+  d:'Encaisse UNE mauvaise réponse : ton combo tient bon. Se consomme tout seul, au moment où il faut.',
+  de:'Absorbs ONE wrong answer: your combo holds. Spends itself, exactly when needed.'},
+ {id:'feast', ic:'🐗', n:'Festin de sanglier', ne:'Boar feast',
+  p:90, rc:{food:10},
+  d:'Tout le village se régale — et ta prochaine série terminée rapporte moitié plus.',
+  de:'The whole village feasts — and your next finished session pays half as much again.'}
+];
+function invOf(id){ return (S.inv&&S.inv[id])||0; }
+function tradeAfford(it){
+  if(S.coins<it.p) return false;
+  return Object.keys(it.rc||{}).every(k=>((S.res&&S.res[k])||0)>=it.rc[k]);
+}
+function buyTrade(id){
+  const it=TRADE.find(x=>x.id===id); if(!it) return;
+  if(!tradeAfford(it)){ SFX.ko();
+    toast('💰 '+t('Pas assez pour ça : il faut '+it.p+' 🪙 et '+resLabel(it.rc)+'.',
+                  'Not enough for that: you need '+it.p+' 🪙 and '+resLabel(it.rc)+'.')); return; }
+  S.coins-=it.p;
+  S.res=S.res||{food:0,wood:0,iron:0};
+  Object.keys(it.rc||{}).forEach(k=>{ S.res[k]-=it.rc[k]; });
+  S.inv=S.inv||{};
+  if(id==='feast'){
+    // le festin se consomme sur-le-champ : le village mange, le butin suit
+    S.feast=(S.feast||0)+1;
+    (S.people||[]).forEach(r=>nudgeMood(r,0.25));
+    chron('🐗 '+t('Un festin de sanglier a réuni tout le village.','A boar feast brought the whole village together.'),
+          '🐗 A boar feast brought the whole village together.');
+    toast('🐗 '+t('Festin ! Le village est ravi — <b>prochaine série ×1,5</b>.',
+                  'Feast! The village is delighted — <b>next session ×1.5</b>.'));
+  }else{
+    S.inv[id]=invOf(id)+1;
+    toast(it.ic+' '+t('<b>'+t(it.n,it.ne)+'</b> acquis. Tu en as '+invOf(id)+'.',
+                      '<b>'+t(it.n,it.ne)+'</b> acquired. You now have '+invOf(id)+'.'));
+  }
+  save(); SFX.win(); render();
+}
+function tradeHtml(){
+  let h='<div class="panel tradebox" style="margin-bottom:12px"><div class="eyebrow">⚗️ '
+   +t('LE COMPTOIR DU DRUIDE','THE DRUID\'S COUNTER')+'</div>'
+   +'<p class="small" style="margin:0 0 10px">'
+   +t('Ce que tes sesterces peuvent acheter en dehors des murs : de quoi protéger une série et de quoi faire la fête.',
+      'What your sesterces buy beyond the walls: something to protect a streak, and something to celebrate with.')
+   +'</p>';
+  TRADE.forEach(it=>{
+    const own=it.id==='feast'?(S.feast||0):invOf(it.id);
+    const can=tradeAfford(it);
+    h+='<div class="trow"><span class="tic">'+it.ic+'</span>'
+     +'<span class="ttx"><b>'+esc(t(it.n,it.ne))+(own?' <b class="scnt">×'+own+'</b>':'')+'</b>'
+     +'<i class="sdesc">'+esc(t(it.d,it.de))+'</i>'
+     +'<i class="sdesc'+(can?' okres':' badres')+'">'+t('matériaux','materials')+' : '+resLabel(it.rc)+(can?' ✔':' ✘')+'</i>'
+     +'</span>'
+     +'<button class="sbuy'+(can?'':' cant')+'" onclick="G.buyTrade(\''+it.id+'\')">'+it.p+' 🪙</button></div>';
+  });
+  return h+'</div>';
+}
+/* ce qu'on emporte dans une épreuve, rappelé en haut de l'écran */
+function charmHtml(){
+  const sh=invOf('shield'), fe=S.feast||0;
+  if(!sh&&!fe) return '';
+  return '<div class="charms">'
+   +(sh?'<span title="'+t('protège ton combo','protects your combo')+'">🛡️ ×'+sh+'</span>':'')
+   +(fe?'<span title="'+t('butin ×1,5','loot ×1.5')+'">🐗 ×1,5</span>':'')
+   +'</div>';
 }
 /* ============================================================
    LES DOLÉANCES DU VILLAGE
@@ -2546,6 +2633,16 @@ function optOrder(q){
    Chaque épreuve garde son propre compteur (c.combo) pour l'affichage, mais
    les deux avancent ensemble. */
 function bumpCombo(good){
+  // un talisman en poche absorbe l'erreur — mais seulement si le combo vaut
+  // la peine d'être sauvé, sinon on le gâcherait pour rien
+  if(!good&&invOf('shield')>0&&(S.combo||0)>=3){
+    S.inv.shield--;
+    SFX.win();
+    toast('🛡️ '+t('Le talisman se brise — ton combo ×'+S.combo+' tient bon !',
+                  'The talisman shatters — your ×'+S.combo+' combo holds!'));
+    save();
+    return S.combo;
+  }
   S.combo=good?((S.combo||0)+1):0;
   if(S.combo>S.bestCombo) S.bestCombo=S.combo;
   if(good) questEvent('combo',S.combo);
@@ -2560,6 +2657,7 @@ function scrRun(){
   const wic=w?w.icon:(q.drill!=null?'⚡':'🎯');
   let html='<div class="qmeta"><div class="qprog">'+wic+' '+(c.i+1)+'/'+c.qs.length+'</div>'
    +(c.combo>=3?'<div class="combo"><span class="f">🔥</span>COMBO ×'+comboMult(c.combo)+'</div>':'')
+   +charmHtml()
    +'</div>'
    +'<div class="qbar"><i style="width:'+(c.i/c.qs.length*100)+'%"></i></div>'
    +'<div class="qcard" id="qcard">'
@@ -2631,16 +2729,18 @@ function sessionLoot(c,combo){
     const g=Math.max(0,((S.res&&S.res[k])||0)-(r0[k]||0));
     base[k]=g; anyBase+=g;
   });
-  const mult=combo===null?1:lootMult(combo||0);
+  const feast=(S.feast||0)>0;
+  const mult=(combo===null?1:lootMult(combo||0))*(feast?1.5:1);
   ['food','wood','iron'].forEach(k=>{ bonus[k]=Math.round(base[k]*(mult-1)); });
   const coins=Math.max(0,S.coins-(c.coins0||0));
-  return {base, bonus, mult, coins, any:anyBase>0||coins>0};
+  return {base, bonus, mult:+mult.toFixed(2), feast, coins, any:anyBase>0||coins>0};
 }
 /* on verse le bonus et on rend le récapitulatif */
 function lootHtml(c,combo){
   if(c._loot!==undefined) return c._loot;      // le bilan peut être re-rendu : on ne verse qu'une fois
   const L=sessionLoot(c,combo);
   ['food','wood','iron'].forEach(k=>{ if(L.bonus[k]) S.res[k]=(S.res[k]||0)+L.bonus[k]; });
+  if(L.feast) S.feast=Math.max(0,(S.feast||0)-1);   // le festin ne sert qu'une fois
   save();
   const IC={food:'🌾',wood:'🪵',iron:'⚙️'}, NM={food:t('Nourriture','Food'),wood:t('Bois','Wood'),iron:t('Fer','Iron')};
   let rows='';
@@ -2666,6 +2766,8 @@ function lootHtml(c,combo){
        : c.deck ? t('Aucune série en cours au coup de sifflet → butin ×1','No streak running at the buzzer → loot ×1')
        : t('Combo perdu en route → butin ×1','Combo broken along the way → loot ×1'))
    +'</div>'
+   +(L.feast?'<div class="lootrow"><span class="lic">🐗</span><span class="lnm">'
+      +t('Festin de sanglier','Boar feast')+'</span><span class="lval">×1,5</span><span class="lbon"></span></div>':'')
    +rows
    +'<p class="small" style="margin-top:10px">'
    +(combo===null
@@ -2735,6 +2837,7 @@ function scrBoss(){
    +'<div class="hearts">'+'❤️'.repeat(c.hearts)+'<span class="off">'+'🖤'.repeat(3-c.hearts)+'</span></div>'
    +'</div></div>'
    +(c.combo>=3?'<div class="combo" style="margin-bottom:8px"><span class="f">🔥</span>'+t('COMBO — dégâts ×','COMBO — damage ×')+(1+Math.min(c.combo,5))+'</div>':'')
+   +charmHtml()
    +'<div class="qcard">'
    +(q.s?'<div class="qsign">'+signSvg(q.s)+'</div>':'')
    +'<div class="qtext">'+esc(U(q.q))+'</div><div class="opts">';
@@ -5553,6 +5656,7 @@ function scrVillage(){
    +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
    +'</div>'
    +questHtml()
+   +tradeHtml()
    +chronHtml()
    +peopleHtml()
    +needsHtml()
@@ -6522,7 +6626,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
-  moveInTogether, settleCouples, nearestBuilding, claimQuest};
+  moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade};
 window.G=G;
 applyLang();
 touchDaily();
