@@ -4207,7 +4207,7 @@ function buildVillage(scene){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(key),key);
       const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]);
       g.rotation.y=(S.vrot&&S.vrot[key]!=null) ? S.vrot[key]
-                 : (it.id==='chemin'?0:(i*0.7)%6.28);    // un sentier reste aligné
+                 : (it.id==='chemin'?0:Math.round(((i*0.7)%6.28)/ROT_STEP)*ROT_STEP);
       scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
     }
     if(it.id!=='chemin') spiral+=n2;
@@ -4223,6 +4223,7 @@ function buildVillage(scene){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
       const g=B3[it.id](); g.position.set(p[0],0,p[1]);
       if(S.vrot&&S.vrot[it.id]!=null) g.rotation.y=S.vrot[it.id];
+      else g.rotation.y=Math.round(g.rotation.y/ROT_STEP)*ROT_STEP;
       // la troupe fait face à l'extérieur du village : c'est de là que vient César
       if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null)
         g.rotation.y=Math.atan2(S.army.x,S.army.z);
@@ -4394,6 +4395,7 @@ function buildVillage(scene){
   built_spots=spots;
   rebuildSolids();
   settleArmy();
+  if(V3.edit&&V3.lastPid&&V3.place[V3.lastPid]) markSel(V3.place[V3.lastPid]);
   return {anim, walkers, spots:built_spots};
 }
 /* ---- espace vital : deux villageois ne peuvent plus se superposer ----
@@ -4692,7 +4694,7 @@ function v3dInit(){
     }
     if(V3.edit){                                    // mode placement : on attrape un bâtiment
       const o=pickAt(e);
-      if(o){ V3.sel=o; V3.lastSel=o; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
+      if(o){ V3.sel=o; V3.lastPid=o.userData.pid; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
              host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
              if(e.cancelable) e.preventDefault(); return; }
@@ -5318,11 +5320,12 @@ function orientPath(key){
   const step=Math.PI/4;
   a=Math.round(a/step)*step;
   g.rotation.y=a;
-  S.vrot=S.vrot||{}; S.vrot[key]=+(((a%6.283)+6.283)%6.283).toFixed(3);
+  const TAU=Math.PI*2;
+  S.vrot=S.vrot||{}; S.vrot[key]=+(((a%TAU)+TAU)%TAU).toFixed(4);
   // la dalle voisine s'aligne aussi, pour que le raccord soit franc
   const nk=best.userData.pid;
-  if(nk&&(S.vrot[nk]==null||true)){ best.rotation.y=a;
-    S.vrot[nk]=+(((a%6.283)+6.283)%6.283).toFixed(3); }
+  if(nk){ best.rotation.y=a;
+    S.vrot[nk]=+(((a%TAU)+TAU)%TAU).toFixed(4); }
   return a;
 }
 /* place libre trouvée ? (pour signaler visuellement un chevauchement) */
@@ -5592,7 +5595,8 @@ function showBuilding(key){
     '<div style="text-align:left;font-size:13.5px;line-height:1.7">'+rows.join('')+'</div>'
     +who
     +'<div class="menu" style="margin-top:12px">'
-    +(V3.edit?'':'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay();G.toggleEdit()">🔧 '
+    +(V3.edit?'':'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay();G.toggleEdit('
+       +JSON.stringify(String(key)).replace(/"/g,'&quot;')+')">🔧 '
        +t('Déplacer / orienter','Move / turn')+'</button>')
     +(it.stack&&canAfford(it)&&S.coins>=priceOf(it)
        ?'<button class="btn btn-exit" style="justify-content:center" onclick="G.hideOverlay();G.buy(\''+base+'\')">'
@@ -5638,21 +5642,56 @@ function armyRecall(){
   toast(t('🏕️ La troupe regagne son cantonnement.','🏕️ The squad returns to quarters.'));
   render();
 }
+/* ---------- orienter un bâtiment ----------
+   On retient la CLÉ du bâtiment, jamais l'objet 3D : la scène est reconstruite
+   à chaque achat, chaque ordre à l'armée, chaque retour au village, et une
+   référence gardée trop longtemps pointe alors sur un groupe jeté — on tournait
+   dans le vide. On recale aussi l'angle sur la grille de 15° pour que dix appuis
+   fassent exactement 150°, sans dérive. */
+const ROT_STEP=Math.PI/12;                      // 15° par appui
+function selectedBuilding(){
+  if(V3.sel&&V3.sel.parent) return V3.sel;
+  const k=V3.lastPid;
+  return (k&&V3.place&&V3.place[k])||null;
+}
 function rotSel(dir){
-  const g=V3.sel||V3.lastSel;
-  if(!g){ toast(t('👆 Touche d\'abord un bâtiment.','👆 Tap a building first.')); return; }
-  g.rotation.y+=dir*Math.PI/12;                 // 15° par appui
-  S.vrot=S.vrot||{};
-  S.vrot[g.userData.pid]=+(((g.rotation.y%6.283)+6.283)%6.283).toFixed(3);
+  const g=selectedBuilding();
+  if(!g){ toast(t('👆 Touche d\'abord un bâtiment, puis tourne-le.',
+                  '👆 Tap a building first, then turn it.')); return; }
+  const key=g.userData.pid;
+  V3.lastPid=key;
+  const snapped=Math.round(g.rotation.y/ROT_STEP)*ROT_STEP;
+  let a=snapped+dir*ROT_STEP;
+  const TAU=Math.PI*2;
+  a=((a%TAU)+TAU)%TAU;
+  g.rotation.y=a;
+  S.vrot=S.vrot||{}; S.vrot[key]=+a.toFixed(4);
+  markSel(g);
   save(); SFX.click();
   if(V3.sun) V3.sun.shadow.needsUpdate=true;
+  toast(buildingLabel(key)+' · '+Math.round(a*180/Math.PI)+'°');
 }
-function toggleEdit(){
+/* l'anneau montre ce qu'on est en train d'orienter */
+function markSel(g){
+  if(!V3.ring||!g) return;
+  V3.ring.visible=true;
+  V3.ring.position.set(g.position.x,0.4,g.position.z);
+  V3.ring.scale.setScalar(footOf(g.userData.pid)/5);
+}
+function toggleEdit(pid){
   V3.edit=!V3.edit; V3.order=false;
+  V3.sel=null;
+  // venu de la fiche d'un bâtiment : il reste choisi, les flèches marchent tout de suite
+  V3.lastPid=(V3.edit&&typeof pid==='string')?pid:null;
   if(!V3.edit&&V3.ring) V3.ring.visible=false;
-  V3.sel=null; V3.lastSel=null; render();
-  toast(V3.edit?t('🔧 Mode placement : glisse les bâtiments','🔧 Placement mode: drag the buildings')
-                :t('✅ Village enregistré','✅ Village saved'));
+  render();
+  toast(V3.edit
+    ? (V3.lastPid
+        ? '🔧 '+buildingLabel(V3.lastPid)+t(' — glisse-le, ou ↺ ↻ pour l\'orienter.',
+                                            ' — drag it, or ↺ ↻ to turn it.')
+        : t('🔧 Mode placement : touche un bâtiment, glisse-le, ↺ ↻ pour l\'orienter',
+            '🔧 Placement mode: tap a building, drag it, ↺ ↻ to turn it'))
+    : t('✅ Village enregistré','✅ Village saved'));
 }
 function buy(id){
   const it=SHOP.find(s=>s.id===id); if(!it) return;
