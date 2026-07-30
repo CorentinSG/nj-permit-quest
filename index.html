@@ -361,7 +361,11 @@ html,body{overflow-x:hidden}
 .v3d-say.show{opacity:1;transform:translateY(0)}
 .v3d-say b{color:var(--bus)}
 .v3d-hint{position:absolute;left:10px;bottom:14px;z-index:1;font-size:10.5px;color:#fff;opacity:.85;
-  pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 252px);line-height:1.3}
+  pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 252px);line-height:1.3;
+  overflow-wrap:anywhere}
+@media (max-width:379px){
+  .v3d-hint{bottom:46px;right:10px;max-width:none;font-size:10px}
+}
 .v3d-ctl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
 /* orientation du bâtiment sélectionné, en mode placement */
 .v3d-rot{position:absolute;right:8px;top:8px;z-index:3;display:flex;align-items:center;gap:6px;
@@ -406,6 +410,30 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* plan du jour */
+.planbox{border-color:#3F6FB0}
+.planbox .planrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--edge)}
+.planbox .planrow:first-of-type{border-top:0}
+.planbox .pln{font-family:var(--px);font-size:10px;color:#7FA8DC;flex:none;width:14px}
+.planbox .plic{font-size:18px;flex:none;line-height:1}
+.planbox .pltx{flex:1;min-width:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.planbox .sbuy{flex:none}
+/* onglets du village */
+.vtabbar{display:flex;gap:6px;margin:0 0 12px;scroll-margin-top:8px}
+.vtab{flex:1;min-width:0;position:relative;font-family:var(--px);font-size:9.5px;letter-spacing:.3px;
+  padding:11px 4px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2);
+  color:var(--dim);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vtab.on{background:var(--ink);color:#12181f;border-color:var(--ink)}
+.vtab .vdot{position:absolute;top:3px;right:5px;font-style:normal;font-size:8px;
+  background:var(--stop);color:#fff;border-radius:8px;padding:1px 4px}
+/* table des forces */
+.fgrow{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.fgic{flex:none;font-size:16px;line-height:1}
+.fgn{flex:none;width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
+.fgbar{flex:1;min-width:0;height:8px;border:1px solid var(--edge);border-radius:5px;
+  background:var(--lane2);overflow:hidden}
+.fgbar i{display:block;height:100%;background:linear-gradient(90deg,#7C1215,#E5383B)}
+.fgv{flex:none;font-family:var(--px);font-size:9px;color:var(--ink)}
 /* attaque romaine */
 .raidbar{position:absolute;left:8px;right:8px;top:8px;z-index:3;pointer-events:none;
   font-family:var(--px);font-size:9px;color:#fff}
@@ -2627,6 +2655,71 @@ function comboBanner(){
       'It carries into any test. One wrong answer and it drops to zero — loot ×'+lootMult(k)+' if you hold it.')
    +'</p></div>';
 }
+/* ============================================================
+   LE PLAN DU JOUR
+   ------------------------------------------------------------
+   Huit boutons sur l'accueil, et la seule question qui compte reste sans
+   réponse : « je fais quoi, là, maintenant ? » Ce panneau la tranche à partir
+   de tes propres chiffres, et chaque ligne se lance d'un doigt.
+   ============================================================ */
+function todayPlan(){
+  const out=[];
+  const errN=errorPool().length;
+  const w=weakestWorld();
+  const nem=nemesisPool().length;
+  const dj=daysToExam();
+  const left=Math.max(0,DAILY_GOAL-((S.daily&&S.daily.ok)||0));
+  const rd=readiness();
+  // 1. les erreurs d'abord : ce sont elles qui coûtent des points à l'examen
+  if(errN>=3) out.push({p:1, ic:'🩹',
+    fr:'Vider la boîte à erreurs — '+errN+' question'+(errN>1?'s':'')+' à venger',
+    en:'Empty the mistake box — '+errN+' question'+(errN>1?'s':'')+' to avenge',
+    go:"G.startErrors()", btn:t('VENGER','AVENGE')});
+  // 2. le domaine qui traîne
+  if(w&&w.m<70) out.push({p:2, ic:w.ic,
+    fr:'Travailler « '+w.name+' » — ton point faible ('+w.m+' %)',
+    en:'Work on "'+w.name+'" — your weak spot ('+w.m+'%)',
+    go:"G.startRun('"+w.id+"')", btn:t('10 QUESTIONS','10 QUESTIONS')});
+  // 3. la Bête Noire quand elle est grasse
+  if(nem>=8) out.push({p:3, ic:'😈',
+    fr:'Dompter ta Bête Noire — '+nem+' questions te résistent',
+    en:'Tame your Nemesis — '+nem+' questions still beat you',
+    go:"G.startNemesisRun()", btn:t('SÉRIE ×10','RUN ×10')});
+  // 4. à l'approche de l'examen, on se met en conditions réelles
+  if(dj!==null&&dj>=0&&dj<=6&&rd.exam<1) out.push({p:4, ic:'🎓',
+    fr:(S.examBest?'Refaire un examen blanc officiel — record : '+S.examBest+'/50'
+                  :'Passer ton premier examen blanc officiel (50 questions)'),
+    en:(S.examBest?'Sit another official mock exam — best: '+S.examBest+'/50'
+                  :'Sit your first official mock exam (50 questions)'),
+    go:"G.startExam('std')", btn:t('EXAMEN','EXAM')});
+  // 5. et le chiffre du jour, toujours
+  if(left>0) out.push({p:5, ic:'🎯',
+    fr:'Objectif du jour : encore '+left+' bonne'+(left>1?'s':'')+' réponse'+(left>1?'s':''),
+    en:'Daily goal: '+left+' more correct answer'+(left>1?'s':''),
+    go:"G.go('worlds')", btn:t('CAMPAGNE','CAMPAIGN')});
+  return out.sort((a,b)=>a.p-b.p).slice(0,3);
+}
+function planHtml(){
+  const L=todayPlan();
+  const dj=daysToExam();
+  if(!L.length) return '<div class="panel planbox"><div class="eyebrow">✅ '
+   +t('PLAN DU JOUR','TODAY\'S PLAN')+'</div><p class="small" style="margin:6px 0 0">'
+   +t('Objectif atteint, boîte à erreurs vide, domaines solides. Tu peux souffler — ou aller bâtir ton village.',
+      'Goal met, mistake box empty, every domain solid. Take a breath — or go build your village.')+'</p></div>';
+  let h='<div class="panel planbox"><div class="eyebrow">🧭 '+t('PLAN DU JOUR','TODAY\'S PLAN')
+   +(dj!==null&&dj>=0?' · '+t('J−'+dj,'D−'+dj):'')+'</div>'
+   +'<p class="small" style="margin:0 0 10px">'
+   +t('Calculé sur tes résultats. Fais-les dans cet ordre, c\'est ce qui te rapportera le plus de points mardi.',
+      'Worked out from your own results. Do them in this order — that is what will earn you the most points on Tuesday.')
+   +'</p>';
+  L.forEach((x,i)=>{
+    h+='<div class="planrow"><span class="pln">'+(i+1)+'</span>'
+     +'<span class="plic">'+x.ic+'</span>'
+     +'<span class="pltx">'+esc(t(x.fr,x.en))+'</span>'
+     +'<button class="sbuy" onclick="'+x.go+'">'+x.btn+'</button></div>';
+  });
+  return h+'</div>';
+}
 /* ---------- accueil ---------- */
 function scrHome(){
   const errN=errorPool().length;
@@ -2639,6 +2732,7 @@ function scrHome(){
    +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 English · feet</button>'
    +'</div>'
    +djLine
+   +planHtml()
    +comboBanner()
    +'<div class="menu">'
    +'<button class="btn btn-exit" onclick="G.go(\'worlds\')"><span class="ic">🗺️</span><span>'+t('Campagne','Campaign')+'<span class="sub">'+t('8 zones, 8 boss — la carte du New Jersey','8 zones, 8 bosses — the map of New Jersey')+'</span></span></button>'
@@ -6098,17 +6192,49 @@ function scrVillage(){
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
    +cdHtml()
    +v3dHost()
-   +'<div class="panel" style="margin-bottom:12px">'
-   +'<div class="setrow" style="padding-top:0"><label>🔧 '+t('Réorganiser le village','Rearrange the village')+'</label>'
-   +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
-   +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
-   +'</div>'
-   +questHtml()
-   +tradeHtml()
-   +chronHtml()
-   +peopleHtml()
-   +needsHtml()
-   +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
+   +vTabBar()
+   +'<div id="vtabs">'+vTabBody()+'</div>';
+  return v;
+}
+/* ---------- le village en trois onglets ----------
+   L'écran avait fini par empiler dix panneaux : doléances, comptoir,
+   chroniques, habitants, besoins, armée, boutique… Trois onglets, et la vue 3D
+   reste toujours visible au-dessus. Changer d'onglet ne réécrit QUE le bloc du
+   bas : la scène n'est pas reconstruite, donc pas de clignotement, pas de
+   travail inutile — et une bataille en cours n'est pas interrompue. */
+const VTABS=[
+ {k:'vie',  ic:'🏡', n:'Vie',      ne:'Life'},
+ {k:'batir',ic:'🛒', n:'Bâtir',    ne:'Build'},
+ {k:'def',  ic:'⚔️', n:'Défense',  ne:'Defence'}
+];
+function vTab(){ return V3.tab||'vie'; }
+function vTabBar(){
+  const cur=vTab();
+  return '<div class="vtabbar">'+VTABS.map(x=>{
+    const n=x.k==='vie'?questClaimable():0;
+    return '<button class="vtab'+(cur===x.k?' on':'')+'" onclick="G.setTab(\''+x.k+'\')">'
+      +x.ic+' '+esc(t(x.n,x.ne))+(n?'<i class="vdot">'+n+'</i>':'')+'</button>';
+  }).join('')+'</div>';
+}
+function setTab(k){
+  V3.tab=k;
+  const box=document.getElementById('vtabs'); if(!box){ render(); return; }
+  box.innerHTML=vTabBody();
+  document.querySelectorAll('.vtab').forEach((b,i)=>b.classList.toggle('on',VTABS[i].k===k));
+  if(k==='batir'&&typeof miniInit==='function') miniInit();
+  SFX.click();
+  const bar=document.querySelector('.vtabbar');
+  if(bar) bar.scrollIntoView({block:'start',behavior:'smooth'});
+}
+function vTabBody(){
+  const k=vTab();
+  if(k==='vie') return questHtml()+chronHtml()+peopleHtml()+needsHtml();
+  if(k==='def') return vDefenceHtml();
+  return vBuildHtml();
+}
+function vDefenceHtml(){
+  const owned=S.village, ap=armyPct(), pw=armyPower();
+  return '<div class="panel" style="margin-bottom:12px"><div class="eyebrow">⚔️ '+t('FORCE MILITAIRE','MILITARY STRENGTH')+'</div>'
    +'<div class="gprog-top" style="margin-top:6px"><span>'+t('Prêt à repousser César','Ready to repel Caesar')+'</span><b>'+ap+'%</b></div>'
    +'<div class="xp-lane" style="height:12px"><div class="xp-fill" style="width:'+ap+'%;background:linear-gradient(90deg,#7C1215,#E5383B)"></div><div class="xp-dash"></div></div>'
    +'<p class="small" style="margin-top:8px">'+(ap>=100?t('🏆 Village imprenable. Rome peut venir.','🏆 Impregnable village. Let Rome come.')
@@ -6118,6 +6244,35 @@ function scrVillage(){
    +(owned.includes('guerriers')?armyOrdersHtml():'')
    +raidBtnHtml()
    +'</div>'
+   +fightGuideHtml();
+}
+/* qui encaisse quoi : la table des forces, consultable avant de sonner l'alarme */
+function fightGuideHtml(){
+  const rows=[['guerrier','⚔️'],['chef','👑'],['garde','🛡️'],['outil','🪓'],['paysan','🧑‍🌾'],['enfant','🧒'],
+              ['legion','🏛️'],['centurion','🎖️']];
+  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">❤️ '
+   +t('QUI ENCAISSE QUOI','WHO CAN TAKE A HIT')+'</div>'
+   +'<p class="small" style="margin:0 0 8px">'
+   +t('Les points de vie suivent la protection : une cotte et un casque valent quatre paysans en tunique.',
+      'Hit points follow protection: mail and a helmet are worth four villagers in a tunic.')+'</p>';
+  const max=Math.max(...rows.map(r=>FIGHT[r[0]].hp));
+  rows.forEach(r=>{ const F=FIGHT[r[0]];
+    h+='<div class="fgrow"><span class="fgic">'+r[1]+'</span>'
+     +'<span class="fgn">'+esc(t(F.n,F.ne))+'</span>'
+     +'<span class="fgbar"><i style="width:'+Math.round(F.hp/max*100)+'%"></i></span>'
+     +'<span class="fgv">'+F.hp+' ❤️'+(F.atk?' · '+F.atk+' ⚔️':'')+'</span></div>';
+  });
+  return h+'</div>';
+}
+function vBuildHtml(){
+  const owned=S.village;
+  const vill=SHOP.filter(i=>i.cat!=='army'), army=SHOP.filter(i=>i.cat==='army');
+  let v='<div class="panel" style="margin-bottom:12px">'
+   +'<div class="setrow" style="padding-top:0"><label>🔧 '+t('Réorganiser le village','Rearrange the village')+'</label>'
+   +'<button class="sbuy'+(V3.edit?'':' cant')+'" onclick="G.toggleEdit()">'+(V3.edit?t('TERMINÉ','DONE'):t('DÉPLACER','MOVE'))+'</button></div>'
+   +(V3.edit?'<p class="small" style="margin:8px 0 0">'+t('Touche un bâtiment et fais-le glisser où tu veux. La caméra est bloquée pendant ce temps.','Touch a building and drag it wherever you like. The camera is locked meanwhile.')+'</p>':'')
+   +'</div>'
+   +tradeHtml()
    +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
      ?t('🎉 Village complet ! Le banquet bat son plein. Par Toutatis !','🎉 Village complete! The banquet is in full swing. By Toutatis!')
@@ -7078,7 +7233,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart};
+  raidAsk, raidStart, setTab};
 window.G=G;
 applyLang();
 touchDaily();
