@@ -406,6 +406,21 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* attaque romaine */
+.raidbar{position:absolute;left:8px;right:8px;top:8px;z-index:3;pointer-events:none;
+  font-family:var(--px);font-size:9px;color:#fff}
+.raidbar:empty{display:none}
+.raidbar .rbrow{display:flex;justify-content:space-between;margin-bottom:3px;
+  text-shadow:0 1px 3px #000}
+.raidbar .rblane{display:flex;height:9px;border:1px solid #0b0f14;border-radius:5px;overflow:hidden;
+  background:#0b0f14}
+.raidbar .rbg{background:linear-gradient(90deg,#155C33,#33B268)}
+.raidbar .rbr{background:linear-gradient(90deg,#E5383B,#7C1215)}
+.raidbox{margin-top:12px;padding:10px;border:2px solid var(--stop);border-radius:12px;
+  background:#20090b}
+.raidbox .rbtitle{font-family:var(--px);font-size:10px;color:var(--stop);letter-spacing:.5px}
+.raidbox .rbstat{display:flex;gap:14px;font-size:12px;color:var(--dim)}
+.raidbox .rbstat b{color:var(--ink)}
 /* comptoir du druide */
 .tradebox .trow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--edge)}
 .tradebox .trow:first-of-type{border-top:0}
@@ -1500,6 +1515,7 @@ const defaults=()=>({
   qstat:{},            // qid -> {box:1..3, ok, ko}
   combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
   quests:{day:'', list:[]},   // les doléances du jour
+  raid:{day:'',won:0,lost:0},  // l'attaque romaine du jour
   inv:{shield:0},      // talismans en poche
   feast:0,             // festins payés d'avance : butin ×1,5 sur la prochaine série
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
@@ -3059,6 +3075,7 @@ let V3={ready:false, raf:0, ren:null, scene:null, cam:null, host:null,
         mixers:[], t0:0, minis:[], edit:false, sel:null, place:{}, ring:null};
 
 function v3dStop(){
+  if(V3.raid) raidAbort();          // on ne laisse pas une bataille orpheline
   if(V3.raf){ cancelAnimationFrame(V3.raf); V3.raf=0; }
   if(typeof miniStop==='function') miniStop();
   if(V3.ren){ V3.ren.dispose(); V3.ren.forceContextLoss&&V3.ren.forceContextLoss(); V3.ren=null; }
@@ -4419,6 +4436,41 @@ function warrior(i,plume){
   if(plume){ g.add(at(cone(1.1,3.4,0xc0463c,6),0,11.2,0)); g.add(at(cyl(2.6,2.7,2.2,0xd4b23c,8),0,8.6,0)); }
   return g;
 }
+/* ---------- légionnaire romain ----------
+   Tunique rouge, casque à joues, scutum rectangulaire, glaive court. Le
+   centurion porte la crête transversale et une cape. */
+function legionary(i,centurion){
+  const g=new THREE.Group();
+  const p=person(0); g.add(p);
+  p.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&o.geometry&&o.geometry.type==='CylinderGeometry')
+    o.material=o.material.clone(); });
+  // cuirasse segmentée
+  g.add(at(cyl(2.35,2.6,3.4,0x9aa3ab,8),0,4.4,0));
+  // casque + protège-joues
+  g.add(at(cyl(2.35,2.45,2.1,0xc9a227,8),0,8.6,0));
+  g.add(at(box(.7,2.1,1.6,0xc9a227),-2.1,7.6,0));
+  g.add(at(box(.7,2.1,1.6,0xc9a227),2.1,7.6,0));
+  // scutum : bouclier rectangulaire bombé, tenu à gauche
+  const sh=new THREE.Mesh(new THREE.BoxGeometry(.6,7.6,4.6),mat(0xa3231f));
+  sh.name='shield'; g.add(at(sh,-3.4,4.6,.4));
+  g.add(at(sph(.8,0xd8b24a,0),-3.8,4.6,.4));
+  // glaive
+  const sw=new THREE.Group();
+  sw.add(at(box(.35,5.4,.9,0xd8dde0),0,2.7,0));
+  sw.add(at(box(.7,1.1,1.4,0x6b4a2a),0,0,0));
+  sw.name='sword'; g.add(at(sw,3.2,4.2,.6));
+  g.userData.sword=sw;
+  if(centurion){
+    g.scale.setScalar(1.18);
+    const crest=new THREE.Mesh(new THREE.BoxGeometry(4.6,1.5,.7),mat(0xe0e0e0));
+    g.add(at(crest,0,10.3,0));
+    const cape=new THREE.Mesh(new THREE.PlaneGeometry(6,8),
+      new THREE.MeshLambertMaterial({color:0x7a1b18,side:THREE.DoubleSide}));
+    g.add(at(cape,0,4.4,-2.6));
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
 Object.assign(B3,{
   camp(){ const g=new THREE.Group();
     [[-9,-4,1],[9,-3,.95],[0,7,1.05]].forEach((t,i)=>{
@@ -4940,6 +4992,7 @@ function makeSmoke(scene,g){
 }
 function v3dHost(){
   return '<div class="v3d'+(V3.edit?' editing':'')+(V3.order?' ordering':'')+'" id="v3d"><canvas id="v3dc"></canvas>'
+    +'<div class="raidbar" id="raidbar"></div>'
     +'<div class="v3d-say" id="v3dsay"></div>'
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
@@ -4986,6 +5039,7 @@ function v3dInit(){
 
   const stars=makeStars(); scene.add(stars);
   const built=buildVillage(scene); V3.built=built;
+  if(V3.raidPending) raidBuild(scene);
   // anneau qui suit l'objet en cours de déplacement
   const ring=new THREE.Mesh(new THREE.RingGeometry(7,9.5,24),
     new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85,side:THREE.DoubleSide}));
@@ -5187,6 +5241,7 @@ function v3dInit(){
   V3.t0=performance.now(); V3.lastTod=0;
   const loop=()=>{
     if(!V3.ren) return;
+    if(V3.raid&&!V3.raid.over&&(V3.raid.bt=(V3.raid.bt||0)+1)%20===0) raidBanner();
     const now=performance.now(), tt=(now-V3.t0)/1000;
     if(V3.auto&&!V3.drag) V3.rot+=0.0022;
     if(now-V3.lastTod>20000){ V3.lastTod=now;
@@ -5209,6 +5264,7 @@ function v3dInit(){
     // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
     // ---- perception mutuelle (4 Hz : 16 habitants = 120 paires, négligeable)
+    if(!V3.raid){
     V3.perc=(V3.perc||0)-dt;
     if(V3.perc<=0){ V3.perc=0.35; perceiveAll(built.walkers,now); }
     built.walkers.forEach(p=>{
@@ -5430,8 +5486,9 @@ function v3dInit(){
         }
       }
     });
-    separateWalkers(built.walkers,dt);
-    avoidSolids(built.walkers,dt);
+    }
+    if(V3.raid) raidTick(dt,tt,scene);
+    else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
     ren.render(scene,cam);
@@ -5678,6 +5735,329 @@ function avoidSolids(walkers,dt){
     }
   }
 }
+/* ============================================================
+   L'ATTAQUE ROMAINE
+   ------------------------------------------------------------
+   Une vraie colonne romaine arrive par le sud, se heurte au village, et chaque
+   combattant a ses propres points de vie et sa propre force. Un guerrier casqué
+   et bouclier au bras encaisse quatre fois ce qu'encaisse un paysan désarmé ;
+   les enfants ne se battent pas, ils courent se cacher.
+   Tout tourne dans la boucle de rendu qui existe déjà : pas de minuteur, pas de
+   deuxième requestAnimationFrame.
+   ============================================================ */
+/* Points de vie et force par type de combattant. La protection décide de tout :
+   armure + bouclier = on tient ; une faux et une tunique = on tombe vite. */
+const FIGHT={
+  enfant:   {hp:10,  atk:0,  n:'Enfant',            ne:'Child'},
+  paysan:   {hp:18,  atk:3,  n:'Villageois',        ne:'Villager'},
+  outil:    {hp:28,  atk:7,  n:'Villageois armé',   ne:'Armed villager'},
+  garde:    {hp:45,  atk:9,  n:'Guetteur',          ne:'Watchman'},
+  guerrier: {hp:80,  atk:13, n:'Guerrier',          ne:'Warrior'},
+  chef:     {hp:130, atk:18, n:'Chef de guerre',    ne:'Warlord'},
+  legion:   {hp:65,  atk:11, n:'Légionnaire',       ne:'Legionary'},
+  centurion:{hp:140, atk:17, n:'Centurion',         ne:'Centurion'}
+};
+/* les métiers qui tiennent déjà un outil tranchant se défendent mieux */
+const ARMED_JOBS={chasse:1, bois:1, forge:1};
+function fightKindOf(rec){
+  if(!rec) return 'paysan';
+  if(isChild(rec)) return 'enfant';
+  if(rec.job==='garde') return 'garde';
+  return ARMED_JOBS[rec.job]?'outil':'paysan';
+}
+/* combien de Romains ? Assez pour que ça compte, jamais assez pour ramer. */
+function romanForce(){
+  const pop=Math.max(1,(S.people||[]).length);
+  const n=Math.max(3,Math.min(9,2+Math.round(pop/3)));
+  return {n, boss:pop>=13};
+}
+/* barre de vie : deux plans, l'un derrière l'autre, tournés vers la caméra */
+function makeBar(){
+  const g=new THREE.Group();
+  const bg=new THREE.Mesh(new THREE.PlaneGeometry(9,1.5),
+    new THREE.MeshBasicMaterial({color:0x141a20,transparent:true,opacity:.85}));
+  const fl=new THREE.Mesh(new THREE.PlaneGeometry(8.4,0.95),
+    new THREE.MeshBasicMaterial({color:0x33b268}));
+  fl.position.z=0.05; g.add(bg); g.add(fl);
+  g.userData.fill=fl;
+  return g;
+}
+function setBar(u){
+  const f=u.bar&&u.bar.userData.fill; if(!f) return;
+  const r=Math.max(0,u.hp/u.hpMax);
+  f.scale.x=Math.max(0.001,r);
+  f.position.x=-4.2*(1-r);
+  f.material.color.setHex(r>0.55?0x33b268:r>0.25?0xe0a800:0xe5383b);
+}
+function raidAlive(side){ return (V3.raid&&V3.raid.units||[]).filter(u=>u.side===side&&!u.dead&&u.atk>0).length; }
+function raidHp(side){
+  return (V3.raid&&V3.raid.units||[]).filter(u=>u.side===side&&!u.dead)
+    .reduce((n,u)=>n+Math.max(0,u.hp),0);
+}
+/* on peut être attaqué une fois par jour */
+function raidReady(){
+  S.raid=S.raid||{day:'',won:0,lost:0};
+  return S.raid.day!==todayStr();
+}
+function raidAsk(){
+  if(!S.village.includes('guerriers')&&armyPower()<10){
+    toast('⚔️ '+t('Ton village n\'a rien pour se défendre. Construis au moins une palissade.',
+                  'Your village has nothing to defend itself with. Build at least a palisade.')); return; }
+  if(!raidReady()){ toast('🏛️ '+t('César a déjà tenté sa chance aujourd\'hui.','Caesar has already tried his luck today.')); return; }
+  const F=romanForce();
+  const mine=(S.people||[]).filter(x=>!isChild(x)).length
+    + (S.village.includes('guerriers')?4:0) + (S.village.includes('chefguerre')?1:0);
+  showOverlay('🏛️', t('Les Romains approchent','The Romans are coming'),
+    t('Une colonne de <b>'+F.n+' légionnaires</b>'+(F.boss?t(' menée par un <b>centurion</b>',' led by a <b>centurion</b>'):'')
+      +' marche sur le village.','A column of <b>'+F.n+' legionaries</b>'+(F.boss?' led by a <b>centurion</b>':'')
+      +' is marching on the village.')
+    +'<br><br>'+t('Tu peux compter sur <b>'+mine+' défenseurs</b>. Les guerriers casqués encaissent bien plus que les paysans — et les enfants iront se cacher.',
+                  'You can count on <b>'+mine+' defenders</b>. Helmeted warriors take far more punishment than farmhands — and the children will run and hide.')
+    +'<div class="menu" style="margin-top:14px">'
+    +'<button class="btn btn-stop" style="justify-content:center" onclick="G.hideOverlay();G.raidStart()">⚔️ '
+    +t('SONNER L\'ALARME','SOUND THE ALARM')+'</button>'
+    +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay()">'
+    +t('Pas aujourd\'hui','Not today')+'</button></div>');
+}
+function raidStart(){
+  if(!raidReady()) return;
+  clearTimeout(V3.raidT); V3.raidT=0;   // pas de rendu différé qui viendrait tuer la bataille
+  S.raid=S.raid||{day:'',won:0,lost:0};
+  S.raid.day=todayStr(); save();
+  V3.raidPending=1;
+  render();                       // la scène est reconstruite, puis peuplée
+}
+/* on peuple la scène : les villageois deviennent des combattants, les Romains arrivent */
+function raidBuild(scene){
+  V3.raidPending=0;
+  const built=V3.built; if(!built||!scene) return;
+  const units=[];
+  const add=(g,side,kind,x,z)=>{
+    const F=FIGHT[kind];
+    const bar=makeBar(); bar.position.set(0,15.5,0); g.add(bar);
+    const u={g, side, kind, hp:F.hp, hpMax:F.hp, atk:F.atk, bar,
+             cd:0.4+Math.random()*0.9, swing:0, tgt:null, rescan:0, dead:0, fall:0,
+             sp:kind==='enfant'?11:(side==='rome'?8.5:9)+Math.random()*2};
+    if(x!=null) g.position.set(x,0,z);
+    setBar(u); units.push(u); return u;
+  };
+  // --- les Gaulois : les marcheurs déjà présents changent de mission
+  built.walkers.forEach(w=>{
+    const rec=w.userData.rec;
+    const kind=fightKindOf(rec);
+    w.userData.state='fight'; w.userData.talk=null; w.userData.timer=1e9;
+    if(w.userData.badge) w.userData.badge.visible=false;
+    if(w.userData.fx) w.userData.fx.visible=false;
+    add(w,'gaul',kind);
+  });
+  // --- les guerriers de l'escouade quittent leur groupe pour se battre
+  ['guerriers','chefguerre'].forEach(key=>{
+    const grp=V3.place&&V3.place[key]; if(!grp) return;
+    const V=new THREE.Vector3();
+    grp.children.filter(c=>c.name==='guard').forEach(w=>{
+      w.getWorldPosition(V);
+      grp.remove(w); scene.add(w);
+      w.position.copy(V); w.position.y=0;
+      add(w,'gaul',key==='chefguerre'?'chef':'guerrier',V.x,V.z);
+    });
+  });
+  // --- la colonne romaine, alignée au sud, hors du village
+  const F=romanForce();
+  for(let i=0;i<F.n;i++){
+    const g=legionary(i,false);
+    const x=(i-(F.n-1)/2)*13, z=178;
+    scene.add(g);
+    add(g,'rome','legion',x,z);
+  }
+  if(F.boss){ const g=legionary(0,true); scene.add(g); add(g,'rome','centurion',0,196); }
+  V3.raid={units, t:0, over:0, spark:[]};
+  // quelques éclats réutilisés pour marquer les coups
+  for(let i=0;i<5;i++){
+    const sp=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,0),
+      new THREE.MeshBasicMaterial({color:0xffd36b,transparent:true,opacity:0.95}));
+    sp.visible=false; scene.add(sp); V3.raid.spark.push(sp);
+  }
+  SFX.ko();
+  raidBanner();
+}
+function raidSpark(x,z,y){
+  const R=V3.raid; if(!R) return;
+  const sp=R.spark[(R.sparkI=(R.sparkI||0)+1)%R.spark.length];
+  sp.position.set(x,y||6,z); sp.visible=true; sp.userData.t=0.22;
+}
+/* le compteur en haut de la vue, écrit directement dans le DOM :
+   surtout pas de render(), qui reconstruirait la scène et tuerait la bataille */
+function raidBanner(){
+  const el=document.getElementById('raidbar'); if(!el) return;
+  const R=V3.raid; if(!R){ el.innerHTML=''; return; }
+  const g=raidAlive('gaul'), r=raidAlive('rome');
+  const gh=raidHp('gaul'), rh=raidHp('rome');
+  const tot=Math.max(1,gh+rh);
+  el.innerHTML='<div class="rbrow"><b>🛡️ '+t('Gaulois','Gauls')+' '+g+'</b>'
+   +'<b>'+t('Romains','Romans')+' '+r+' 🏛️</b></div>'
+   +'<div class="rblane"><i class="rbg" style="width:'+Math.round(gh/tot*100)+'%"></i>'
+   +'<i class="rbr" style="width:'+Math.round(rh/tot*100)+'%"></i></div>';
+}
+/* une image de bataille */
+function raidTick(dt,tt,scene){
+  const R=V3.raid; if(!R) return;
+  R.t+=dt;
+  const U=R.units;
+  // éclats de coups
+  R.spark.forEach(sp=>{ if(!sp.visible) return;
+    sp.userData.t-=dt; sp.scale.setScalar(1+(0.22-sp.userData.t)*6);
+    if(sp.userData.t<=0) sp.visible=false; });
+  for(const u of U){
+    if(u.dead){                                   // on tombe, puis on s'efface
+      u.fall=Math.min(1,u.fall+dt*2.2);
+      u.g.rotation.x=-u.fall*Math.PI/2*0.85;
+      u.g.position.y=-u.fall*1.6;
+      if(u.bar) u.bar.visible=false;
+      if(u.fall>=1&&!u.gone){ u.gone=1;
+        if(u.side==='rome'){ u.g.visible=false; }
+        else u.g.visible=false;
+      }
+      continue;
+    }
+    // cible : on la garde tant qu'elle vit, on rescanne de temps en temps
+    u.rescan-=dt;
+    if(!u.tgt||u.tgt.dead||u.rescan<=0){
+      u.rescan=0.5+Math.random()*0.5;
+      let best=null, bd=1e9;
+      for(const o of U){
+        if(o.dead||o.side===u.side) continue;
+        if(u.atk<=0) continue;                    // un enfant ne cible personne
+        const d=Math.hypot(o.g.position.x-u.g.position.x, o.g.position.z-u.g.position.z);
+        if(d<bd){ bd=d; best=o; }
+      }
+      u.tgt=best;
+    }
+    const ar=u.g.userData.arms||(u.g.children[0]&&u.g.children[0].userData.arms);
+    // --- les enfants fuient vers le nord du village
+    if(u.atk<=0){
+      const fx=u.g.position.x*0.4, fz=-180;
+      const dx=fx-u.g.position.x, dz=fz-u.g.position.z, d=Math.hypot(dx,dz)||1;
+      if(d>6){
+        const st=steerAround(u.g.position.x,u.g.position.z,dx/d,dz/d,3,d,u.g.userData);
+        u.g.position.x+=st[0]*u.sp*dt*1.35; u.g.position.z+=st[1]*u.sp*dt*1.35;
+        turnTo(u.g,u.g.position.x+st[0]*10,u.g.position.z+st[1]*10,dt,10);
+        u.g.position.y=Math.abs(Math.sin(tt*9+u.hpMax))*0.9;
+      }
+      continue;
+    }
+    if(!u.tgt) continue;
+    const T=u.tgt;
+    const dx=T.g.position.x-u.g.position.x, dz=T.g.position.z-u.g.position.z;
+    const d=Math.hypot(dx,dz)||1;
+    const reach=u.kind==='centurion'||u.kind==='chef'?13:11;
+    if(d>reach){                                   // on marche au contact
+      const st=steerAround(u.g.position.x,u.g.position.z,dx/d,dz/d,4,d,u.g.userData);
+      u.g.position.x+=st[0]*u.sp*dt; u.g.position.z+=st[1]*u.sp*dt;
+      turnTo(u.g,T.g.position.x,T.g.position.z,dt,9);
+      u.g.position.y=Math.abs(Math.sin(tt*7+u.hpMax))*0.8;
+      if(ar){ const sw=Math.sin(tt*7+u.hpMax);
+        ar[0].rotation.x=sw*0.5; ar[1].rotation.x=-sw*0.5; }
+      u.swing=0;
+    }else{                                          // à portée : on frappe
+      u.g.position.y=0;
+      turnTo(u.g,T.g.position.x,T.g.position.z,dt,12);
+      u.cd-=dt;
+      if(u.swing>0){
+        u.swing=Math.max(0,u.swing-dt*3.6);
+        const ph=1-u.swing;                         // 0 → 1 sur le coup
+        const lift=Math.sin(ph*Math.PI);
+        if(ar){ ar[1].rotation.x=-2.3*lift; ar[0].rotation.x=-0.5*lift; }
+        u.g.position.y=lift*0.5;
+        if(!u.hitDone&&ph>=0.5){                    // l'impact tombe au point haut
+          u.hitDone=1;
+          const dmg=u.atk*(0.75+Math.random()*0.5);
+          T.hp-=dmg; setBar(T);
+          raidSpark(T.g.position.x,T.g.position.z,7);
+          if(T.hp<=0&&!T.dead){
+            T.dead=1; T.tgt=null;
+            R.kills=(R.kills||0)+1;
+            raidBanner();
+          }
+        }
+      }else if(u.cd<=0){
+        u.cd=0.9+Math.random()*0.7; u.swing=1; u.hitDone=0;
+        if(SFX.hit&&Math.random()<0.3) SFX.hit();
+      }
+    }
+  }
+  // séparation : personne ne se superpose, personne ne traverse un mur
+  const bodies=U.filter(u=>!u.dead).map(u=>u.g);
+  separateWalkers(bodies,dt);
+  avoidSolids(bodies,dt);
+  // les barres regardent la caméra
+  if(V3.cam) U.forEach(u=>{ if(u.bar&&u.bar.visible) u.bar.quaternion.copy(V3.cam.quaternion); });
+  if(R.t>0.4&&!R.over){
+    if(!raidAlive('rome')) raidEnd(true);
+    else if(!raidAlive('gaul')) raidEnd(false);
+  }
+}
+function raidEnd(win){
+  const R=V3.raid; if(!R||R.over) return;
+  R.over=1;
+  S.raid=S.raid||{day:todayStr(),won:0,lost:0};
+  const F=romanForce();
+  if(win){
+    S.raid.won=(S.raid.won||0)+1;
+    const loot=60+F.n*14+(F.boss?70:0);
+    gainCoins(loot);
+    S.res=S.res||{food:0,wood:0,iron:0};
+    S.res.iron=(S.res.iron||0)+6+F.n;
+    gainXp(80);
+    (S.people||[]).forEach(r=>nudgeMood(r,0.3));
+    chron('⚔️ '+t('Les Romains ont été repoussés ! Le village a tenu.','The Romans were driven off! The village held.'),
+          '⚔️ The Romans were driven off! The village held.');
+    SFX.win(); confetti(180);
+    showOverlay('🏆', t('Les Romains détalent !','The Romans are running!'),
+      t('Ton village a tenu. Butin ramassé sur le champ de bataille : <b>+'+loot+' 🪙</b> et <b>+'+(6+F.n)+' ⚙️</b>.',
+        'Your village held. Loot gathered on the battlefield: <b>+'+loot+' 🪙</b> and <b>+'+(6+F.n)+' ⚙️</b>.')
+      +'<br><br>'+t('Les blessés se relèvent : personne ne meurt pour de bon dans ce village.',
+                    'The wounded get back up: nobody dies for good in this village.'));
+  }else{
+    S.raid.lost=(S.raid.lost||0)+1;
+    S.res=S.res||{food:0,wood:0,iron:0};
+    const took={};
+    ['food','wood','iron'].forEach(k=>{ took[k]=Math.floor((S.res[k]||0)*0.25);
+      S.res[k]=Math.max(0,(S.res[k]||0)-took[k]); });
+    (S.people||[]).forEach(r=>nudgeMood(r,-0.3));
+    chron('🏛️ '+t('Les Romains ont pillé le village. Il faudra s\'armer.','The Romans plundered the village. Time to arm up.'),
+          '🏛️ The Romans plundered the village. Time to arm up.');
+    SFX.ko();
+    showOverlay('🏛️', t('Le village est pillé','The village is plundered'),
+      t('Les légionnaires ont emporté <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.',
+        'The legionaries carried off <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.')
+      +'<br><br>'+t('Personne n\'est mort — mais un camp militaire et une escouade de guerriers changeraient tout. Reviens demain, ils reviendront aussi.',
+                    'Nobody died — but a military camp and a warrior squad would change everything. Come back tomorrow; so will they.'));
+  }
+  checkBadges(); save();
+  V3.raid=null;
+  clearTimeout(V3.raidT);
+  V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },900);
+}
+function raidAbort(){ V3.raid=null; V3.raidPending=0; }
+function raidBtnHtml(){
+  const F=romanForce(), ready=raidReady(), r=S.raid||{};
+  return '<div class="raidbox">'
+   +'<div class="rbtitle">🏛️ '+t('CÉSAR À L\'HORIZON','CAESAR ON THE HORIZON')+'</div>'
+   +'<p class="small" style="margin:6px 0 8px">'
+   +(ready
+      ? t('Une colonne de <b>'+F.n+' légionnaires</b>'+(F.boss?' et un <b>centurion</b>':'')+' rôde au sud. '
+          +'Chaque défenseur a ses propres points de vie : un guerrier casqué encaisse quatre fois un paysan.',
+          'A column of <b>'+F.n+' legionaries</b>'+(F.boss?' and a <b>centurion</b>':'')+' is prowling to the south. '
+          +'Every defender has their own hit points: a helmeted warrior takes four times what a farmhand does.')
+      : t('César a déjà tenté sa chance aujourd\'hui. Il reviendra demain.',
+          'Caesar has already tried his luck today. He will be back tomorrow.'))
+   +'</p>'
+   +'<div class="rbstat"><span>⚔️ '+t('Victoires','Wins')+' <b>'+(r.won||0)+'</b></span>'
+   +'<span>🏛️ '+t('Pillages','Sackings')+' <b>'+(r.lost||0)+'</b></span></div>'
+   +'<button class="btn btn-stop" style="justify-content:center;margin-top:8px'+(ready?'':';opacity:.45')+'" '
+   +'onclick="G.raidAsk()">🏛️ '+(ready?t('GUETTER L\'HORIZON','WATCH THE HORIZON'):t('RIEN À L\'HORIZON','NOTHING ON THE HORIZON'))+'</button>'
+   +'</div>';
+}
 /* ---------- un sentier se raccorde tout seul ----------
    Une dalle posée à côté d'une autre pivote pour prolonger le chemin. Le grand
    axe de la dalle est son axe X local ; pour l'orienter selon (dx,dz) il faut
@@ -5736,6 +6116,7 @@ function scrVillage(){
       :t('Village vulnérable ! Construis la forge, puis le camp militaire.','Village vulnerable! Build the forge, then the military camp.'))
    +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p>'
    +(owned.includes('guerriers')?armyOrdersHtml():'')
+   +raidBtnHtml()
    +'</div>'
    +'<div class="panel"><p class="small" style="text-align:center;margin:0">'
    +(owned.length>=SHOP.length
@@ -6092,6 +6473,8 @@ function toggleEdit(pid){
     : t('✅ Village enregistré','✅ Village saved'));
 }
 function buy(id){
+  if(V3.raid){ SFX.ko();
+    toast('⚔️ '+t('Pas maintenant — la bataille fait rage !','Not now — the battle is raging!')); return; }
   const it=SHOP.find(s=>s.id===id); if(!it) return;
   if(!it.stack&&S.village.includes(id)) return;
   if(it.req&&!S.village.includes(it.req)){
@@ -6694,7 +7077,8 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   startArena, arenaNext, buy, toggleEdit, goHome, toggleFlag, showPerson:showPersonById, startHardRun, startNemesisRun, startNemesisExam, v3dTurn,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
-  moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade};
+  moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
+  raidAsk, raidStart};
 window.G=G;
 applyLang();
 touchDaily();
