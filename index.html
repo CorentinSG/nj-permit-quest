@@ -426,6 +426,13 @@ html,body{overflow-x:hidden}
 .vtab.on{background:var(--ink);color:#12181f;border-color:var(--ink)}
 .vtab .vdot{position:absolute;top:3px;right:5px;font-style:normal;font-size:8px;
   background:var(--stop);color:#fff;border-radius:8px;padding:1px 4px}
+/* ce que valent les défenses */
+.fortbox{margin-top:12px;padding:10px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2)}
+.fortbox .frow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);padding:3px 0}
+.fortbox .frow.on{color:var(--ink)}
+.fortbox .frow span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.fortbox .frow b{flex:none;color:var(--exit)}
+.fortbox .frow:not(.on) b{color:var(--stop)}
 /* table des forces */
 .fgrow{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
 .fgic{flex:none;font-size:16px;line-height:1}
@@ -434,6 +441,11 @@ html,body{overflow-x:hidden}
   background:var(--lane2);overflow:hidden}
 .fgbar i{display:block;height:100%;background:linear-gradient(90deg,#7C1215,#E5383B)}
 .fgv{flex:none;font-family:var(--px);font-size:9px;color:var(--ink)}
+/* l'assaut du jour J */
+.finalwarn{border:2px solid var(--stop);background:#2a0d0c;margin-bottom:12px;
+  animation:emberPulse 2.4s ease-in-out infinite}
+@keyframes emberPulse{0%,100%{box-shadow:0 0 0 rgba(229,56,59,0)}50%{box-shadow:0 0 18px rgba(229,56,59,.45)}}
+@media (prefers-reduced-motion: reduce){ .finalwarn{animation:none} }
 /* attaque romaine */
 .raidbar{position:absolute;left:8px;right:8px;top:8px;z-index:3;pointer-events:none;
   font-family:var(--px);font-size:9px;color:#fff}
@@ -1544,6 +1556,9 @@ const defaults=()=>({
   combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
   quests:{day:'', list:[]},   // les doléances du jour
   raid:{day:'',won:0,lost:0},  // l'attaque romaine du jour
+  finalDone:'',        // '' | 'won' | 'lost' : l'assaut du jour J
+  burned:0,            // quand le village a brûlé
+  dead:[],             // les noms de ceux qui sont tombés
   inv:{shield:0},      // talismans en poche
   feast:0,             // festins payés d'avance : butin ×1,5 sur la prochaine série
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
@@ -2732,6 +2747,8 @@ function scrHome(){
    +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 English · feet</button>'
    +'</div>'
    +djLine
+   +ruinsHtml()
+   +finalWarnHtml()
    +planHtml()
    +comboBanner()
    +'<div class="menu">'
@@ -5888,12 +5905,105 @@ function raidHp(side){
   return (V3.raid&&V3.raid.units||[]).filter(u=>u.side===side&&!u.dead)
     .reduce((n,u)=>n+Math.max(0,u.hp),0);
 }
+/* ============================================================
+   L'ASSAUT FINAL
+   ------------------------------------------------------------
+   Les escarmouches quotidiennes sont des exercices : on y perd des réserves,
+   jamais personne. Le jour J, à l'heure de l'examen, ce n'est plus un exercice.
+   César envoie une légion. Si le village tombe, il BRÛLE : les bâtiments
+   partent en fumée et la plupart des habitants meurent. C'est irréversible, et
+   c'est le but — il faut y arriver prêt.
+   ============================================================ */
+function finalDue(){
+  const c=countdown();
+  return !!(c&&c.past&&!S.finalDone);
+}
+function legionForce(){ return {n:11, boss:2}; }   // une vraie légion, toujours la même
+function finalWarnHtml(){
+  const c=countdown();
+  if(!c||S.finalDone) return '';
+  if(c.past) return '';
+  if(c.d>7) return '';
+  const pw=armyPower();
+  return '<div class="panel finalwarn"><div class="rbtitle">🔥 '
+   +t('AVERTISSEMENT — L\'ASSAUT FINAL','WARNING — THE FINAL ASSAULT')+'</div>'
+   +'<p class="small" style="margin:6px 0 0">'
+   +t('Le jour J, César n\'envoie pas une patrouille : il envoie une <b>légion de 13 hommes</b>. '
+      +'Si le village tombe ce jour-là, il <b>brûle</b> et <b>la plupart des habitants meurent</b>. '
+      +'Ce n\'est pas rattrapable.',
+      'On the day, Caesar does not send a patrol: he sends a <b>legion of 13</b>. '
+      +'If the village falls that day it <b>burns</b>, and <b>most of the villagers die</b>. '
+      +'There is no undoing it.')
+   +'</p><p class="small" style="margin:8px 0 0"><b>'
+   +t('Ta puissance militaire : '+pw+'/'+ARMY_MAX+'. ','Your military power: '+pw+'/'+ARMY_MAX+'. ')
+   +(pw>=70?t('Tu es en état de les recevoir.','You are in shape to meet them.')
+           :t('C\'est trop peu. Camp militaire, escouade, chef de guerre : construis-les avant mardi.',
+              'That is not enough. Military camp, warrior squad, warlord: build them before Tuesday.'))
+   +'</b></p></div>';
+}
+/* le village en cendres : qui survit, ce qu'il reste debout */
+function burnVillage(){
+  const dead=[], alive=[];
+  (S.people||[]).forEach(r=>{
+    // les enfants ont couru se cacher ; les guerriers ont couvert la retraite
+    const chance=isChild(r)?0.85:(r.job==='garde'?0.35:0.2);
+    (Math.random()<chance?alive:dead).push(r);
+  });
+  if(!alive.length&&dead.length) alive.push(dead.pop());   // il reste toujours un témoin
+  alive.forEach(r=>{ r.home='founder'; r.love=null; r.loveAt=0;
+    remember(r,'🔥 '+t('A survécu à l\'incendie du village.','Survived the burning of the village.'),
+                '🔥 Survived the burning of the village.');
+    nudgeMood(r,-0.6); });
+  S.people=alive;
+  // les bâtiments partent en fumée : on garde le feu de camp et un toit
+  S.stack={};
+  S.village=['feu'];            // il ne reste que le feu de camp au milieu des cendres
+  S.res={food:0,wood:0,iron:0};
+  S.vpos={}; S.vrot={}; S.vacated={};
+  S.army={x:null,z:null,f:'ligne'};
+  S.burned=Date.now();
+  S.dead=(S.dead||[]).concat(dead.map(r=>nameOf(r))).slice(-40);
+  dead.forEach(r=>chron('🔥 '+nameOf(r)+t(' est tombé en défendant le village.',' fell defending the village.'),
+                        '🔥 '+nameOf(r)+' fell defending the village.'));
+  chron('🔥 '+t('Le village a été brûlé. '+dead.length+' morts.','The village was burned. '+dead.length+' dead.'),
+        '🔥 The village was burned. '+dead.length+' dead.');
+  syncPeople();
+  return {dead:dead.map(r=>nameOf(r)), alive:alive.length};
+}
+/* les flammes sur la scène, juste avant l'écran de fin */
+function torchVillage(scene){
+  if(!scene) return;
+  const fm=new THREE.MeshBasicMaterial({color:COL.fire});
+  Object.keys(V3.place||{}).forEach(k=>{
+    const g=V3.place[k]; if(!g) return;
+    for(let i=0;i<3;i++){
+      const f=new THREE.Mesh(new THREE.ConeGeometry(2.2+Math.random()*1.8,7+Math.random()*6,6),fm);
+      f.position.set(g.position.x+(Math.random()-0.5)*9, 4+Math.random()*5, g.position.z+(Math.random()-0.5)*9);
+      f.name='burn'; scene.add(f);
+    }
+  });
+  scene.fog=new THREE.Fog(0x6b4a3a,140,520);
+  scene.background=new THREE.Color(0x5a3a2c);
+}
+/* le mémorial, tant que le village est en ruines */
+function ruinsHtml(){
+  if(!S.burned) return '';
+  const d=(S.dead||[]);
+  return '<div class="panel finalwarn" style="margin-bottom:12px"><div class="rbtitle">🔥 '
+   +t('LE VILLAGE A BRÛLÉ','THE VILLAGE BURNED')+'</div>'
+   +'<p class="small" style="margin:6px 0 8px">'
+   +t('César est passé. Il reste des cendres, quelques survivants, et tout à rebâtir.',
+      'Caesar came through. Ashes, a few survivors, and everything to rebuild.')+'</p>'
+   +(d.length?'<p class="small" style="margin:0"><b>'+t('Tombés :','Fallen:')+'</b> '+esc(d.join(', '))+'</p>':'')
+   +'</div>';
+}
 /* on peut être attaqué une fois par jour */
 function raidReady(){
   S.raid=S.raid||{day:'',won:0,lost:0};
   return S.raid.day!==todayStr();
 }
 function raidAsk(){
+  if(finalDue()) return finalAsk();
   if(!S.village.includes('guerriers')&&armyPower()<10){
     toast('⚔️ '+t('Ton village n\'a rien pour se défendre. Construis au moins une palissade.',
                   'Your village has nothing to defend itself with. Build at least a palisade.')); return; }
@@ -5913,7 +6023,28 @@ function raidAsk(){
     +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay()">'
     +t('Pas aujourd\'hui','Not today')+'</button></div>');
 }
-function raidStart(){
+function finalAsk(){
+  const F=legionForce(), pw=armyPower();
+  showOverlay('🔥', t('L\'ASSAUT FINAL','THE FINAL ASSAULT'),
+    t('L\'heure est venue. <b>'+F.n+' légionnaires et '+F.boss+' centurions</b> sont devant le village.',
+      'The hour has come. <b>'+F.n+' legionaries and '+F.boss+' centurions</b> stand before the village.')
+    +'<br><br><b style="color:var(--stop)">'
+    +t('Si tu perds : le village brûle, et la plupart de tes habitants meurent. Définitivement.',
+       'If you lose: the village burns, and most of your villagers die. For good.')+'</b>'
+    +'<br><br>'+t('Puissance militaire : <b>'+pw+'/'+ARMY_MAX+'</b>.','Military power: <b>'+pw+'/'+ARMY_MAX+'</b>.')
+    +'<div class="menu" style="margin-top:14px">'
+    +'<button class="btn btn-stop" style="justify-content:center" onclick="G.hideOverlay();G.raidStart(1)">🔥 '
+    +t('LES AFFRONTER','FACE THEM')+'</button>'
+    +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay()">'
+    +t('Encore un instant','One more moment')+'</button></div>');
+}
+function raidStart(isFinal){
+  if(isFinal){
+    if(!finalDue()) return;
+    clearTimeout(V3.raidT); V3.raidT=0;
+    V3.raidPending=1; V3.pendFinal=1;
+    render(); return;
+  }
   if(!raidReady()) return;
   clearTimeout(V3.raidT); V3.raidT=0;   // pas de rendu différé qui viendrait tuer la bataille
   S.raid=S.raid||{day:'',won:0,lost:0};
@@ -5944,6 +6075,13 @@ function raidBuild(scene){
     if(w.userData.fx) w.userData.fx.visible=false;
     add(w,'gaul',kind);
   });
+  // --- murs et entraînement : ils ne donnaient qu'un pourcentage à l'écran.
+  // Ici ils rendent chaque défenseur réellement plus dur à abattre.
+  const fort=1+(S.village.includes('muraille')?0.35:0)
+              +(S.village.includes('palissade')?0.15:0)
+              +(S.village.includes('entrainement')?0.15:0);
+  if(fort>1) units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
+    u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); } });
   // --- les guerriers de l'escouade quittent leur groupe pour se battre
   ['guerriers','chefguerre'].forEach(key=>{
     const grp=V3.place&&V3.place[key]; if(!grp) return;
@@ -5955,16 +6093,33 @@ function raidBuild(scene){
       add(w,'gaul',key==='chefguerre'?'chef':'guerrier',V.x,V.z);
     });
   });
+  // --- la garnison : le camp militaire et le terrain d'entraînement ne sont
+  // plus des chiffres, ils sortent des hommes sur le terrain
+  const garrison=(S.village.includes('camp')?2:0)+(S.village.includes('entrainement')?1:0);
+  if(garrison){
+    const base=(V3.place&&V3.place['camp'])||(V3.place&&V3.place['entrainement']);
+    const bx=base?base.position.x:0, bz=base?base.position.z:40;
+    for(let i=0;i<garrison;i++){
+      const w=warrior(i+4,false); w.name='guard';
+      scene.add(w);
+      const u=add(w,'gaul','guerrier',bx+(i-1)*13,bz+16);
+      if(fort>1){ u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); }
+    }
+  }
   // --- la colonne romaine, alignée au sud, hors du village
-  const F=romanForce();
+  const fin=!!V3.pendFinal; V3.pendFinal=0;
+  const F=fin?legionForce():romanForce();
   for(let i=0;i<F.n;i++){
     const g=legionary(i,false);
-    const x=(i-(F.n-1)/2)*13, z=178;
+    const row=Math.floor(i/6), col=i%6;
+    const x=(col-2.5)*13, z=178+row*15;
     scene.add(g);
     add(g,'rome','legion',x,z);
   }
-  if(F.boss){ const g=legionary(0,true); scene.add(g); add(g,'rome','centurion',0,196); }
-  V3.raid={units, t:0, over:0, spark:[]};
+  const nb=F.boss===true?1:(F.boss||0);
+  for(let i=0;i<nb;i++){ const g=legionary(i,true); scene.add(g);
+    add(g,'rome','centurion',(i-(nb-1)/2)*20,205); }
+  V3.raid={units, t:0, over:0, spark:[], final:fin};
   // quelques éclats réutilisés pour marquer les coups
   for(let i=0;i<5;i++){
     const sp=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,0),
@@ -6094,6 +6249,7 @@ function raidEnd(win){
   const R=V3.raid; if(!R||R.over) return;
   R.over=1;
   S.raid=S.raid||{day:todayStr(),won:0,lost:0};
+  if(R.final) return finalEnd(win);
   const F=romanForce();
   if(win){
     S.raid.won=(S.raid.won||0)+1;
@@ -6132,8 +6288,59 @@ function raidEnd(win){
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },900);
 }
-function raidAbort(){ V3.raid=null; V3.raidPending=0; }
+/* l'issue du jour J : gloire, ou cendres */
+function finalEnd(win){
+  if(win){
+    S.finalDone='won';
+    gainCoins(600); gainXp(400);
+    S.res=S.res||{food:0,wood:0,iron:0};
+    ['food','wood','iron'].forEach(k=>{ S.res[k]=(S.res[k]||0)+40; });
+    (S.people||[]).forEach(r=>nudgeMood(r,1));
+    chron('🏆 '+t('LA LÉGION A ÉTÉ BRISÉE. Le village est libre.','THE LEGION WAS BROKEN. The village is free.'),
+          '🏆 THE LEGION WAS BROKEN. The village is free.');
+    SFX.win(); confetti(320);
+    showOverlay('🏆', t('Le village est sauvé','The village is saved'),
+      t('La légion est brisée. Pas une hutte n\'a brûlé, pas un habitant n\'est tombé.',
+        'The legion is broken. Not one hut burned, not one villager fell.')
+      +'<br><br>'+t('<b>+600 🪙</b>, <b>+400 XP</b> et 40 de chaque ressource. Va décrocher ce permis.',
+                    '<b>+600 🪙</b>, <b>+400 XP</b> and 40 of every resource. Now go and get that licence.'));
+  }else{
+    S.finalDone='lost';
+    const r=burnVillage();
+    torchVillage(V3.scene);
+    SFX.ko();
+    showOverlay('🔥', t('Le village est en cendres','The village is ashes'),
+      t('La légion a franchi la palissade. <b>'+r.dead.length+' habitants sont morts</b>, '
+        +r.alive+' ont survécu. Les bâtiments ont brûlé.',
+        'The legion broke through. <b>'+r.dead.length+' villagers are dead</b>, '
+        +r.alive+' survived. The buildings burned.')
+      +(r.dead.length?'<br><br><i style="color:var(--dim)">'+esc(r.dead.join(', '))+'</i>':'')
+      +'<br><br>'+t('Il reste des cendres et de quoi recommencer. Rien n\'empêche de rebâtir — mais eux ne reviendront pas.',
+                    'Ashes remain, and enough to start again. Nothing stops you rebuilding — but they are not coming back.'));
+  }
+  checkBadges(); save();
+  V3.raid=null;
+  clearTimeout(V3.raidT);
+  V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?900:2600);
+}
+function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; }
 function raidBtnHtml(){
+  if(finalDue()){
+    const F=legionForce();
+    return '<div class="raidbox finalwarn">'
+     +'<div class="rbtitle">🔥 '+t('L\'ASSAUT FINAL EST LÀ','THE FINAL ASSAULT IS HERE')+'</div>'
+     +'<p class="small" style="margin:6px 0 8px">'
+     +t('<b>'+F.n+' légionnaires et '+F.boss+' centurions</b> sont devant la palissade. '
+        +'Si tu perds, le village brûle et la plupart des habitants meurent — définitivement.',
+        '<b>'+F.n+' legionaries and '+F.boss+' centurions</b> are at the palisade. '
+        +'If you lose, the village burns and most of the villagers die — for good.')+'</p>'
+     +'<button class="btn btn-stop" style="justify-content:center" onclick="G.raidAsk()">🔥 '
+     +t('LES AFFRONTER','FACE THEM')+'</button></div>';
+  }
+  if(S.finalDone==='won') return '<div class="raidbox" style="border-color:var(--exit);background:#0d2016">'
+    +'<div class="rbtitle" style="color:var(--exit)">🏆 '+t('LA LÉGION A ÉTÉ BRISÉE','THE LEGION WAS BROKEN')+'</div>'
+    +'<p class="small" style="margin:6px 0 0">'+t('Le village a tenu le jour J. Il n\'y a plus rien à craindre de Rome.',
+      'The village held on the day. There is nothing left to fear from Rome.')+'</p></div>';
   const F=romanForce(), ready=raidReady(), r=S.raid||{};
   return '<div class="raidbox">'
    +'<div class="rbtitle">🏛️ '+t('CÉSAR À L\'HORIZON','CAESAR ON THE HORIZON')+'</div>'
@@ -6192,6 +6399,8 @@ function scrVillage(){
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
    +cdHtml()
    +v3dHost()
+   +ruinsHtml()
+   +finalWarnHtml()
    +vTabBar()
    +'<div id="vtabs">'+vTabBody()+'</div>';
   return v;
@@ -6242,9 +6451,33 @@ function vDefenceHtml(){
       :t('Village vulnérable ! Construis la forge, puis le camp militaire.','Village vulnerable! Build the forge, then the military camp.'))
    +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p>'
    +(owned.includes('guerriers')?armyOrdersHtml():'')
+   +fortHtml()
    +raidBtnHtml()
    +'</div>'
    +fightGuideHtml();
+}
+/* ce que les murs et le camp apportent CONCRÈTEMENT sur le champ de bataille */
+function fortHtml(){
+  const w=S.village.includes('muraille'), pa=S.village.includes('palissade'),
+        en=S.village.includes('entrainement'), ca=S.village.includes('camp');
+  const fort=Math.round((( w?0.35:0)+(pa?0.15:0)+(en?0.15:0))*100);
+  const gar=(ca?2:0)+(en?1:0);
+  const line=(on,ic,fr,ent)=>'<div class="frow'+(on?' on':'')+'"><span>'+ic+'</span><span>'
+    +esc(t(fr,ent))+'</span><b>'+(on?'✔':'—')+'</b></div>';
+  return '<div class="fortbox">'
+   +'<div class="rbtitle" style="color:var(--ink)">🧱 '+t('CE QUE TES DÉFENSES CHANGENT','WHAT YOUR DEFENCES ACTUALLY DO')+'</div>'
+   +line(pa,'🪵',t('Palissade — +15 % de points de vie à tous','Palisade — +15% hit points for everyone'),
+             'Palisade — +15% hit points for everyone')
+   +line(w,'🧱',t('Muraille — +35 % de points de vie à tous','Rampart — +35% hit points for everyone'),
+             'Rampart — +35% hit points for everyone')
+   +line(en,'🎯',t('Terrain d\'entraînement — +15 % et un guerrier de plus','Training ground — +15% and one more warrior'),
+             'Training ground — +15% and one more warrior')
+   +line(ca,'⛺',t('Camp militaire — deux guerriers de garnison','Military camp — two garrison warriors'),
+             'Military camp — two garrison warriors')
+   +'<p class="small" style="margin:8px 0 0"><b>'
+   +t('Total : +'+fort+' % de résistance et '+gar+' guerrier'+(gar>1?'s':'')+' de garnison.',
+      'Total: +'+fort+'% toughness and '+gar+' garrison warrior'+(gar>1?'s':'')+'.')
+   +'</b></p></div>';
 }
 /* qui encaisse quoi : la table des forces, consultable avant de sonner l'alarme */
 function fightGuideHtml(){
@@ -7233,7 +7466,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab};
+  raidAsk, raidStart, setTab, finalAsk};
 window.G=G;
 applyLang();
 touchDaily();
