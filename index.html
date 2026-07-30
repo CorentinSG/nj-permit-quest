@@ -386,11 +386,11 @@ html,body{overflow-x:hidden}
 /* ordres à la troupe */
 .armyord{border-top:1px dashed var(--edge);margin-top:12px}
 .formrow{display:flex;gap:8px}
-.formbtn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+.stancebtn,.formbtn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:10px 4px;border-radius:10px;border:2px solid var(--edge);background:var(--lane2);
   color:var(--dim);font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 .formbtn .fic{font-size:17px;line-height:1}
-.formbtn.on{border-color:var(--stop);background:#2A0E10;color:#FFB3B5}
+.stancebtn.on,.formbtn.on{border-color:var(--stop);background:#2A0E10;color:#FFB3B5}
 .formbtn:active{transform:translateY(2px)}
 .v3d.ordering{cursor:crosshair}
 .v3d.ordering .v3d-say{display:none}
@@ -443,6 +443,9 @@ html,body{overflow-x:hidden}
 .vtab.on{background:var(--ink);color:#12181f;border-color:var(--ink)}
 .vtab .vdot{position:absolute;top:3px;right:5px;font-style:normal;font-size:8px;
   background:var(--stop);color:#fff;border-radius:8px;padding:1px 4px}
+/* le métier, sous le nom, dans la liste des habitants */
+.folkc .fkj{display:block;font-size:11px;color:var(--ink);opacity:.9;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ce que valent les défenses */
 .fortbox{margin-top:12px;padding:10px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2)}
 .fortbox .frow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);padding:3px 0}
@@ -1582,7 +1585,7 @@ const defaults=()=>({
   feast:0,             // festins payés d'avance : butin ×1,5 sur la prochaine série
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   vacated:{},          // logement libéré par un emménagement -> quand
-  army:{x:null, z:null, f:'ligne'},   // point de rassemblement et formation
+  army:{x:null, z:null, f:'ligne', st:'rang'},  // rassemblement, formation, consigne
   flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
   blitzBest:0,
@@ -3711,6 +3714,24 @@ const TRAITS=[
    il ne donne pas un toit — voir DWELL juste en dessous. */
 const HOUSED={hutte:null, chasseur:'chasse', fermier:'ferme', bucheron:'bois', forge:'forge', taverne:'boire', ble:'moisson', poule:'poules',
   puits:'eau', chaudron:'potion', camp:'garde', entrainement:'garde', banquet:'boire', feu:'feu'};
+/* ---------- la garnison ----------
+   Une escouade n'est pas un décor : ce sont cinq personnes, avec un nom, un
+   caractère et une humeur, exactement comme le forgeron. Elles ne logent pas
+   dans une hutte — elles dorment au camp militaire. */
+const BARRACKS={guerriers:4, chefguerre:1};
+function soldierKeys(){
+  const out=[];
+  Object.keys(BARRACKS).forEach(id=>{
+    if(!S.village.includes(id)) return;
+    for(let i=0;i<BARRACKS[id];i++) out.push(id+'@'+i);
+  });
+  return out;
+}
+function isSoldierKey(k){ return /@\d+$/.test(String(k||'')); }
+function soldierJob(k){ return String(k).split('@')[0]==='chefguerre'?'chefdeguerre':'guerre'; }
+function isSoldier(rec){ return !!rec&&(rec.job==='guerre'||rec.job==='chefdeguerre'); }
+/* leur métier ne se renégocie pas : on ne réaffecte pas un guerrier au poulailler */
+const FIXED_JOBS={guerre:1, chefdeguerre:1, enfant:1};
 /* ---------- où l'on DORT ----------
    Seuls ces bâtiments sont des logements, et eux seuls font venir un habitant
    de plus au village. On n'habite ni un champ, ni un puits, ni une forge : on
@@ -3735,7 +3756,7 @@ function staffJobs(){
     const j=freeJob(); if(!j) break;
     const taken={};
     (S.people||[]).forEach(x=>{ if(!isChild(x)) taken[x.job]=(taken[x.job]||0)+1; });
-    const spare=(S.people||[]).find(x=>!isChild(x)&&x.job!==j
+    const spare=(S.people||[]).find(x=>!isChild(x)&&!FIXED_JOBS[x.job]&&x.job!==j
       &&(taken[x.job]||0)>Math.max(1,posts(x.job)));
     if(!spare) break;
     if(!setJob(spare,j)) break;
@@ -3771,6 +3792,7 @@ function hutJobPool(){
   return pool;
 }
 function jobForBuilding(id){
+  if(isSoldierKey(id)) return soldierJob(id);
   const base=id.split('#')[0];
   if(base==='hutte'){ const pool=hutJobPool(); return pool[Math.floor(Math.random()*pool.length)]; }
   return HOUSED[base]||'bois';
@@ -3800,12 +3822,12 @@ function housingKeys(){
     if(it.stack){ for(let i=0;i<nOwned(it.id);i++) keys.push(i?it.id+'#'+i:it.id); }
     else if(S.village.includes(it.id)) keys.push(it.id);
   });
-  return keys;
+  return keys.concat(soldierKeys());
 }
 /* toutes les clés de bâtiment existantes, logement ou non : sert à ne jamais
    effacer un habitant installé dans un ancien village */
 function allBuildingKeys(){
-  const keys=['founder'];
+  const keys=['founder'].concat(soldierKeys());
   SHOP.forEach(it=>{
     if(it.stack){ for(let i=0;i<nOwned(it.id);i++) keys.push(i?it.id+'#'+i:it.id); }
     else if(S.village.includes(it.id)) keys.push(it.id);
@@ -3820,7 +3842,8 @@ function dwellingHasRoom(key){
    relogés dès qu'un vrai toit se libère. Personne n'est supprimé : tant qu'il
    n'y a pas de place, ils restent où ils sont. */
 function rehouseWorkers(){
-  const stuck=(S.people||[]).filter(x=>x.home&&x.home!=='founder'&&!isDwelling(x.home)&&!isChild(x));
+  const stuck=(S.people||[]).filter(x=>x.home&&x.home!=='founder'
+    &&!isDwelling(x.home)&&!isChild(x)&&!isSoldier(x)&&!isSoldierKey(x.home));
   if(!stuck.length) return 0;
   const homes=housingKeys().filter(k=>k!=='founder');
   let n=0;
@@ -3847,7 +3870,8 @@ function syncPeople(){
   settleCouples();
   keys.forEach(k=>{ if(k==='founder') return;
     if(!S.people.some(p=>p.home===k)){
-      const np=newPerson(S.people.length,k,freeJob()||jobForBuilding(k));
+      const np=newPerson(S.people.length,k,
+        isSoldierKey(k)?soldierJob(k):(freeJob()||jobForBuilding(k)));
       S.people.push(np);
       np.dream=pickDream();
       const libre=S.vacated&&S.vacated[k];
@@ -3867,9 +3891,11 @@ function syncPeople(){
   rehouseWorkers();
   // un habitant dont le métier n'a plus de bâtiment se reconvertit
   S.people.forEach(p=>{
-    if(isChild(p)||jobAvailable(p.job)) return;
+    if(isChild(p)||FIXED_JOBS[p.job]||jobAvailable(p.job)) return;
     setJob(p, freeJob()||jobForBuilding(p.home||'hutte'));
   });
+  // un habitant installé sur une clé de garnison EST un soldat
+  S.people.forEach(p=>{ if(isSoldierKey(p.home)&&p.job!==soldierJob(p.home)) p.job=soldierJob(p.home); });
   staffJobs();
   save(); return S.people;
 }
@@ -4317,6 +4343,12 @@ const JOBS=[
  {k:'bois',   ic:'🪵',need:null,     n:'Bûcheron',ne:'Woodcutter',tool:'hache',say:['Du bois pour l\'hiver.','Cet arbre fera l\'affaire.','Ça fend bien !'],saye:['Wood for winter.','This tree will do.','Splits nicely!']},
  {k:'poules', ic:'🐔',need:'poule',  n:'Éleveuse',ne:'Keeper', tool:'panier',say:['Trois œufs ce matin !','Mes poules sont grasses.','Venez, mes belles !'],saye:['Three eggs this morning!','My hens are plump.','Come on, girls!']},
  {k:'potion', ic:'⚗️',need:'chaudron',n:'Apprenti druide',ne:'Druid apprentice',tool:'louche',say:['La potion bouillonne !','Il manque du gui.','Ne goûte pas !'],saye:['The potion bubbles!','We need mistletoe.','Do not taste it!']},
+ {k:'guerre', ic:'⚔️',need:'guerriers', n:'Guerrier',ne:'Warrior',tool:'lance',
+  say:['Qu\'ils viennent, on est prêts.','J\'affûte ma lance chaque soir.','Le camp est calme. Trop calme.'],
+  saye:['Let them come, we are ready.','I sharpen my spear every evening.','The camp is quiet. Too quiet.']},
+ {k:'chefdeguerre', ic:'👑',need:'chefguerre', n:'Chef de guerre',ne:'Warlord',tool:'lance',
+  say:['Mes hommes tiendront.','J\'ai vu la fumée de leurs feux au sud.','Un chef mange après ses guerriers.'],
+  saye:['My men will hold.','I saw the smoke of their fires to the south.','A chief eats after his warriors.']},
  {k:'enfant', ic:'🧒',need:null,  n:'Enfant',ne:'Child',tool:null,
   say:['On joue à cache-cache ?','Papa dit que je suis trop petit.','J\'ai attrapé une grenouille !'],
   saye:['Shall we play hide and seek?','Dad says I am too small.','I caught a frog!']},
@@ -4518,10 +4550,11 @@ function armyFits(x,z){
 }
 /* replace la troupe une fois TOUS les obstacles connus */
 function settleArmy(){
-  if(!S.army||S.army.x==null) return;
+  const want=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
+  if(!want) return;
   const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
   if(!a&&!c) return;
-  const sp=armySpot(S.army.x,S.army.z);
+  const sp=armySpot(want[0],want[1]);
   const rot=Math.atan2(sp[0],sp[1]);
   if(a){ a.position.set(sp[0],0,sp[1]); a.rotation.y=rot; }
   if(c){ c.position.set(sp[0],0,sp[1]-14); c.rotation.y=rot; }
@@ -4544,6 +4577,78 @@ const FORMATIONS=[
   {k:'coin',  ic:'▲', n:'En pointe',  ne:'Wedge'}
 ];
 function formationOf(){ return (S.army&&S.army.f)||'ligne'; }
+/* ---------- la consigne du jour ----------
+   Au-delà du « où » (le point de rassemblement) et du « comment » (la
+   formation), on décide de ce que la troupe FAIT. Chaque consigne place la
+   troupe à un endroit qui a du sens ; la nuit, tout le monde rentre au camp. */
+const STANCES=[
+ {k:'rang',   ic:'▦', n:'En rang',    ne:'Formed up',
+  d:'Ils tiennent la position, tournés vers l\'extérieur.',
+  de:'They hold position, facing outward.'},
+ {k:'garde',  ic:'🛡️', n:'En garde',   ne:'On guard',
+  d:'Ils se postent à l\'entrée sud du village, là où arrivent les Romains.',
+  de:'They post up at the southern approach, where the Romans come from.'},
+ {k:'patrouille', ic:'🚶', n:'Patrouille', ne:'Patrol',
+  d:'Ils font le tour du village, un côté après l\'autre.',
+  de:'They circle the village, one side after another.'},
+ {k:'repos',  ic:'🍺', n:'Au repos',   ne:'At ease',
+  d:'Ils rejoignent le feu de camp. L\'humeur remonte, la garde est baissée.',
+  de:'They fall back to the campfire. Morale rises, the guard is down.'}
+];
+function stanceOf(){ return (S.army&&S.army.st)||'rang'; }
+function setStance(k){
+  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
+  S.army.st=k; save(); SFX.click();
+  const st=STANCES.find(x=>x.k===k)||STANCES[0];
+  // la consigne se ressent : au repos on souffle, en garde on se tend
+  soldiersAll().forEach(r=>nudgeMood(r, k==='repos'?0.2 : k==='patrouille'?-0.03 : 0));
+  toast(st.ic+' '+t(st.n+' — '+t(st.d,st.de), st.ne+' — '+t(st.d,st.de)));
+  if(CUR.screen==='village') render();
+}
+/* où la troupe doit se trouver, selon la consigne et l'heure */
+function stancePoint(){
+  if(routine()==='sleep'){                       // la nuit, tout le monde rentre
+    const c=V3.place&&(V3.place['camp']||V3.place['entrainement']);
+    if(c) return [c.position.x, c.position.z+18];
+  }
+  const st=stanceOf();
+  if(st==='garde') return [0,150];
+  if(st==='repos'){ const f=V3.place&&V3.place['feu'];
+    return f?[f.position.x+22, f.position.z+18]:[24,20]; }
+  if(st==='patrouille'){
+    const ring=[[0,150],[150,0],[0,-150],[-150,0]];
+    return ring[(V3.patI||0)%4];
+  }
+  return null;                                    // « en rang » : le joueur décide
+}
+/* La patrouille change de poste toutes les vingt secondes. Sans ça la troupe
+   n'y allait qu'au prochain rendu de l'écran : elle ne patrouillait donc jamais
+   vraiment. Ici elle marche, à pied, d'un côté du village à l'autre. */
+function armyPatrolTick(dt){
+  if(stanceOf()!=='patrouille'||(S.army&&S.army.x!=null)) return;
+  const pt=stancePoint(); if(!pt) return;
+  const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
+  if(!a&&!c) return;
+  const g=a||c;
+  const dx=pt[0]-g.position.x, dz=pt[1]-g.position.z;
+  const d=Math.hypot(dx,dz);
+  if(d<6){                                   // poste atteint : on souffle, puis on passe au suivant
+    V3.patT=(V3.patT||0)+dt;
+    if(V3.patT>4){ V3.patT=0; V3.patI=((V3.patI||0)+1)%4; }
+    return;
+  }
+  V3.patT=0;
+  const step=Math.min(d, 26*dt);
+  const ux=dx/d, uz=dz/d;
+  const face=Math.atan2(ux,uz);
+  if(a){ a.position.x+=ux*step; a.position.z+=uz*step; a.rotation.y=face; }
+  if(c){ c.position.x+=ux*step; c.position.z+=uz*step; c.rotation.y=face; }
+}
+function soldiersOf(id){
+  return (S.people||[]).filter(x=>String(x.home||'').split('@')[0]===id)
+    .sort((a,b)=>String(a.home).localeCompare(String(b.home)));
+}
+function soldiersAll(){ return (S.people||[]).filter(isSoldier); }
 function formationSlots(n){
   const f=formationOf(), out=[];
   for(let i=0;i<n;i++){
@@ -4637,9 +4742,13 @@ Object.assign(B3,{
   guerriers(){ const g=new THREE.Group();
     // la formation choisie décide de la disposition et de l'orientation
     const F=formationSlots(4);
+    const men=soldiersOf('guerriers');
     F.forEach((p,i)=>{
       const w=warrior(i+2,false); w.position.set(p[0],0,p[1]);
-      w.rotation.y=p[2]; w.name='guard'; w.userData.p=i*0.7; g.add(w); });
+      w.rotation.y=p[2]; w.name='guard'; w.userData.p=i*0.7;
+      // on lui accroche son identité : toucher le guerrier ouvre SA fiche
+      if(men[i]){ w.userData.rec=men[i]; w.userData.npc=1; }
+      g.add(w); });
     return g; },
   tour(){ const g=new THREE.Group();
     g.add(at(cyl(6,7.5,26,COL.stone,10),0,13,0));
@@ -4717,7 +4826,10 @@ Object.assign(B3,{
     arm.position.set(0,12,2); arm.rotation.x=-0.9; arm.name='arm'; g.add(arm);
     return g; },
   chefguerre(){ const g=new THREE.Group();
-    const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard'; g.add(w);
+    const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard';
+    const chef=soldiersOf('chefguerre')[0];
+    if(chef){ w.userData.rec=chef; w.userData.npc=1; }
+    g.add(w);
     g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
       new THREE.MeshLambertMaterial({color:0xd4b23c,side:THREE.DoubleSide}));
@@ -4777,8 +4889,9 @@ function buildVillage(scene){
     if(it.stack) return;   // déjà traités ci-dessus
     let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
     // l'armée obéit à son ordre de rassemblement
-    if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null){
-      p=[S.army.x, S.army.z+(it.id==='chefguerre'?-14:0)];
+    if(it.id==='guerriers'||it.id==='chefguerre'){
+      const sp=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
+      if(sp) p=[sp[0], sp[1]+(it.id==='chefguerre'?-14:0)];
     }
     if(owned.includes(it.id)){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
@@ -4786,8 +4899,10 @@ function buildVillage(scene){
       if(S.vrot&&S.vrot[it.id]!=null) g.rotation.y=S.vrot[it.id];
       else g.rotation.y=Math.round(g.rotation.y/ROT_STEP)*ROT_STEP;
       // la troupe fait face à l'extérieur du village : c'est de là que vient César
-      if((it.id==='guerriers'||it.id==='chefguerre')&&S.army&&S.army.x!=null)
-        g.rotation.y=Math.atan2(S.army.x,S.army.z);
+      if(it.id==='guerriers'||it.id==='chefguerre'){
+        const sp=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
+        if(sp) g.rotation.y=Math.atan2(sp[0],sp[1]);
+      }
       scene.add(g); anim.push(g);
       if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
     }else if(it.id!=='palissade'){
@@ -4890,7 +5005,9 @@ function buildVillage(scene){
   // un poste de travail ne doit pas tomber DANS le bâtiment : sinon l'habitant
   // se ferait repousser en boucle et n'arriverait jamais
   spots.forEach(sp=>{ const f=pushOutOfSolids(sp.x,sp.z,4.2); sp.x=f[0]; sp.z=f[1]; });
-  const folk=syncPeople();
+  // les soldats ne sont pas des promeneurs : ils sont rendus dans leur caserne
+  // et pilotés par les ordres de l'armée, pas par le système de postes de travail
+  const folk=syncPeople().filter(r=>!isSoldier(r));
   const n=Math.min(16,folk.length), walkers=[];
   // lieux de repos : les huttes servent de maisons pour la nuit
   const homes=[]; for(let i=0;i<Math.max(1,hutCount());i++){
@@ -4902,6 +5019,12 @@ function buildVillage(scene){
   /* le lit de chacun : le seuil de SON logement. Un couple qui a emménagé
      ensemble rentre donc au même toit, et les enfants chez leurs parents. */
   const bedFor=(rec,i)=>{
+    // un soldat dort au camp militaire, jamais dans une hutte
+    if(isSoldier(rec)){
+      const c=V3.place&&(V3.place['camp']||V3.place['entrainement']||V3.place['guerriers']);
+      if(c){ const cp=pushOutOfSolids(c.position.x+(i%3-1)*11, c.position.z+14, 4.2);
+             return {x:cp[0], z:cp[1]}; }
+    }
     // le chef dort près du feu, au milieu de son village
     const key=(rec&&rec.home)==='founder' ? 'feu' : (rec&&rec.home);
     const g=key&&V3.place&&V3.place[key];
@@ -5208,7 +5331,10 @@ function v3dInit(){
     return ray.ray.intersectPlane(plane,hit)?hit.clone():null; };
 
   const pickNpc=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
-    const hits=ray.intersectObjects(built.walkers,true);
+    // les guerriers de l'escouade vivent dans leur groupe, pas dans built.walkers
+    const targets=built.walkers.concat(
+      ['guerriers','chefguerre'].map(k=>V3.place&&V3.place[k]).filter(Boolean));
+    const hits=ray.intersectObjects(targets,true);
     for(const h of hits){ let o=h.object; while(o&&!o.userData.npc) o=o.parent; if(o) return o; }
     return null; };
   V3.pickNpc=pickNpc;
@@ -5618,6 +5744,7 @@ function v3dInit(){
       }
     });
     }
+    if(!V3.raid) armyPatrolTick(dt);
     if(V3.raid){ raidCamFollow(dt); raidTick(dt,tt,scene); }
     else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
@@ -6617,6 +6744,9 @@ function goHome(){
 }
 /* fiche détaillée d'un habitant */
 function homeLabel(rec){
+  if(isSoldierKey(rec.home)) return S.village.includes('camp')
+    ? t('le camp militaire','the military camp')
+    : t('le cantonnement de l\'escouade','the squad\'s quarters');
   if(!rec.home||rec.home==='founder') return t('la maison du chef','the chief\'s house');
   const base=rec.home.split('#')[0], it=SHOP.find(x=>x.id===base);
   const num=rec.home.includes('#')?' n°'+(+rec.home.split('#')[1]+1):'';
@@ -6627,7 +6757,7 @@ function showPerson(rec,obj){
   const dr=dreamOf(rec), mt=mentorOf(rec), st=studentsOf(rec), mem=rec.mem||[];
   const kids=childrenOf(rec), par=parentsOf(rec);
   const rv=rec.rival?(S.people||[]).find(x=>x.id===rec.rival):null;
-  const job=obj&&obj.userData.job?obj.userData.job:null;
+  const job=(obj&&obj.userData.job)||JOBS.find(j=>j.k===rec.job)||null;
   const d=daysIn(rec);
   const mode=routine(), doing={work:t('au travail','at work'),eat:t('à table','eating'),
     social:t('à la veillée','at the evening gathering'),sleep:t('endormi','asleep')}[mode];
@@ -6684,6 +6814,20 @@ function happyHtml(rec){
   return h+'</div>';
 }
 /* ---------- ordres à la troupe ---------- */
+/* la liste nominative de la garnison, touchable */
+function garrisonHtml(){
+  const men=soldiersAll(); if(!men.length) return '';
+  return '<div class="eyebrow" style="margin:12px 0 6px">⚔️ '+t('LA GARNISON','THE GARRISON')+' · '+men.length+'</div>'
+   +'<div class="folk">'+men.map(r=>{
+      const job=JOBS.find(j=>j.k===r.job)||{}, tr=traitOf(r.tr), hp=happinessOf(r).pct;
+      return '<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
+       +'<span class="fkn">'+esc(nameOf(r))+'</span>'
+       +'<span class="fkj">'+(job.ic||'⚔️')+' '+esc(t(job.n||'',job.ne||''))+'</span>'
+       +'<span class="fkt">'+moodIcon(r)+' '+esc(t(tr.n,tr.ne))+'</span>'
+       +'<span class="fkbar"><i style="width:'+hp+'%;background:'+(hp>=70?'#33B268':hp>=40?'#E0A800':'#E5383B')+'"></i></span>'
+       +'</button>';
+    }).join('')+'</div>';
+}
 function armyOrdersHtml(){
   const a=S.army||{}, placed=(a.x!=null);
   let h='<div class="armyord"><div class="eyebrow" style="margin:12px 0 8px">📣 '
@@ -6694,6 +6838,16 @@ function armyOrdersHtml(){
       +'<span class="fic">'+f.ic+'</span>'+esc(t(f.n,f.ne))+'</button>';
   });
   h+='</div>'
+   +'<div class="eyebrow" style="margin:12px 0 8px">🎖️ '+t('CONSIGNE','STANDING ORDER')+'</div>'
+   +'<div class="formrow">'
+   +STANCES.map(x=>'<button class="stancebtn'+(stanceOf()===x.k?' on':'')+'" onclick="G.setStance(\''+x.k+'\')">'
+      +'<span class="fic">'+x.ic+'</span>'+esc(t(x.n,x.ne))+'</button>').join('')
+   +'</div>'
+   +'<p class="small" style="margin:8px 0 0">'
+   +esc(t((STANCES.find(x=>x.k===stanceOf())||STANCES[0]).d,(STANCES.find(x=>x.k===stanceOf())||STANCES[0]).de))
+   +(routine()==='sleep'?' <b>'+t('(la nuit, ils rentrent au camp)','(at night they return to camp)')+'</b>':'')
+   +'</p>'
+   +garrisonHtml()
    +'<div class="menu" style="margin-top:10px">'
    +'<button class="btn '+(V3.order?'btn-bus':'btn-stop')+'" style="justify-content:center" onclick="G.armyOrder()">'
      +(V3.order?t('👆 TOUCHE LE SOL…','👆 TAP THE GROUND…'):t('📣 ORDONNER LE RASSEMBLEMENT','📣 ORDER THE MUSTER'))+'</button>'
@@ -6717,8 +6871,11 @@ function peopleHtml(){
    +t('LES HABITANTS','THE VILLAGERS')+' · '+list.length+'</div><div class="folk">';
   list.forEach(r=>{
     const bf=bestFriend(r), tr=traitOf(r.tr), hp=happinessOf(r).pct;
+    const job=JOBS.find(j=>j.k===r.job)||{};
     h+='<button class="folkc" onclick="G.showPerson('+JSON.stringify(r.id).replace(/"/g,'&quot;')+')">'
      +'<span class="fkn">'+esc(nameOf(r))+'</span>'
+     +'<span class="fkj">'+(isChild(r)?'🧒 '+t('Enfant','Child')
+        :(job.ic||'🧑')+' '+esc(t(job.n||'',job.ne||'')))+'</span>'
      +'<span class="fkt">'+moodIcon(r)+' '+esc(isChild(r)?t('enfant','child'):t(tr.n,tr.ne))+'</span>'
      +'<span class="fkbar"><i style="width:'+hp+'%;background:'+(hp>=70?'#33B268':hp>=40?'#E0A800':'#E5383B')+'"></i></span>'
      +'<span class="fkb">'+(loveOf(r)?'💛 '+esc(loveOf(r).name)
@@ -6954,6 +7111,12 @@ function buy(id){
     const a=orientPath(key); if(a!=null) save();
     toast(it.ic+' '+t('Dalle posée au centre du village — touche <b>DÉPLACER</b> pour la glisser où tu veux.',
                       'Slab laid at the centre of the village — tap <b>MOVE</b> to drag it wherever you like.'));
+  }else if(BARRACKS[id]){
+    const men=soldiersOf(id);
+    toast(it.ic+' '+(men.length
+      ? t('<b>'+esc(men.map(x=>nameOf(x)).join(', '))+'</b> rejoign'+(men.length>1?'ent':'t')+' la garnison.',
+          '<b>'+esc(men.map(x=>nameOf(x)).join(', '))+'</b> join'+(men.length>1?'':'s')+' the garrison.')
+      : t('Recrutement effectué.','Recruited.')));
   }else if(HOUSED[id]){
     const j=JOBS.find(x=>x.k===HOUSED[id]);
     const who=(S.people||[]).find(x=>x.job===HOUSED[id]&&!isChild(x));
@@ -7529,7 +7692,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall};
+  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance};
 window.G=G;
 /* ---------- hors-ligne ----------
    Le service worker garde l'application entière en cache. Une fois ouverte une
