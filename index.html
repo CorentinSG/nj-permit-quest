@@ -6090,13 +6090,17 @@ function finalWarnHtml(){
 }
 /* le village en cendres : qui survit, ce qu'il reste debout */
 function burnVillage(){
-  const dead=[], alive=[];
-  (S.people||[]).forEach(r=>{
-    // les enfants ont couru se cacher ; les guerriers ont couvert la retraite
-    const chance=isChild(r)?0.85:(r.job==='garde'?0.35:0.2);
-    (Math.random()<chance?alive:dead).push(r);
-  });
-  if(!alive.length&&dead.length) alive.push(dead.pop());   // il reste toujours un témoin
+  /* le sac du village n'est pas un tirage au sort village par village : la
+     plupart tombent, toujours. Le hasard décide seulement de QUI s'en sort,
+     pondéré par les chances de chacun — les enfants ont couru se cacher,
+     les gardes ont couvert la retraite, les soldats sont morts au combat. */
+  const chanceOf=r=>isChild(r)?0.85:(r.job==='garde'?0.35:(isSoldier(r)?0.15:0.2));
+  const folk=(S.people||[]).map(r=>({r,key:Math.random()*chanceOf(r)}))
+                           .sort((a,b)=>b.key-a.key).map(x=>x.r);
+  const pop=folk.length;
+  // une poignée de rescapés, jamais la moitié : au moins un témoin des cendres
+  const k=Math.max(1,Math.min(Math.round(pop*0.28),Math.floor((pop-1)/2)));
+  const alive=folk.slice(0,Math.min(k,pop)), dead=folk.slice(Math.min(k,pop));
   alive.forEach(r=>{ r.home='founder'; r.love=null; r.loveAt=0;
     remember(r,'🔥 '+t('A survécu à l\'incendie du village.','Survived the burning of the village.'),
                 '🔥 Survived the burning of the village.');
@@ -6107,7 +6111,7 @@ function burnVillage(){
   S.village=['feu'];            // il ne reste que le feu de camp au milieu des cendres
   S.res={food:0,wood:0,iron:0};
   S.vpos={}; S.vrot={}; S.vacated={};
-  S.army={x:null,z:null,f:'ligne'};
+  S.army={x:null,z:null,f:'ligne',st:'rang'};
   S.burned=Date.now();
   S.dead=(S.dead||[]).concat(dead.map(r=>nameOf(r))).slice(-40);
   dead.forEach(r=>chron('🔥 '+nameOf(r)+t(' est tombé en défendant le village.',' fell defending the village.'),
