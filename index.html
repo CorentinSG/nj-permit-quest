@@ -3212,9 +3212,9 @@ function v3dStop(){
   if(V3.ren){ V3.ren.dispose(); V3.ren.forceContextLoss&&V3.ren.forceContextLoss(); V3.ren=null; }
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
-function v3dTurn(d){ V3.auto=false; V3.rot+=d*Math.PI/180; }
+function v3dTurn(d){ V3.auto=false; V3.raidCam=0; V3.rot+=d*Math.PI/180; }
 const ZMIN=70, ZMAX=430, PANMAX=230;
-function v3dSetDist(d){ V3.dist=Math.max(ZMIN,Math.min(ZMAX,d)); V3.auto=false; }
+function v3dSetDist(d){ V3.dist=Math.max(ZMIN,Math.min(ZMAX,d)); V3.auto=false; V3.raidCam=0; }
 function v3dZoom(dir){ v3dSetDist(V3.dist*(dir>0?1.25:0.8)); SFX.click(); }
 /* recentrer : caméra d'origine, vue d'ensemble */
 function v3dReset(){ V3.px=0; V3.pz=0; V3.dist=265; V3.tilt=0.72; V3.auto=false; SFX.click();
@@ -5263,7 +5263,7 @@ function v3dInit(){
              if(e.cancelable) e.preventDefault(); return; }
     }
     // sinon : on empoigne le sol
-    V3.drag=true; V3.auto=false;
+    V3.drag=true; V3.auto=false; V3.raidCam=0;   // le joueur reprend la caméra
     V3.grab=groundAt(e);
     V3.lx=e.clientX; V3.ly=e.clientY;
     V3.rotDrag=(e.button===1||e.button===2||e.shiftKey);   // ordinateur : clic droit = pivoter
@@ -5345,7 +5345,7 @@ function v3dInit(){
     return Math.atan2(b2.clientY-a.clientY, b2.clientX-a.clientX); };
   /* deux doigts : pincer pour zoomer, tourner pour pivoter la vue */
   const tstart=e=>{ if(e.touches&&e.touches.length===2){
-    V3.pinch=pinchD(e); V3.pinchD0=V3.dist; V3.ang=pinchA(e);
+    V3.pinch=pinchD(e); V3.pinchD0=V3.dist; V3.ang=pinchA(e); V3.raidCam=0;
     V3.drag=false; V3.grab=null; V3.sel=null; V3.moved=true; V3.tapMax=999;
     if(e.cancelable) e.preventDefault(); } };
   const tmove=e=>{ if(V3.pinch&&e.touches&&e.touches.length===2){
@@ -5618,7 +5618,7 @@ function v3dInit(){
       }
     });
     }
-    if(V3.raid) raidTick(dt,tt,scene);
+    if(V3.raid){ raidCamFollow(dt); raidTick(dt,tt,scene); }
     else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
@@ -6097,9 +6097,10 @@ function raidBuild(scene){
   });
   // --- murs et entraînement : ils ne donnaient qu'un pourcentage à l'écran.
   // Ici ils rendent chaque défenseur réellement plus dur à abattre.
-  const fort=1+(S.village.includes('muraille')?0.35:0)
-              +(S.village.includes('palissade')?0.15:0)
-              +(S.village.includes('entrainement')?0.15:0);
+  const fort=1+(S.village.includes('muraille')?0.55:0)
+              +(S.village.includes('palissade')?0.20:0)
+              +(S.village.includes('entrainement')?0.20:0)
+              +(S.village.includes('camp')?0.15:0);
   if(fort>1) units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
     u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); } });
   // --- les guerriers de l'escouade quittent leur groupe pour se battre
@@ -6148,6 +6149,38 @@ function raidBuild(scene){
   }
   SFX.ko();
   raidBanner();
+  raidWatch();
+}
+/* ---------- on ne rate pas sa propre bataille ----------
+   Le bouton est en bas de l'onglet Défense : en appuyant dessus, la scène 3D
+   est hors écran et on ne voyait rien de l'assaut. On remonte donc à la vue,
+   on la cadre sur le champ de bataille, et la caméra suit la mêlée — jusqu'à
+   ce que le joueur touche l'écran, auquel cas il reprend la main pour de bon. */
+function raidWatch(){
+  V3.auto=false; V3.raidCam=1;
+  V3.px=0; V3.pz=78; V3.dist=305; V3.tilt=0.55; V3.rot=Math.PI;
+  if(V3.placeCam) V3.placeCam();
+  const host=document.getElementById('v3d');
+  if(host&&host.scrollIntoView) host.scrollIntoView({block:'center',behavior:'smooth'});
+  toast('⚔️ '+t('Ils arrivent par le sud — regarde la bataille. Glisse ou pince pour suivre.',
+                'They are coming from the south — watch the battle. Drag or pinch to follow.'));
+}
+/* la caméra glisse doucement vers le centre de la mêlée */
+function raidCamFollow(dt){
+  if(!V3.raidCam||!V3.raid) return;
+  const U=V3.raid.units.filter(u=>!u.dead);
+  if(!U.length) return;
+  let gx=0,gz=0,gn=0, rx=0,rz=0,rn=0;
+  U.forEach(u=>{ if(u.side==='gaul'){ gx+=u.g.position.x; gz+=u.g.position.z; gn++; }
+                 else{ rx+=u.g.position.x; rz+=u.g.position.z; rn++; } });
+  if(!gn||!rn) return;
+  const cx=(gx/gn+rx/rn)/2, cz=(gz/gn+rz/rn)/2;
+  const k=Math.min(1,dt*0.9);
+  V3.px+=(cx-V3.px)*k; V3.pz+=(cz+26-V3.pz)*k;
+  // on serre le cadre à mesure que les deux camps se rejoignent
+  const spread=Math.hypot(gx/gn-rx/rn, gz/gn-rz/rn);
+  const want=Math.max(150,Math.min(320,spread*1.6+130));
+  V3.dist+=(want-V3.dist)*k*0.6;
 }
 function raidSpark(x,z,y){
   const R=V3.raid; if(!R) return;
@@ -6304,7 +6337,7 @@ function raidEnd(win){
                     'Nobody died — but a military camp and a warrior squad would change everything. Come back tomorrow; so will they.'));
   }
   checkBadges(); save();
-  V3.raid=null;
+  V3.raid=null; V3.raidCam=0;
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },900);
 }
@@ -6339,11 +6372,11 @@ function finalEnd(win){
                     'Ashes remain, and enough to start again. Nothing stops you rebuilding — but they are not coming back.'));
   }
   checkBadges(); save();
-  V3.raid=null;
+  V3.raid=null; V3.raidCam=0;
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?900:2600);
 }
-function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; }
+function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; }
 function raidBtnHtml(){
   if(finalDue()){
     const F=legionForce();
@@ -6480,20 +6513,20 @@ function vDefenceHtml(){
 function fortHtml(){
   const w=S.village.includes('muraille'), pa=S.village.includes('palissade'),
         en=S.village.includes('entrainement'), ca=S.village.includes('camp');
-  const fort=Math.round((( w?0.35:0)+(pa?0.15:0)+(en?0.15:0))*100);
+  const fort=Math.round((( w?0.55:0)+(pa?0.20:0)+(en?0.20:0)+(ca?0.15:0))*100);
   const gar=(ca?2:0)+(en?1:0);
   const line=(on,ic,fr,ent)=>'<div class="frow'+(on?' on':'')+'"><span>'+ic+'</span><span>'
     +esc(t(fr,ent))+'</span><b>'+(on?'✔':'—')+'</b></div>';
   return '<div class="fortbox">'
    +'<div class="rbtitle" style="color:var(--ink)">🧱 '+t('CE QUE TES DÉFENSES CHANGENT','WHAT YOUR DEFENCES ACTUALLY DO')+'</div>'
-   +line(pa,'🪵',t('Palissade — +15 % de points de vie à tous','Palisade — +15% hit points for everyone'),
-             'Palisade — +15% hit points for everyone')
-   +line(w,'🧱',t('Muraille — +35 % de points de vie à tous','Rampart — +35% hit points for everyone'),
-             'Rampart — +35% hit points for everyone')
-   +line(en,'🎯',t('Terrain d\'entraînement — +15 % et un guerrier de plus','Training ground — +15% and one more warrior'),
-             'Training ground — +15% and one more warrior')
-   +line(ca,'⛺',t('Camp militaire — deux guerriers de garnison','Military camp — two garrison warriors'),
-             'Military camp — two garrison warriors')
+   +line(pa,'🪵',t('Palissade — +20 % de points de vie à tous','Palisade — +20% hit points for everyone'),
+             'Palisade — +20% hit points for everyone')
+   +line(w,'🧱',t('Muraille — +55 % de points de vie à tous','Rampart — +55% hit points for everyone'),
+             'Rampart — +55% hit points for everyone')
+   +line(en,'🎯',t('Terrain d\'entraînement — +20 % et un guerrier de plus','Training ground — +20% and one more warrior'),
+             'Training ground — +20% and one more warrior')
+   +line(ca,'⛺',t('Camp militaire — +15 % et deux guerriers de garnison','Military camp — +15% and two garrison warriors'),
+             'Military camp — +15% and two garrison warriors')
    +'<p class="small" style="margin:8px 0 0"><b>'
    +t('Total : +'+fort+' % de résistance et '+gar+' guerrier'+(gar>1?'s':'')+' de garnison.',
       'Total: +'+fort+'% toughness and '+gar+' garrison warrior'+(gar>1?'s':'')+'.')
