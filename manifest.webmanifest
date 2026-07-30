@@ -1,0 +1,17 @@
+{
+  "name": "ROUTE 440 — NJ Permit Quest",
+  "short_name": "ROUTE 440",
+  "description": "Entraînement gamifié au NJ MVC Knowledge Test — 416 questions, examens blancs et village gaulois.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C1118",
+  "theme_color": "#0C1118",
+  "lang": "fr",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0C1118">
+<meta name="description" content="Entraînement gamifié au NJ MVC Knowledge Test — 416 questions, examens blancs, village gaulois.">
+<!-- installable et jouable hors réseau : file d'attente à la MVC, métro, avion -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ROUTE 440">
 <title>ROUTE 440 — NJ Permit Quest</title>
 <style>
 @font-face{
@@ -410,6 +419,14 @@ html,body{overflow-x:hidden}
 .sbuy:active{transform:translateY(1px)}
 
 /* ---------- incontournables ---------- */
+/* invitation à installer l'application */
+.installbox{border-color:#3F6FB0;margin-bottom:12px}
+.installbox .ibrow{display:flex;align-items:center;gap:10px}
+.installbox .ibic{font-size:22px;flex:none;line-height:1}
+.installbox .ibtx{flex:1;min-width:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.installbox .sbuy{flex:none}
+.installbox .ibx{flex:none;background:none;border:0;color:var(--dim);font-size:16px;
+  padding:4px 2px;cursor:pointer;line-height:1}
 /* plan du jour */
 .planbox{border-color:#3F6FB0}
 .planbox .planrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--edge)}
@@ -1556,6 +1573,8 @@ const defaults=()=>({
   combo:0,             // série de bonnes réponses en cours, TOUTES épreuves confondues
   quests:{day:'', list:[]},   // les doléances du jour
   raid:{day:'',won:0,lost:0},  // l'attaque romaine du jour
+  hideInstall:0,       // l'invitation à installer a été écartée
+  installed:0,
   finalDone:'',        // '' | 'won' | 'lost' : l'assaut du jour J
   burned:0,            // quand le village a brûlé
   dead:[],             // les noms de ceux qui sont tombés
@@ -2749,6 +2768,7 @@ function scrHome(){
    +djLine
    +ruinsHtml()
    +finalWarnHtml()
+   +installHtml()
    +planHtml()
    +comboBanner()
    +'<div class="menu">'
@@ -7418,6 +7438,16 @@ function scrSettings(){
    +'<button class="langbtn'+(S.lang!=='en'?' on':'')+'" onclick="G.setLang(\'fr\')">🇫🇷 FR · m</button>'
    +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 EN · ft</button>'
    +'</span></div>'
+   +'<div class="setrow"><label>📲 '+t('Application','App')+'</label>'
+   +(isStandalone()
+      ?'<span class="sgot">✔ '+t('installée','installed')+'</span>'
+      :'<button class="sbuy" onclick="G.doInstall()">'+t('INSTALLER','INSTALL')+'</button>')+'</div>'
+   +'<p class="small" style="margin:0 0 10px">'
+   +(isStandalone()
+      ?t('Tu l\'utilises depuis l\'écran d\'accueil. Elle fonctionne sans réseau.',
+         'You are running it from the home screen. It works with no network.')
+      :t('Ajoutée à l\'écran d\'accueil, l\'application s\'ouvre en plein écran et fonctionne <b>hors réseau</b>.',
+         'Added to the home screen, the app opens full screen and works <b>offline</b>.'))+'</p>'
    +'<div class="setrow"><label for="set-sound">🔊 '+t('Effets sonores','Sound effects')+'</label><input type="checkbox" id="set-sound" '+(S.sound?'checked':'')+' onchange="G.setSound(this.checked)" style="width:22px;height:22px"></div>'
    +'<div class="setrow"><label for="set-date">📅 '+t('Date de l\'examen','Exam date')+'</label><input type="date" id="set-date" value="'+esc(S.examDate)+'" onchange="G.setDate(this.value)"></div>'
    +'<div class="setrow"><label for="set-time">🕑 '+t('Heure de l\'examen','Exam time')+'</label><input type="time" id="set-time" value="'+esc(S.examTime||'14:00')+'" onchange="G.setTime(this.value)"></div>'
@@ -7466,8 +7496,50 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk};
+  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall};
 window.G=G;
+/* ---------- hors-ligne ----------
+   Le service worker garde l'application entière en cache. Une fois ouverte une
+   première fois, elle se lance sans réseau. On ne l'enregistre qu'en http(s) :
+   ouvert en file:// (double-clic sur le fichier), l'API n'existe pas. */
+/* Chrome/Android propose l'installation via cet événement : on le met de côté
+   pour pouvoir l'offrir au bon moment plutôt que de le laisser filer. */
+let INSTALL=null;
+addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); INSTALL=e;
+  if(CUR.screen==='home'||CUR.screen==='settings') render(); });
+addEventListener('appinstalled',()=>{ INSTALL=null; S.installed=1; save();
+  toast('📲 '+t('ROUTE 440 est installé. Ouvre-le depuis ton écran d\'accueil.',
+                'ROUTE 440 is installed. Open it from your home screen.')); });
+function isStandalone(){
+  return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+}
+function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream; }
+function canOfferInstall(){ return !isStandalone()&&!S.hideInstall&&(!!INSTALL||isIOS()); }
+function doInstall(){
+  if(INSTALL){ INSTALL.prompt(); INSTALL.userChoice.finally(()=>{ INSTALL=null; render(); }); return; }
+  showOverlay('📲', t('Installer ROUTE 440','Install ROUTE 440'),
+    t('Sur iPhone : touche <b>Partager</b> en bas de Safari, puis <b>« Sur l\'écran d\'accueil »</b>.',
+      'On iPhone: tap <b>Share</b> at the bottom of Safari, then <b>"Add to Home Screen"</b>.')
+    +'<br><br>'+t('L\'application s\'ouvrira en plein écran et <b>fonctionnera sans réseau</b> — file d\'attente à la MVC comprise.',
+                  'The app will open full screen and <b>work with no network</b> — MVC queue included.'));
+}
+function dismissInstall(){ S.hideInstall=1; save(); render(); }
+function installHtml(){
+  if(!canOfferInstall()) return '';
+  return '<div class="panel installbox"><div class="ibrow">'
+   +'<span class="ibic">📲</span>'
+   +'<span class="ibtx"><b>'+t('Installe ROUTE 440 sur ton téléphone','Install ROUTE 440 on your phone')+'</b><br>'
+   +'<span class="small">'+t('Plein écran, une icône sur l\'écran d\'accueil, et ça marche <b>sans réseau</b>.',
+                             'Full screen, an icon on your home screen, and it works <b>with no network</b>.')+'</span></span>'
+   +'</span><button class="sbuy" onclick="G.doInstall()">'+t('INSTALLER','INSTALL')+'</button>'
+   +'<button class="ibx" onclick="G.dismissInstall()" aria-label="'+t('masquer','hide')+'">✕</button>'
+   +'</div></div>';
+}
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
 applyLang();
 touchDaily();
 (function(){ const pr=collectProduction();

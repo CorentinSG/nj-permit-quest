@@ -10,7 +10,9 @@ localement (localStorage) sur l'appareil.
 ## Jouer
 
 - **En local** : double-clique sur `index.html` (fonctionne hors-ligne, mobile et desktop).
-- **En ligne** : héberge le fichier n'importe où (GitHub Pages, Vercel, Netlify — aucun réglage).
+- **En ligne** : héberge le dossier n'importe où (GitHub Pages, Vercel, Netlify — aucun réglage).
+- **Sur téléphone** : ouvre le site, puis « Installer » / « Sur l'écran d'accueil ». L'application
+  s'ouvre alors en plein écran et **fonctionne sans réseau** (service worker + manifeste).
 
 ## Le jeu
 
