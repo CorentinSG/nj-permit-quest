@@ -444,6 +444,19 @@ html,body{overflow-x:hidden}
 .vtab .vdot{position:absolute;top:3px;right:5px;font-style:normal;font-size:8px;
   background:var(--stop);color:#fff;border-radius:8px;padding:1px 4px}
 /* le métier, sous le nom, dans la liste des habitants */
+.skill{margin:10px 0;padding:9px 10px;border:1px solid var(--edge);border-radius:10px;background:var(--lane2)}
+.skillhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px}
+.skillst{color:#E0A800;letter-spacing:1px;font-size:11px;white-space:nowrap}
+.skillbar{height:7px;border-radius:5px;background:#0004;overflow:hidden;margin:6px 0 5px}
+.skillbar i{display:block;height:100%;border-radius:5px}
+.skillsub{font-size:11px;color:var(--dim);line-height:1.5}
+.tradepick{margin-top:12px;padding-top:10px;border-top:1px dashed var(--edge)}
+.tpg{display:flex;flex-wrap:wrap;gap:6px}
+.tpb{flex:1 1 46%;min-width:0;padding:8px 6px;border:1px solid var(--edge);border-radius:9px;
+  background:var(--lane2);color:var(--ink);font-size:11.5px;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpb:active{transform:translateY(1px)}
+.tpb.on{border-color:var(--retro);color:var(--retro);opacity:.75}
 .folkc .fkj{display:block;font-size:11px;color:var(--ink);opacity:.9;margin-top:1px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ce que valent les défenses */
@@ -1964,13 +1977,26 @@ function villageHappy(){
   return Math.round(a.reduce((s2,x)=>s2+x.pct,0)/a.length);
 }
 function allNeedsMet(){ return NEEDS.every(n=>needState(n).ok); }
-/* production horaire des bâtiments (chasseurs, fermes, bûcherons) */
-function prodPerHour(){
+/* production horaire des bâtiments, MURS NUS : ce que le village rendrait
+   si personne n'y travaillait de ses mains. Sert de référence à l'affichage. */
+function prodBase(){
   const out={food:0,wood:0,iron:0};
   SHOP.forEach(it=>{ if(!it.prod) return;
     const n=nOwned(it.id); if(!n) return;
     Object.keys(it.prod).forEach(k=>{ out[k]+=it.prod[k]*n; });
   });
+  return out;
+}
+/* production réelle : un atelier ne vaut que par les bras qui le tiennent.
+   Désert, il tourne à la moitié ; tenu par des maîtres heureux, il double. */
+function prodPerHour(){
+  const out={food:0,wood:0,iron:0};
+  SHOP.forEach(it=>{ if(!it.prod) return;
+    const n=nOwned(it.id); if(!n) return;
+    const job=jobForProd(it.id), f=job?crewFactor(job,n):1;
+    Object.keys(it.prod).forEach(k=>{ out[k]+=it.prod[k]*n*f; });
+  });
+  Object.keys(out).forEach(k=>{ out[k]=Math.round(out[k]); });
   return out;
 }
 /* le village mange : consommation horaire proportionnelle à la population */
@@ -1990,6 +2016,8 @@ function collectProduction(){
   S.res.food=Math.max(0,(S.res.food||0)+gained.food-up);
   S.res.wood=(S.res.wood||0)+gained.wood;
   S.res.iron=(S.res.iron||0)+gained.iron;
+  // on apprend en faisant : chaque heure passée à l'ouvrage compte
+  (S.people||[]).forEach(r=>{ if(!isChild(r)&&!isSoldier(r)) gainSkill(r,hours); });
   save();
   return {hours, gained, up};
 }
@@ -2030,15 +2058,23 @@ function needsHtml(){
      +(st.ok?'':'<button class="sbuy" onclick="'+n.go+'">'+esc(t(n.btn,n.btne))+' →</button>')+'</div></div>';
   });
   const pr=prodPerHour(), up=upkeepPerHour(), bal=pr.food-up;
+  const cr=crewRating();
   h+='<div class="prodbox'+(bal<0?' bad':'')+'">'
    +'<div class="prodl"><span>🏹🚜 '+t('Production','Production')+'</span><b>+'+pr.food+' 🌾'+(pr.wood?' · +'+pr.wood+' 🪵':'')+' /h</b></div>'
+   +(cr.n?'<div class="prodl"><span>🛠️ '+t('Main-d\'œuvre','Workforce')+' <i style="color:var(--dim)">('+cr.n+' '
+       +t('aux ateliers','at work')+' · '+t('niveau moyen','avg level')+' '+cr.lvl+')</i></span>'
+     +'<b style="color:'+(cr.mult>=1?'var(--exit)':'var(--stop)')+'">×'+cr.mult.toFixed(2).replace('.',t(',','.'))+'</b></div>':'')
    +'<div class="prodl"><span>🍽️ '+t('Le village mange','The village eats')+'</span><b>−'+up+' 🌾/h</b></div>'
    +'<div class="prodl tot"><span>'+t('Bilan','Balance')+'</span><b>'+(bal>=0?'+':'')+bal+' 🌾/h</b></div>'
    +'<p class="small" style="margin:6px 0 0">'+(bal<0
       ?t('⚠️ Le village consomme plus qu\'il ne produit. Construis des <b>maisons de chasseur</b> ou des <b>fermes</b>, ou nourris-le en répondant juste.',
          '⚠️ The village consumes more than it produces. Build <b>hunter\'s lodges</b> or <b>farms</b>, or feed it by answering correctly.')
       :t('✅ La production couvre les besoins : le village se nourrit tout seul.',
-         '✅ Production covers the needs: the village feeds itself.'))+'</p></div>';
+         '✅ Production covers the needs: the village feeds itself.'))+'</p>'
+   +'<p class="small" style="margin:6px 0 0;color:var(--dim)">'
+   +t('Ce sont les habitants qui produisent, pas les murs : chaque bonne réponse forme un ouvrier, et un atelier sans personne tourne à moitié.',
+      'Your people produce, not the walls: every right answer trains a worker, and an unstaffed workshop runs at half speed.')
+   +'</p></div>';
   const tin=tributeIn();
   h+=(met?'<div class="tribute">🪙 '+t('Village prospère : <b>+1 sesterce par heure</b>','Thriving village: <b>+1 sesterce per hour</b>')
       +(tin!=null?' <i>('+t('prochaine dans '+tin+' min','next in '+tin+' min')+')</i>':'')+'</div>':'');
@@ -2412,6 +2448,7 @@ function recordAnswer(qi,good){
     gainRes(CUR.screen==='run'?'food':CUR.screen==='boss'?'iron':CUR.screen==='blitz'?'wood':null); }
   else{ s.ko++; s.box=1; }
   if(good){
+    trainCrew(1);                 // réviser, c'est former la main-d'œuvre
     S.totalOk++; touchDaily(); S.daily.ok++;
     if(S.daily.ok>=DAILY_GOAL&&!S.daily.rewarded){
       S.daily.rewarded=true;
@@ -3756,7 +3793,8 @@ function staffJobs(){
     const j=freeJob(); if(!j) break;
     const taken={};
     (S.people||[]).forEach(x=>{ if(!isChild(x)) taken[x.job]=(taken[x.job]||0)+1; });
-    const spare=(S.people||[]).find(x=>!isChild(x)&&!FIXED_JOBS[x.job]&&x.job!==j
+    // on ne défait pas une affectation décidée par le joueur
+    const spare=(S.people||[]).find(x=>!isChild(x)&&!FIXED_JOBS[x.job]&&x.job!==j&&!x.fixed
       &&(taken[x.job]||0)>Math.max(1,posts(x.job)));
     if(!spare) break;
     if(!setJob(spare,j)) break;
@@ -4026,6 +4064,107 @@ function assignMentor(rec){
   }
 }
 function mentorOf(rec){ return rec.mentor?(S.people||[]).find(x=>x.id===rec.mentor):null; }
+/* ============================================================
+   LE SAVOIR-FAIRE
+   ------------------------------------------------------------
+   Jusqu'ici les habitants étaient un décor : la récolte ne dépendait que des
+   murs. Un village de vingt maîtres artisans rendait exactement autant qu'un
+   village fantôme. Désormais c'est la MAIN qui produit — et cette main
+   s'aiguise à chaque bonne réponse. Réviser, c'est former ses gens.
+   ============================================================ */
+const SKILL_STEPS=[0,25,70,150,280];
+const SKILL_NAME=[['Novice','Novice'],['Apprenti','Apprentice'],['Compagnon','Journeyman'],
+                  ['Maître','Master'],['Légende','Legend']];
+function skillXp(rec){ const x=rec&&rec.xp; return (typeof x==='number'&&isFinite(x))?Math.max(0,x):0; }
+function skillOf(rec){ const x=skillXp(rec); let l=1;
+  for(let i=1;i<SKILL_STEPS.length;i++) if(x>=SKILL_STEPS[i]) l=i+1;
+  return l; }
+function skillPct(rec){ const l=skillOf(rec); if(l>=SKILL_STEPS.length) return 100;
+  const a=SKILL_STEPS[l-1], b=SKILL_STEPS[l];
+  return Math.max(0,Math.min(100,Math.round((skillXp(rec)-a)/(b-a)*100))); }
+function skillLabel(rec){ const n=SKILL_NAME[skillOf(rec)-1]; return t(n[0],n[1]); }
+function skillStars(rec){ const l=skillOf(rec); return '★'.repeat(l)+'☆'.repeat(5-l); }
+/* on progresse dans SON métier ; changer de métier ne fait pas tout oublier,
+   mais on repart d'un cran en dessous (voir setJob) */
+function gainSkill(rec,n){
+  if(!rec||!n||n<0||isChild(rec)) return 0;
+  const before=skillOf(rec);
+  rec.xp=skillXp(rec)+n;
+  const after=skillOf(rec);
+  if(after<=before) return 0;
+  const nm=SKILL_NAME[after-1], j=JOBS.find(x=>x.k===rec.job);
+  nudgeMood(rec,0.2);
+  remember(rec,'🛠️ '+t('Devenu ','Became ')+t(nm[0],nm[1])+t(' dans son métier.',' in their trade.'),
+               '🛠️ Became '+nm[1]+' in their trade.');
+  chron('🛠️ '+nameOf(rec)+t(' est désormais ',' is now ')+t(nm[0],nm[1])
+        +(j?' ('+t(j.n,j.ne).toLowerCase()+')':'')+'.',
+        '🛠️ '+nameOf(rec)+' is now '+nm[1]+(j?' ('+j.ne.toLowerCase()+')':'')+'.');
+  V3.saveSoon=1;
+  return after-before;
+}
+/* une bonne réponse forme celui qui en a le plus besoin : le savoir se répand
+   dans tout le village au lieu de s'entasser sur une seule tête */
+function trainCrew(n){
+  const crew=(S.people||[]).filter(x=>!isChild(x));
+  if(!crew.length) return null;
+  let low=crew[0];
+  crew.forEach(x=>{ if(skillXp(x)<skillXp(low)) low=x; });
+  gainSkill(low,n||1);
+  return low;
+}
+function crewOf(job){ return (S.people||[]).filter(x=>!isChild(x)&&x.job===job); }
+/* quel métier fait tourner ce bâtiment */
+function jobForProd(id){ return HOUSED[id]||((JOBS.find(j=>j.need===id)||{}).k)||null; }
+/* Rendement d'un atelier : des bras, du savoir-faire, de l'entrain.
+   0,5 sans personne · ×1,6 avec des maîtres · ×1,15 s'ils sont heureux. */
+function crewFactor(job,posts){
+  const crew=crewOf(job);
+  if(!crew.length) return 0.5;
+  const hands=Math.min(1,crew.length/Math.max(1,posts||1));
+  let lvl=0, mood=0;
+  crew.forEach(r=>{ lvl+=skillOf(r); mood+=moodOf(r); });
+  lvl/=crew.length; mood/=crew.length;
+  return (0.5+0.5*hands)*(1+0.15*(lvl-1))*(0.85+0.3*mood);
+}
+/* la main-d'œuvre en un chiffre, pour l'écran du village */
+function crewRating(){
+  const crew=(S.people||[]).filter(x=>!isChild(x));
+  const base=prodBase(), real=prodPerHour();
+  const b=base.food+base.wood+base.iron, r=real.food+real.wood+real.iron;
+  let lvl=0; crew.forEach(x=>{ lvl+=skillOf(x); });
+  return {n:crew.length, lvl:crew.length?+(lvl/crew.length).toFixed(1):0,
+          mult:b?+(r/b).toFixed(2):1};
+}
+/* les métiers qu'on peut confier à quelqu'un : le bâtiment doit exister, et
+   on n'envoie pas un guerrier aux champs — l'armée a ses propres ordres */
+function tradeChoices(rec){
+  if(!rec||isChild(rec)||isSoldier(rec)) return [];
+  return JOBS.filter(j=>!FIXED_JOBS[j.k]&&jobAvailable(j.k));
+}
+/* Le joueur envoie quelqu'un à un autre ouvrage. On ne perd pas tout son
+   savoir en changeant de métier, mais on redescend d'un cran : la main garde
+   l'habitude, pas les gestes. */
+function setTrade(id,k){
+  const rec=(S.people||[]).find(x=>x.id===id);
+  const j=JOBS.find(x=>x.k===k);
+  if(!rec||!j) return false;
+  if(isChild(rec)) { toast(t('Un enfant ne travaille pas encore.','A child does not work yet.')); return false; }
+  if(isSoldier(rec)){ toast(t('Un soldat obéit aux ordres de l\'armée.','A soldier follows the army orders.')); return false; }
+  if(!jobAvailable(k)){ toast(t('Il manque le bâtiment pour ce métier.','The building for that trade is missing.')); return false; }
+  if(rec.job===k){ toast(t('C\'est déjà son métier.','That is already their trade.')); return false; }
+  const lvl=skillOf(rec);
+  if(!setJob(rec,k)) return false;
+  rec.fixed=1;                                   // le village ne le renverra pas ailleurs tout seul
+  rec.xp=SKILL_STEPS[Math.max(0,lvl-2)]||0;      // un cran perdu, jamais plus
+  nudgeMood(rec,-0.08);                          // on ne change pas d'atelier de gaieté de cœur
+  remember(rec,'🔁 '+t('A changé de métier : ','Changed trade: ')+t(j.n,j.ne).toLowerCase()+'.',
+               '🔁 Changed trade: '+j.ne.toLowerCase()+'.');
+  chron('🔁 '+nameOf(rec)+t(' se met au métier de ',' takes up the trade of ')+t(j.n,j.ne).toLowerCase()+'.',
+        '🔁 '+nameOf(rec)+' takes up the trade of '+j.ne.toLowerCase()+'.');
+  save(); hideOverlay(); render();
+  toast(j.ic+' '+nameOf(rec)+' — '+t(j.n,j.ne));
+  return true;
+}
 /* ---------- familles ---------- */
 const CHILD_NAMES=[['Petit-Bonux','Lil\'Bonux'],['Minix','Minix'],['Bambinix','Bambinix'],['Marmottine','Marmottine'],
  ['Piouix','Piouix'],['Galoupette','Galoupette'],['Roudoudix','Roudoudix'],['Frimousse','Frimousse'],
@@ -4543,18 +4682,28 @@ function armySlotsWorld(x,z){
   out.push([x, z-14]);                       // le chef et son enseigne
   return out;
 }
+/* En marche, la troupe est une colonne, pas une ligne déployée : on ne lui
+   demande pas la place de sa formation entière pour passer entre deux huttes.
+   C'est à l'ARRIVÉE seulement qu'elle doit tenir en entier (armyFits). */
+function armyPathFree(x,z){
+  return (V3.solids||[]).every(o=>Math.hypot(x-o.x, z-o.z)>=o.r+5);
+}
 function armyFits(x,z){
   const S2=V3.solids||[];
   return armySlotsWorld(x,z).every(pt=>
     S2.every(o=>Math.hypot(pt[0]-o.x, pt[1]-o.z)>=o.r+5.2));
 }
 /* replace la troupe une fois TOUS les obstacles connus */
+/* Où poser la troupe quand la scène est reconstruite. On la remet LÀ OÙ ELLE
+   EST, pas à l'arrivée de son ordre : sinon changer d'onglet la téléportait au
+   bout du village et on ne la voyait jamais marcher. */
 function settleArmy(){
-  const want=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
+  const here=V3.apos, want=here||(S.army&&S.army.x!=null?[S.army.x,S.army.z]:stancePoint());
   if(!want) return;
   const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
   if(!a&&!c) return;
-  const sp=armySpot(want[0],want[1]);
+  const sp=(here&&armyFits(here[0],here[1]))?here.slice():armySpot(want[0],want[1]);
+  V3.apos=[sp[0],sp[1]];
   const rot=Math.atan2(sp[0],sp[1]);
   if(a){ a.position.set(sp[0],0,sp[1]); a.rotation.y=rot; }
   if(c){ c.position.set(sp[0],0,sp[1]-14); c.rotation.y=rot; }
@@ -4603,7 +4752,7 @@ function setStance(k){
   // la consigne se ressent : au repos on souffle, en garde on se tend
   soldiersAll().forEach(r=>nudgeMood(r, k==='repos'?0.2 : k==='patrouille'?-0.03 : 0));
   toast(st.ic+' '+t(st.n+' — '+t(st.d,st.de), st.ne+' — '+t(st.d,st.de)));
-  if(CUR.screen==='village') render();
+  refreshOrders();                  // la troupe rejoint son nouveau poste à pied
 }
 /* où la troupe doit se trouver, selon la consigne et l'heure */
 function stancePoint(){
@@ -4619,31 +4768,105 @@ function stancePoint(){
     const ring=[[0,150],[150,0],[0,-150],[-150,0]];
     return ring[(V3.patI||0)%4];
   }
-  return null;                                    // « en rang » : le joueur décide
+  return quartersPoint();                         // « en rang » : retour au cantonnement
 }
-/* La patrouille change de poste toutes les vingt secondes. Sans ça la troupe
-   n'y allait qu'au prochain rendu de l'écran : elle ne patrouillait donc jamais
-   vraiment. Ici elle marche, à pied, d'un côté du village à l'autre. */
-function armyPatrolTick(dt){
-  if(stanceOf()!=='patrouille'||(S.army&&S.army.x!=null)) return;
-  const pt=stancePoint(); if(!pt) return;
+/* le cantonnement : le camp militaire, sinon la place de l'escouade */
+function quartersPoint(){
+  const c=V3.place&&(V3.place['camp']||V3.place['entrainement']);
+  if(c) return [c.position.x, c.position.z+18];
+  const g=V3.place&&V3.place['guerriers'];
+  if(g&&S.vpos&&S.vpos.guerriers) return S.vpos.guerriers.slice();
+  return P3.guerriers?P3.guerriers.slice():[-40,20];
+}
+/* ---------- LA TROUPE SE REND SUR PLACE, À PIED ----------
+   Un ordre ne téléporte plus l'escouade : elle se met en marche, bras qui
+   balancent et pas cadencé, et arrive quelques secondes plus tard. Le même
+   mouvement sert pour un point de rassemblement, une garde et une patrouille —
+   il n'y a qu'une seule façon de marcher. */
+const MARCH_SPEED=26;                          // unités par seconde, au pas
+function armyGoal(){
+  if(S.army&&S.army.x!=null) return [S.army.x,S.army.z];
+  return stancePoint();
+}
+function armyMarchTick(dt){
   const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
   if(!a&&!c) return;
   const g=a||c;
-  const dx=pt[0]-g.position.x, dz=pt[1]-g.position.z;
-  const d=Math.hypot(dx,dz);
-  if(d<6){                                   // poste atteint : on souffle, puis on passe au suivant
-    V3.patT=(V3.patT||0)+dt;
-    if(V3.patT>4){ V3.patT=0; V3.patI=((V3.patI||0)+1)%4; }
+  const goal=armyGoal();
+  if(!goal){ V3.marching=0; return; }
+  const sp=armySpot(goal[0],goal[1]);
+  const dx=sp[0]-g.position.x, dz=sp[1]-g.position.z, d=Math.hypot(dx,dz);
+  if(d<5.5){                                   // en place : on se remet face à l'extérieur
+    V3.marching=0;
+    const face=Math.atan2(sp[0],sp[1]);
+    [a,c].forEach(o=>{ if(!o) return;
+      let df=face-o.rotation.y;
+      while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+      o.rotation.y+=df*Math.min(1,4*dt);
+      // on garde un cap borné : sinon l'angle dérive de tours entiers
+      o.rotation.y=Math.atan2(Math.sin(o.rotation.y),Math.cos(o.rotation.y));
+      armyStride(o,0,dt);
+    });
+    if(a&&c){ const tx=sp[0]-Math.sin(face)*14, tz=sp[1]-Math.cos(face)*14;
+      c.position.x+=(tx-c.position.x)*Math.min(1,3*dt);
+      c.position.z+=(tz-c.position.z)*Math.min(1,3*dt); }
+    // en patrouille libre, on souffle puis on gagne le poste suivant
+    if(stanceOf()==='patrouille'&&!(S.army&&S.army.x!=null)){
+      V3.patT=(V3.patT||0)+dt;
+      if(V3.patT>4){ V3.patT=0; V3.patI=((V3.patI||0)+1)%4; }
+    }
     return;
   }
-  V3.patT=0;
-  const step=Math.min(d, 26*dt);
-  const ux=dx/d, uz=dz/d;
+  V3.patT=0; V3.marching=1;
+  const step=Math.min(d, MARCH_SPEED*dt);
+  /* on ne traverse pas une grange parce qu'elle est sur le chemin : on essaie
+     tout droit, puis de plus en plus de biais, jusqu'à trouver par où passer */
+  let ux=dx/d, uz=dz/d;
+  const base=Math.atan2(ux,uz);
+  /* Contourner un obstacle, c'est choisir un CÔTÉ et s'y tenir. Sans cette
+     mémoire la troupe essayait la gauche, puis la droite, puis la gauche : elle
+     dansait sur place au lieu d'avancer. */
+  const sd=V3.mside||1;
+  let picked=null;
+  for(const off of [0, sd*0.4, -sd*0.4, sd*0.9, -sd*0.9, sd*1.5, -sd*1.5, sd*2.1, -sd*2.1]){
+    const a2=base+off, tx=Math.sin(a2), tz=Math.cos(a2);
+    if(armyPathFree(g.position.x+tx*step, g.position.z+tz*step)){
+      ux=tx; uz=tz; picked=off; break; }
+  }
+  // rien de libre : la colonne passe quand même, elle ne se fige pas
+  if(picked) V3.mside=picked>0?1:-1;
   const face=Math.atan2(ux,uz);
-  if(a){ a.position.x+=ux*step; a.position.z+=uz*step; a.rotation.y=face; }
-  if(c){ c.position.x+=ux*step; c.position.z+=uz*step; c.rotation.y=face; }
+  [a,c].forEach(o=>{ if(!o) return;
+    o.position.x+=ux*step; o.position.z+=uz*step;
+    let df=face-o.rotation.y;
+    while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+    o.rotation.y+=df*Math.min(1,6*dt);
+    o.rotation.y=Math.atan2(Math.sin(o.rotation.y),Math.cos(o.rotation.y));
+    armyStride(o,1,dt);
+  });
+  // le chef marche derrière ses hommes, enseigne au vent : il recale son écart
+  if(a&&c){
+    const tx=a.position.x-Math.sin(face)*14, tz=a.position.z-Math.cos(face)*14;
+    c.position.x+=(tx-c.position.x)*Math.min(1,2.5*dt);
+    c.position.z+=(tz-c.position.z)*Math.min(1,2.5*dt);
+  }
+  V3.apos=[g.position.x, g.position.z];        // pour retrouver la troupe après un rendu
 }
+/* le pas cadencé : bras qui balancent et léger roulis, comme les villageois */
+function armyStride(grp,on,dt){
+  const men=grp.userData.men;
+  if(!men||!men.length) return;
+  grp.userData.st=(grp.userData.st||0)+(on?dt*7:0);
+  const ph=grp.userData.st;
+  men.forEach((m,i)=>{
+    const ar=m.userData.arms||(m.children[0]&&m.children[0].userData.arms);
+    const sw=on?Math.sin(ph+i*0.35)*0.55:0;
+    if(ar){ ar[0].rotation.x=sw; ar[1].rotation.x=-sw; }
+    m.position.y=on?Math.abs(Math.sin(ph+i*0.35))*0.4:0;
+  });
+}
+/* la troupe est-elle en route ? sert à l'écran des ordres */
+function armyMarching(){ return !!V3.marching; }
 function soldiersOf(id){
   return (S.people||[]).filter(x=>String(x.home||'').split('@')[0]===id)
     .sort((a,b)=>String(a.home).localeCompare(String(b.home)));
@@ -4749,6 +4972,7 @@ Object.assign(B3,{
       // on lui accroche son identité : toucher le guerrier ouvre SA fiche
       if(men[i]){ w.userData.rec=men[i]; w.userData.npc=1; }
       g.add(w); });
+    g.userData.men=g.children.slice();          // pour le pas cadencé
     return g; },
   tour(){ const g=new THREE.Group();
     g.add(at(cyl(6,7.5,26,COL.stone,10),0,13,0));
@@ -4829,7 +5053,7 @@ Object.assign(B3,{
     const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard';
     const chef=soldiersOf('chefguerre')[0];
     if(chef){ w.userData.rec=chef; w.userData.npc=1; }
-    g.add(w);
+    g.add(w); g.userData.men=[w];
     g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
       new THREE.MeshLambertMaterial({color:0xd4b23c,side:THREE.DoubleSide}));
@@ -5250,7 +5474,8 @@ function v3dHost(){
     +'<div class="v3d-say" id="v3dsay"></div>'
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
-        : V3.order ? t('📣 touche le sol pour rassembler la troupe','📣 tap the ground to muster the squad')
+        : V3.order===2 ? t('🛡️ touche le bâtiment à garder','🛡️ tap the building to guard')
+        : V3.order ? t('📣 touche le sol : la troupe s\'y rendra au pas','📣 tap the ground: the squad will march there')
         : t('👆 touche un bâtiment ou un villageois','👆 tap a building or a villager'))+'</div>'
     +'<div class="v3d-ctl">'
     +'<button onclick="G.v3dReset()" aria-label="'+t('recentrer','recentre')+'">⌖</button>'
@@ -5381,8 +5606,18 @@ function v3dInit(){
       const g=groundAt(e);
       if(g){ rallyAt(g.x,g.z); if(e.cancelable) e.preventDefault(); return; }
     }
+    if(V3.order===2){                               // ordre de garde : on désigne un bâtiment
+      const o=pickAt(e)||{userData:{pid:(()=>{const g=groundAt(e); return g?nearestBuilding(g.x,g.z):null;})()}};
+      if(o.userData.pid){ guardBuilding(o.userData.pid); if(e.cancelable) e.preventDefault(); return; }
+    }
     if(V3.edit){                                    // mode placement : on attrape un bâtiment
       const o=pickAt(e);
+      // une escouade n'est pas un meuble : on ne la traîne pas, on lui parle
+      if(o&&NODRAG[String(o.userData.pid).split('#')[0]]){
+        toast(t('⚔️ Une escouade ne se pousse pas : donne-lui un ordre.',
+                '⚔️ A squad is not furniture: give it an order.'));
+        squadOrders(); if(e.cancelable) e.preventDefault(); return;
+      }
       if(o){ V3.sel=o; V3.lastPid=o.userData.pid; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
              host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
@@ -5744,7 +5979,7 @@ function v3dInit(){
       }
     });
     }
-    if(!V3.raid) armyPatrolTick(dt);
+    if(!V3.raid) armyMarchTick(dt);
     if(V3.raid){ raidCamFollow(dt); raidTick(dt,tt,scene); }
     else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
@@ -5823,6 +6058,8 @@ const FOOT={
 const NOCLIP={muraille:1, palissade:1, chemin:1};
 /* la troupe est faite d'hommes, pas de murs : elle ne compte pas comme obstacle
    — sans quoi elle se heurterait à elle-même en cherchant où se ranger */
+/* une escouade n'est pas un bâtiment : elle refuse d'être traînée */
+const NODRAG={guerriers:1, chefguerre:1};
 const NOTSOLID={guerriers:1, chefguerre:1};
 function footOf(key){
   const base=String(key).split('#')[0];
@@ -6768,6 +7005,7 @@ function showPerson(rec,obj){
   showOverlay(job?job.ic:'🧑', nameOf(rec),
     '<div style="text-align:left;font-size:13.5px;line-height:1.7">'
     +(job?'<b>'+t('Métier','Trade')+' :</b> '+esc(t(job.n,job.ne))+'<br>':'')
+    +skillHtml(rec)
     +(rec.bio?'<i style="color:var(--dim)">« '+esc(t(rec.bio,rec.bioe))+' »</i><br><br>':'')
     +happyHtml(rec)
     +'<b>'+t('Caractère','Character')+' :</b> '+esc(t(tr.n,tr.ne))+' — <i>'+esc(t(tr.d,tr.de))+'</i><br>'
@@ -6791,7 +7029,40 @@ function showPerson(rec,obj){
         +'<b>'+t('Ce qui l\'a marqué','What marked them')+'</b><br>'
         +mem.map(m=>'<span style="color:var(--dim)">· '+esc(t(m.fr,m.en))+'</span>').join('<br>')
       +'</div>':'')
+    +tradePickHtml(rec)
+    +(isSoldier(rec)?orderPadHtml():'')
     +'</div>');
+}
+/* Le savoir-faire d'un habitant : où il en est, et ce qu'il rapporte de plus. */
+function skillHtml(rec){
+  if(!rec||isChild(rec)) return '';
+  const l=skillOf(rec), pct=skillPct(rec);
+  const col=l>=4?'linear-gradient(90deg,#7A5A00,#E0A800)':'linear-gradient(90deg,#1B4B7A,#3F9BE0)';
+  return '<div class="skill"><div class="skillhead">'
+   +'<span>🛠️ '+t('Savoir-faire','Craft')+' — <b>'+esc(skillLabel(rec))+'</b></span>'
+   +'<span class="skillst">'+skillStars(rec)+'</span></div>'
+   +'<div class="skillbar"><i style="width:'+pct+'%;background:'+col+'"></i></div>'
+   +'<div class="skillsub">'+(l>=5
+      ?t('Au sommet de son art : sa part de récolte est maximale.',
+         'At the peak of their art: their share of the harvest is at its best.')
+      :t('Encore '+Math.max(0,SKILL_STEPS[l]-skillXp(rec))+' bonnes réponses ou heures d\'ouvrage pour passer '+t(SKILL_NAME[l][0],SKILL_NAME[l][1])+'.',
+         Math.max(0,SKILL_STEPS[l]-skillXp(rec))+' more right answers or hours of work to become '+SKILL_NAME[l][1]+'.'))
+   +'</div></div>';
+}
+/* Envoyer quelqu'un à un autre ouvrage : la seule main du joueur sur l'économie. */
+function tradePickHtml(rec){
+  const list=tradeChoices(rec);
+  if(!list.length) return '';
+  return '<div class="tradepick"><div class="hsec" style="margin-top:0">'
+   +t('L\'envoyer à un autre ouvrage','Send them to another trade')+'</div>'
+   +'<div class="tpg">'+list.map(j=>'<button class="tpb'+(j.k===rec.job?' on':'')+'"'
+     +(j.k===rec.job?' disabled':'')
+     +' onclick="G.setTrade('+JSON.stringify(rec.id).replace(/"/g,'&quot;')+',\''+j.k+'\')">'
+     +j.ic+' '+esc(t(j.n,j.ne))+'</button>').join('')+'</div>'
+   +'<p class="small" style="margin:6px 0 0;color:var(--dim)">'
+   +t('Changer de métier coûte un cran de savoir-faire : on garde la main, pas les gestes.',
+      'Changing trade costs one rank of craft: the hand remembers, the gestures do not.')
+   +'</p></div>';
 }
 /* jauge de bonheur d'un habitant : pourquoi il va bien ou mal, et quoi faire */
 function happyHtml(rec){
@@ -6989,18 +7260,17 @@ function showBuilding(key){
 function armyOrder(){
   if(!S.village.includes('guerriers')){
     toast(t('⚔️ Recrute d\'abord une escouade de guerriers.','⚔️ Recruit a warrior squad first.')); return; }
-  V3.order=!V3.order; V3.edit=false; V3.sel=null;
-  render();
-  toast(V3.order
-    ? t('📣 Touche le sol : la troupe ira s\'y ranger.','📣 Tap the ground: the squad will form up there.')
-    : t('⚔️ Ordre annulé.','⚔️ Order cancelled.'));
+  if(V3.order){ V3.order=0; refreshOrders(); toast(t('⚔️ Ordre annulé.','⚔️ Order cancelled.')); return; }
+  V3.order=1; V3.edit=false; V3.sel=null;
+  refreshOrders();
+  toast(t('📣 Touche le sol : la troupe s\'y rendra au pas.','📣 Tap the ground: the squad will march there.'));
 }
 function setFormation(k){
   S.army=S.army||{x:null,z:null,f:'ligne'};
   S.army.f=k; save(); SFX.click();
   const f=FORMATIONS.find(x=>x.k===k)||FORMATIONS[0];
   toast(f.ic+' '+t('Formation : '+f.n,'Formation: '+f.ne));
-  if(CUR.screen==='village') render();
+  if(CUR.screen==='village') render();        // la disposition des hommes change : il faut rebâtir
 }
 function rallyAt(x,z){
   S.army=S.army||{x:null,z:null,f:'ligne'};
@@ -7010,18 +7280,109 @@ function rallyAt(x,z){
   // toute la formation, sinon les guerriers des ailes finiraient dans un toit
   const free=armySpot(x,z);
   const moved=Math.hypot(free[0]-x, free[1]-z)>1;
-  S.army.x=+free[0].toFixed(1); S.army.z=+free[1].toFixed(1);
-  save(); SFX.win(); V3.order=false;
+  S.army.x=+free[0].toFixed(1); S.army.z=+free[1].toFixed(1); S.army.watch=null;
+  save(); SFX.win(); V3.order=0;
   toast(moved
     ? t('⚔️ Pas de place ici — la troupe se range juste à côté.','⚔️ No room there — the squad forms up right beside it.')
-    : t('⚔️ La troupe se met en position !','⚔️ The squad takes position!'));
-  render();
+    : t('⚔️ En marche vers la position !','⚔️ Marching to position!'));
+  refreshOrders();               // pas de render() : la troupe doit y aller à pied
+}
+/* ---------- LES ORDRES, DEPUIS LE SOLDAT QU'ON TOUCHE ----------
+   Toucher un guerrier ouvrait sa fiche et rien d'autre : on ne pouvait lui
+   dire ni d'aller quelque part, ni de garder quoi que ce soit. Ses ordres sont
+   maintenant sur sa fiche, là où le doigt se trouve déjà. */
+const ORDERS=[
+ {k:'move',  ic:'📍', n:'Marcher jusqu\'à…',  ne:'March to…',
+  d:'Touche ensuite le sol : l\'escouade s\'y rend au pas.',
+  de:'Then tap the ground: the squad marches there.'},
+ {k:'guard', ic:'🛡️', n:'Garder un bâtiment', ne:'Guard a building',
+  d:'Touche ensuite un bâtiment : l\'escouade se poste devant.',
+  de:'Then tap a building: the squad posts up in front of it.'},
+ {k:'patrouille', ic:'🚶', n:'Patrouiller', ne:'Patrol',
+  d:'Le tour du village, un côté après l\'autre.',
+  de:'Around the village, one side after another.'},
+ {k:'repos', ic:'🍺', n:'Repos au feu', ne:'Rest by the fire',
+  d:'Retour au feu de camp, l\'humeur remonte.',
+  de:'Back to the campfire, morale rises.'},
+ {k:'fall',  ic:'🏕️', n:'Rompre les rangs', ne:'Fall out',
+  d:'Retour au cantonnement, la consigne reprend le dessus.',
+  de:'Back to quarters, the standing order takes over.'}
+];
+function orderNow(){ return V3.order===2?'guard':V3.order?'move':stanceOf(); }
+function giveOrder(k){
+  if(!S.village.includes('guerriers')){
+    toast(t('⚔️ Recrute d\'abord une escouade de guerriers.','⚔️ Recruit a warrior squad first.')); return false; }
+  hideOverlay();
+  if(k==='move'||k==='guard'){
+    V3.order=(k==='guard'?2:1); V3.edit=false; V3.sel=null;
+    refreshOrders();
+    toast(k==='guard'
+      ? t('🛡️ Touche le bâtiment à garder.','🛡️ Tap the building to guard.')
+      : t('📍 Touche le sol : ils s\'y rendront au pas.','📍 Tap the ground: they will march there.'));
+    // la vue doit être visible, sinon on touche le sol sans voir la troupe
+    const h=document.getElementById('v3d'); if(h) h.scrollIntoView({block:'center',behavior:'smooth'});
+    return true;
+  }
+  V3.order=0;
+  if(k==='fall'){ armyRecall(); return true; }
+  if(S.army&&S.army.x!=null){ S.army.x=null; S.army.z=null; }   // une consigne libère le point fixe
+  setStance(k);
+  return true;
+}
+
+/* la troupe se poste DEVANT un bâtiment, du côté du dehors */
+function guardBuilding(key){
+  const g=V3.place&&V3.place[key];
+  if(!g){ toast(t('Rien à garder ici.','Nothing to guard here.')); return false; }
+  const bx=g.position.x, bz=g.position.z;
+  const r=Math.hypot(bx,bz)||1;
+  const off=footOf(key)*0.7+18;
+  const sp=armySpot(bx+bx/r*off, bz+bz/r*off);
+  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
+  S.army.x=+sp[0].toFixed(1); S.army.z=+sp[1].toFixed(1); S.army.watch=key;
+  V3.order=0; save(); SFX.win();
+  toast('🛡️ '+t('L\'escouade va garder ','The squad will guard ')+buildingLabel(key)+'.');
+  chron('🛡️ '+t('L\'escouade prend la garde devant ','The squad takes guard in front of ')+buildingLabel(key)+'.',
+        '🛡️ The squad takes guard in front of '+buildingLabel(key)+'.');
+  refreshOrders();
+  return true;
+}
+/* rafraîchir le bandeau d'ordres SANS reconstruire la scène : sinon la troupe
+   repartirait de zéro à chaque bouton et on ne la verrait jamais marcher */
+function refreshOrders(){
+  if(CUR.screen!=='village') return;
+  const box=document.getElementById('vtabs');
+  if(box&&typeof vTabBody==='function'){ box.innerHTML=vTabBody(); }
+  const hint=document.querySelector('.v3d');
+  if(hint) hint.classList.toggle('ordering',!!V3.order);
+}
+/* le bloc d'ordres qu'on retrouve sur la fiche d'un soldat */
+function orderPadHtml(){
+  const cur=orderNow();
+  return '<div class="tradepick"><div class="hsec" style="margin-top:0">📣 '
+   +t('Ses ordres','Their orders')+'</div><div class="tpg">'
+   +ORDERS.map(o=>'<button class="tpb'+(o.k===cur?' on':'')+'" onclick="G.giveOrder(\''+o.k+'\')">'
+      +o.ic+' '+esc(t(o.n,o.ne))+'</button>').join('')
+   +'</div><div class="formrow" style="margin-top:8px">'
+   +FORMATIONS.map(f=>'<button class="formbtn'+(formationOf()===f.k?' on':'')+'" onclick="G.setFormation(\''+f.k+'\')">'
+      +'<span class="fic">'+f.ic+'</span>'+esc(t(f.n,f.ne))+'</button>').join('')
+   +'</div><p class="small" style="margin:6px 0 0;color:var(--dim)">'
+   +esc(t((ORDERS.find(o=>o.k===cur)||{d:''}).d||(STANCES.find(x=>x.k===cur)||{d:''}).d||'',
+          (ORDERS.find(o=>o.k===cur)||{de:''}).de||(STANCES.find(x=>x.k===cur)||{de:''}).de||''))
+   +'</p></div>';
+}
+/* toucher la troupe elle-même (et non un homme) ouvre la même table d'ordres */
+function squadOrders(){
+  const men=soldiersAll();
+  if(men.length){ showPerson(men[0],null); return; }
+  showOverlay('⚔️', t('L\'escouade','The squad'),
+    '<div style="text-align:left">'+orderPadHtml()+'</div>');
 }
 function armyRecall(){
-  S.army=S.army||{x:null,z:null,f:'ligne'};
-  S.army.x=null; S.army.z=null; save(); SFX.click();
+  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
+  S.army.x=null; S.army.z=null; S.army.watch=null; V3.order=0; save(); SFX.click();
   toast(t('🏕️ La troupe regagne son cantonnement.','🏕️ The squad returns to quarters.'));
-  render();
+  refreshOrders();
 }
 /* ---------- orienter un bâtiment ----------
    On retient la CLÉ du bâtiment, jamais l'objet 3D : la scène est reconstruite
@@ -7696,7 +8057,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance};
+  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, setTrade, giveOrder, guardBuilding, squadOrders};
 window.G=G;
 /* ---------- hors-ligne ----------
    Le service worker garde l'application entière en cache. Une fois ouverte une
