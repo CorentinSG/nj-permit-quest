@@ -4096,6 +4096,7 @@ function gainSkill(rec,n){
   nudgeMood(rec,0.2);
   remember(rec,'🛠️ '+t('Devenu ','Became ')+t(nm[0],nm[1])+t(' dans son métier.',' in their trade.'),
                '🛠️ Became '+nm[1]+' in their trade.');
+  if(after<3) return after-before;      // apprenti : ça se retient, ça ne fait pas la chronique
   chron('🛠️ '+nameOf(rec)+t(' est désormais ',' is now ')+t(nm[0],nm[1])
         +(j?' ('+t(j.n,j.ne).toLowerCase()+')':'')+'.',
         '🛠️ '+nameOf(rec)+' is now '+nm[1]+(j?' ('+j.ne.toLowerCase()+')':'')+'.');
@@ -5679,6 +5680,7 @@ function v3dInit(){
         if(!V3.edit){
           const npc=pickNpc(e);
           if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); }
+          else if(npc){ squadOrders(); }
           else{
             const bld=pickAt(e);
             if(bld&&bld.userData.pid) showBuilding(bld.userData.pid);
@@ -6141,7 +6143,18 @@ function nearestBuilding(x,z){
   return best;
 }
 function nearestWalker(x,z,r){
-  const W=(V3.built&&V3.built.walkers)||[];
+  const W=((V3.built&&V3.built.walkers)||[]).slice();
+  /* Les soldats ne sont pas des promeneurs : ils vivent dans le groupe de leur
+     escouade. Sans eux ici, un appui un peu à côté d'un guerrier retombait sur
+     la fiche du BÂTIMENT « escouade » — et les ordres restaient introuvables. */
+  ['guerriers','chefguerre'].forEach(k=>{
+    const g=V3.place&&V3.place[k]; if(!g) return;
+    (g.userData.men||g.children||[]).forEach(m=>{
+      if(!m.userData||!m.userData.rec) return;
+      W.push({position:{x:g.position.x+m.position.x, z:g.position.z+m.position.z},
+              userData:m.userData});
+    });
+  });
   let best=null, bd=r;
   for(const w of W){
     const d=Math.hypot(w.position.x-x, w.position.z-z);
@@ -7186,6 +7199,7 @@ function buildingLabel(key){
 }
 function showBuilding(key){
   const base=String(key).split('#')[0], it=SHOP.find(x=>x.id===base);
+  // une escouade n'est pas un bâtiment : sa fiche porte aussi ses ordres
   if(!it){ toast(t('Rien à dire sur cet élément.','Nothing to say about this one.')); return; }
   const n=nOwned(base);
   const rows=[];
@@ -7246,8 +7260,9 @@ function showBuilding(key){
   showOverlay(it.ic, buildingLabel(key),
     '<div style="text-align:left;font-size:13.5px;line-height:1.7">'+rows.join('')+'</div>'
     +who
+    +(NODRAG[base]?'<div style="text-align:left">'+orderPadHtml()+'</div>':'')
     +'<div class="menu" style="margin-top:12px">'
-    +(V3.edit?'':'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay();G.toggleEdit('
+    +(V3.edit||NODRAG[base]?'':'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hideOverlay();G.toggleEdit('
        +JSON.stringify(String(key)).replace(/"/g,'&quot;')+')">🔧 '
        +t('Déplacer / orienter','Move / turn')+'</button>')
     +(it.stack&&canAfford(it)&&S.coins>=priceOf(it)
