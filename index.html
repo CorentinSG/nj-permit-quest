@@ -4223,36 +4223,6 @@ function crewRating(){
   return {n:crew.length, lvl:crew.length?+(lvl/crew.length).toFixed(1):0,
           mult:b?+(r/b).toFixed(2):1};
 }
-/* les métiers qu'on peut confier à quelqu'un : le bâtiment doit exister, et
-   on n'envoie pas un guerrier aux champs — l'armée a ses propres ordres */
-function tradeChoices(rec){
-  if(!rec||isChild(rec)||isSoldier(rec)) return [];
-  return JOBS.filter(j=>!FIXED_JOBS[j.k]&&jobAvailable(j.k));
-}
-/* Le joueur envoie quelqu'un à un autre ouvrage. On ne perd pas tout son
-   savoir en changeant de métier, mais on redescend d'un cran : la main garde
-   l'habitude, pas les gestes. */
-function setTrade(id,k){
-  const rec=(S.people||[]).find(x=>x.id===id);
-  const j=JOBS.find(x=>x.k===k);
-  if(!rec||!j) return false;
-  if(isChild(rec)) { toast(t('Un enfant ne travaille pas encore.','A child does not work yet.')); return false; }
-  if(isSoldier(rec)){ toast(t('Un soldat obéit aux ordres de l\'armée.','A soldier follows the army orders.')); return false; }
-  if(!jobAvailable(k)){ toast(t('Il manque le bâtiment pour ce métier.','The building for that trade is missing.')); return false; }
-  if(rec.job===k){ toast(t('C\'est déjà son métier.','That is already their trade.')); return false; }
-  const lvl=skillOf(rec);
-  if(!setJob(rec,k)) return false;
-  rec.fixed=1;                                   // le village ne le renverra pas ailleurs tout seul
-  rec.xp=SKILL_STEPS[Math.max(0,lvl-2)]||0;      // un cran perdu, jamais plus
-  nudgeMood(rec,-0.08);                          // on ne change pas d'atelier de gaieté de cœur
-  remember(rec,'🔁 '+t('A changé de métier : ','Changed trade: ')+t(j.n,j.ne).toLowerCase()+'.',
-               '🔁 Changed trade: '+j.ne.toLowerCase()+'.');
-  chron('🔁 '+nameOf(rec)+t(' se met au métier de ',' takes up the trade of ')+t(j.n,j.ne).toLowerCase()+'.',
-        '🔁 '+nameOf(rec)+' takes up the trade of '+j.ne.toLowerCase()+'.');
-  save(); hideOverlay(); render();
-  toast(j.ic+' '+nameOf(rec)+' — '+t(j.n,j.ne));
-  return true;
-}
 /* ---------- familles ---------- */
 const CHILD_NAMES=[['Petit-Bonux','Lil\'Bonux'],['Minix','Minix'],['Bambinix','Bambinix'],['Marmottine','Marmottine'],
  ['Piouix','Piouix'],['Galoupette','Galoupette'],['Roudoudix','Roudoudix'],['Frimousse','Frimousse'],
@@ -7484,7 +7454,6 @@ function showPerson(rec,obj){
         +'<b>'+t('Ce qui l\'a marqué','What marked them')+'</b><br>'
         +mem.map(m=>'<span style="color:var(--dim)">· '+esc(t(m.fr,m.en))+'</span>').join('<br>')
       +'</div>':'')
-    +tradePickHtml(rec)
     +'<div class="tradepick"><div class="hsec" style="margin-top:0">✏️ '+t('Son nom','Their name')+'</div>'
     +'<div class="whrow"><input class="whin" id="renbox" maxlength="18" value="'+esc(nameOf(rec))+'">'
     +'<button class="whb go" onclick="G.renameVillager('+jid(rec.id)+',document.getElementById(\'renbox\').value)">✓</button></div></div>'
@@ -7508,20 +7477,6 @@ function skillHtml(rec){
    +'</div></div>';
 }
 /* Envoyer quelqu'un à un autre ouvrage : la seule main du joueur sur l'économie. */
-function tradePickHtml(rec){
-  const list=tradeChoices(rec);
-  if(!list.length) return '';
-  return '<div class="tradepick"><div class="hsec" style="margin-top:0">'
-   +t('L\'envoyer à un autre ouvrage','Send them to another trade')+'</div>'
-   +'<div class="tpg">'+list.map(j=>'<button class="tpb'+(j.k===rec.job?' on':'')+'"'
-     +(j.k===rec.job?' disabled':'')
-     +' onclick="G.setTrade('+JSON.stringify(rec.id).replace(/"/g,'&quot;')+',\''+j.k+'\')">'
-     +j.ic+' '+esc(t(j.n,j.ne))+'</button>').join('')+'</div>'
-   +'<p class="small" style="margin:6px 0 0;color:var(--dim)">'
-   +t('Changer de métier coûte un cran de savoir-faire : on garde la main, pas les gestes.',
-      'Changing trade costs one rank of craft: the hand remembers, the gestures do not.')
-   +'</p></div>';
-}
 /* jauge de bonheur d'un habitant : pourquoi il va bien ou mal, et quoi faire */
 function happyHtml(rec){
   const H=happinessOf(rec);
@@ -7963,8 +7918,20 @@ function hudTrack(cam){
   HUDV.set(a[0],a[1],a[2]).project(cam);
   if(HUDV.z>1){ el.classList.remove('show'); return; }   // derrière la caméra
   const w=host.clientWidth, h=host.clientHeight;
-  const x=Math.max(84,Math.min(w-84,(HUDV.x*0.5+0.5)*w));
-  const y=Math.max(96,Math.min(h-8,(-HUDV.y*0.5+0.5)*h));
+  /* La vue 3D est en overflow:hidden. Un panneau calé trop haut se faisait
+     couper par le bord, et le doigt tombait alors sur ce qu'il y avait
+     DERRIÈRE : la croix et les boutons du haut ne répondaient plus. On le
+     borne donc avec sa vraie taille, pour qu'il tienne toujours entier. */
+  const pw=el.firstChild?el.firstChild.offsetWidth:150;
+  const ph=el.firstChild?el.firstChild.offsetHeight:120;
+  const mx=Math.min(w/2, pw/2+6), my=Math.min(h-6, ph+6);
+  /* La feuille d'escouade occupe la colonne de gauche : le panneau ne doit pas
+     se glisser dessous, sinon on voit ses boutons sans pouvoir les toucher. */
+  const rl=document.getElementById('sqroster');
+  const gutter=(rl&&rl.classList.contains('show'))?rl.getBoundingClientRect().width+12:0;
+  const left=Math.min(w-mx, Math.max(mx, gutter+pw/2));
+  const x=Math.max(left,Math.min(w-mx,(HUDV.x*0.5+0.5)*w));
+  const y=Math.max(my,Math.min(h-6,(-HUDV.y*0.5+0.5)*h));
   el.style.transform='translate(-50%,-100%) translate('+Math.round(x)+'px,'+Math.round(y)+'px)';
   el.classList.add('show');
 }
@@ -7980,8 +7947,21 @@ function hudOpen(kind,ref){
   V3.hud=(kind==='squad')?{kind:'squad',key:ref}
         :(kind==='bld')?{kind:'bld',key:ref}
         :{kind:'person',id:ref};
+  hudFocus();
   hudPaint();
   SFX.click&&SFX.click();
+}
+/* Ouvrir un panneau sur quelque chose qu'on ne voit pas, c'est afficher des
+   boutons hors de l'écran : le panneau se cache et rien ne répond. On amène
+   donc le sujet dans la vue quand il n'y est pas. */
+function hudFocus(){
+  const a=hudAnchor(); if(!a||!V3.cam) return;
+  HUDV.set(a[0],a[1],a[2]).project(V3.cam);
+  if(HUDV.z<=1&&Math.abs(HUDV.x)<0.8&&Math.abs(HUDV.y)<0.8) return;   // déjà bien en vue
+  V3.auto=false; V3.raidCam=0;
+  V3.px=Math.max(-PANMAX,Math.min(PANMAX,a[0]));
+  V3.pz=Math.max(-PANMAX,Math.min(PANMAX,a[2]));
+  if(V3.placeCam) V3.placeCam();
 }
 function hudPaint(){
   const el=hudEl(), h=V3.hud; if(!el||!h) return;
@@ -7989,6 +7969,9 @@ function hudPaint(){
     +(h.kind==='squad'?hudSquadHtml(h):h.kind==='bld'?hudBldHtml(h):hudPersonHtml(h))+'</div>';
   el.classList.add('show');
   rosterPaint();
+  // on le place tout de suite : attendre l'image suivante le laissait une
+  // fraction de seconde dans le coin de l'écran, hors de portée du doigt
+  if(V3.cam) hudTrack(V3.cam);
 }
 /* ---------- la feuille d'escouade ----------
    Nom, rôle, points de vie et moral de chaque homme : ce qu'un chef veut voir
@@ -8056,23 +8039,15 @@ function hudPersonHtml(h){
    +'<div class="whsub">'+sub+'</div>'
    +'<div class="whrow">'
    +'<button class="whb" onclick="G.showPerson('+jid(rec.id)+')">📜 '+t('Sa fiche','Profile')+'</button>'
-   +(tradeChoices(rec).length?'<button class="whb" onclick="G.hudTrades('+jid(rec.id)+')">🔁 '+t('Métier','Trade')+'</button>':'')
    +'<button class="whb" onclick="G.hudRename('+jid(rec.id)+')" aria-label="'+t('renommer','rename')+'">✏️</button>'
    +'</div>'+back
    +(h.ren?'<div class="whrow" style="margin-top:4px">'
       +'<input class="whin" maxlength="18" value="'+esc(nameOf(rec))+'" '
       +'onkeydown="if(event.key===\'Enter\')G.renameFrom('+jid(rec.id)+',this)">'
       +'<button class="whb go" onclick="G.renameFrom('+jid(rec.id)+',this)">✓</button></div>':'')
-   +(h.trades?hudTradeList(rec):'');
+   ;
 }
-function hudTradeList(rec){
-  return '<div class="whmen">'+tradeChoices(rec).map(j=>
-    '<button class="whm'+(j.k===rec.job?' on':'')+'" onclick="G.setTrade('+jid(rec.id)+',\''+j.k+'\')">'
-    +'<b>'+j.ic+'</b><span>'+esc(t(j.n,j.ne))+'</span>'
-    +(j.k===rec.job?'<i>'+t('actuel','current')+'</i>':'')+'</button>').join('')+'</div>';
-}
-function hudTrades(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.trades=!V3.hud.trades; V3.hud.ren=false; hudPaint(); } }
-function hudRename(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.ren=!V3.hud.ren; V3.hud.trades=false; hudPaint();
+function hudRename(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.ren=!V3.hud.ren; hudPaint();
   const b=document.querySelector('.whin'); if(b){ b.focus(); b.select(); } } }
 /* ---------- un bâtiment : ce qu'il fait, qui y vit, et rien de plus ---------- */
 function hudBldHtml(h){
@@ -8892,8 +8867,8 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, setTrade, giveOrder, guardBuilding, squadOrders,
-  hudOpen, hudClose, hudTrades, hudRename, hudLeave, hudSquads, toggleSquad,
+  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, giveOrder, guardBuilding, squadOrders,
+  hudOpen, hudClose, hudRename, hudLeave, hudSquads, toggleSquad,
   grantLeave, rejoinArmy, renameVillager, renameFrom, tapPerson, tapBuilding, toggleNight, hudMove};
 window.G=G;
 /* ---------- hors-ligne ----------
