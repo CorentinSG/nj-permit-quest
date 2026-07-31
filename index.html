@@ -386,11 +386,11 @@ html,body{overflow-x:hidden}
 /* ordres à la troupe */
 .armyord{border-top:1px dashed var(--edge);margin-top:12px}
 .formrow{display:flex;gap:8px}
-.stancebtn,.formbtn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+.nightbtn,.stancebtn,.formbtn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:10px 4px;border-radius:10px;border:2px solid var(--edge);background:var(--lane2);
   color:var(--dim);font-size:11px;line-height:1.3;overflow-wrap:anywhere}
-.formbtn .fic{font-size:17px;line-height:1}
-.stancebtn.on,.formbtn.on{border-color:var(--stop);background:#2A0E10;color:#FFB3B5}
+.formbtn .fic,.nightbtn .fic{font-size:17px;line-height:1}
+.stancebtn.on,.formbtn.on,.nightbtn.on{border-color:var(--stop);background:#2A0E10;color:#FFB3B5}
 .formbtn:active{transform:translateY(2px)}
 .v3d.ordering{cursor:crosshair}
 .v3d.ordering .v3d-say{display:none}
@@ -444,6 +444,40 @@ html,body{overflow-x:hidden}
 .vtab .vdot{position:absolute;top:3px;right:5px;font-style:normal;font-size:8px;
   background:var(--stop);color:#fff;border-radius:8px;padding:1px 4px}
 /* le métier, sous le nom, dans la liste des habitants */
+/* ---------- le panneau flottant ----------
+   Une fiche plein écran pour savoir qui est quelqu'un, c'était sortir du
+   village à chaque curiosité. Le panneau s'accroche au-dessus de la tête,
+   petit, et la scène continue de vivre derrière. */
+.whud{position:absolute;left:0;top:0;z-index:6;pointer-events:none;
+  transform:translate(-50%,-100%);transition:opacity .12s}
+.whud.show{pointer-events:auto}
+.whud:not(.show){opacity:0;pointer-events:none}
+.whcard{min-width:150px;max-width:min(74vw,270px);padding:7px 8px 8px;
+  border:1px solid var(--edge);border-radius:11px;background:rgba(16,22,30,.94);
+  box-shadow:0 8px 22px #0007;backdrop-filter:blur(3px)}
+.whtop{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.whic{font-size:15px;line-height:1}
+.whname{font-family:var(--px);font-size:8px;color:var(--bus);line-height:1.5;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whx{width:19px;height:19px;flex:0 0 auto;border:1px solid var(--edge);border-radius:6px;
+  background:var(--lane2);color:var(--dim);font-size:11px;line-height:1;padding:0}
+.whsub{font-size:10.5px;color:var(--dim);line-height:1.45;margin-bottom:5px}
+.whsub b{color:var(--ink)}
+.whrow{display:flex;flex-wrap:wrap;gap:4px}
+.whb{flex:1 1 auto;min-width:30px;padding:6px 7px;border:1px solid var(--edge);border-radius:8px;
+  background:var(--lane2);color:var(--ink);font-size:11.5px;line-height:1.1;text-align:center;white-space:nowrap}
+.whb:active{transform:translateY(1px)}
+.whb.on{border-color:var(--retro);color:var(--retro)}
+.whb.wide{flex:1 1 100%}
+.whb.go{border-color:var(--bus);color:var(--bus)}
+.whmen{display:flex;flex-direction:column;gap:3px;margin-top:5px;max-height:132px;overflow:auto}
+.whm{display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--edge);
+  border-radius:8px;background:var(--lane2);color:var(--ink);font-size:11px;text-align:left;width:100%}
+.whm span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whm i{color:var(--dim);font-style:normal;font-size:10px}
+.whsel{font-size:10px;color:var(--retro);margin-top:4px}
+.whin{flex:1 1 auto;min-width:0;padding:6px 7px;border:1px solid var(--edge);border-radius:8px;
+  background:var(--lane);color:var(--ink);font-size:12px;font-family:inherit}
 .skill{margin:10px 0;padding:9px 10px;border:1px solid var(--edge);border-radius:10px;background:var(--lane2)}
 .skillhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px}
 .skillst{color:#E0A800;letter-spacing:1px;font-size:11px;white-space:nowrap}
@@ -1490,8 +1524,10 @@ const SHOP=[
  d:'Tentes et feu de guerre',de:'Tents and a war fire'},
 {id:'entrainement',ic:'🎯',n:'Terrain d\'entraînement',ne:'Training ground',p:300,cat:'army',req:'camp',pw:12,rc:{wood:20,iron:12},
  d:'Mannequins et râtelier d\'armes',de:'Dummies and a weapon rack'},
-{id:'guerriers',ic:'🛡️',n:'Escouade de guerriers',ne:'Warrior squad',p:340,cat:'army',req:'entrainement',pw:18,rc:{iron:22,food:14},
- d:'4 guerriers casqués en patrouille',de:'4 helmeted warriors on patrol'},
+{id:'guerriers',ic:'🛡️',n:'Escouade de guerriers',ne:'Warrior squad',p:340,cat:'army',req:'entrainement',pw:18,
+ stack:true,rate:1.25,rc:{iron:22,food:14},
+ d:'4 guerriers casqués en patrouille — on peut en lever plusieurs',
+ de:'4 helmeted warriors on patrol — you may raise several'},
 {id:'tour',ic:'🗼',n:'Tour de guet',ne:'Watchtower',p:380,cat:'army',req:'palissade',pw:15,rc:{wood:26,iron:10},
  d:'Voit venir les légions de loin',de:'Spots the legions from afar'},
 {id:'muraille',ic:'🧱',n:'Muraille de pierre',ne:'Stone rampart',p:450,cat:'army',req:'palissade',pw:25,rc:{wood:48,iron:18},
@@ -1641,6 +1677,11 @@ function load(){
     ['xp','coins','coinsTotal','totalOk','totalKo'].forEach(k=>{ if(typeof st[k]!=='number'||!isFinite(st[k])) st[k]=0; });
     st.people=st.people.filter(x=>x&&typeof x==='object');
     st.village=st.village.filter(x=>typeof x==='string');
+    /* L'escouade de guerriers est devenue un bâtiment qu'on peut lever
+       plusieurs fois. Une sauvegarde d'avant ne la compte que dans village :
+       sans cette reprise, un joueur qui en avait une la perdait. */
+    st.stack=st.stack&&typeof st.stack==='object'?st.stack:{};
+    if(st.village.indexOf('guerriers')>=0&&!(st.stack.guerriers>0)) st.stack.guerriers=1;
     return st;
   }catch(e){ return defaults(); }
 }
@@ -3756,16 +3797,31 @@ const HOUSED={hutte:null, chasseur:'chasse', fermier:'ferme', bucheron:'bois', f
    caractère et une humeur, exactement comme le forgeron. Elles ne logent pas
    dans une hutte — elles dorment au camp militaire. */
 const BARRACKS={guerriers:4, chefguerre:1};
+/* Une escouade par exemplaire acheté : 'guerriers', 'guerriers#1', 'guerriers#2'…
+   Le chef de guerre reste unique et commande l'ensemble. */
+function squadKeys(){
+  if(!S.village||S.village.indexOf('guerriers')<0) return [];
+  const n=Math.max(1,nOwned('guerriers')), out=[];
+  for(let i=0;i<n;i++) out.push(i?'guerriers#'+i:'guerriers');
+  return out;
+}
+const ROMAN=['Ire','IIe','IIIe','IVe','Ve','VIe','VIIe','VIIIe','IXe','Xe'];
+function squadLabel(key){
+  if(String(key).split('#')[0]==='chefguerre') return t('Chef de guerre','Warlord');
+  const i=String(key).includes('#')?+String(key).split('#')[1]:0;
+  return t((ROMAN[i]||(i+1)+'e')+' escouade', (i+1)+(['st','nd','rd'][i]&&i<3?['st','nd','rd'][i]:'th')+' squad');
+}
+function squadPower(key){
+  return soldiersOf(key).reduce((n,r)=>n+((FIGHT[fightKindOf(r)]||{atk:0}).atk||0),0);
+}
 function soldierKeys(){
   const out=[];
-  Object.keys(BARRACKS).forEach(id=>{
-    if(!S.village.includes(id)) return;
-    for(let i=0;i<BARRACKS[id];i++) out.push(id+'@'+i);
-  });
+  squadKeys().forEach(k=>{ for(let i=0;i<BARRACKS.guerriers;i++) out.push(k+'@'+i); });
+  if(S.village.includes('chefguerre')) out.push('chefguerre@0');
   return out;
 }
 function isSoldierKey(k){ return /@\d+$/.test(String(k||'')); }
-function soldierJob(k){ return String(k).split('@')[0]==='chefguerre'?'chefdeguerre':'guerre'; }
+function soldierJob(k){ return String(k).split('@')[0].split('#')[0]==='chefguerre'?'chefdeguerre':'guerre'; }
 function isSoldier(rec){ return !!rec&&(rec.job==='guerre'||rec.job==='chefdeguerre'); }
 /* leur métier ne se renégocie pas : on ne réaffecte pas un guerrier au poulailler */
 const FIXED_JOBS={guerre:1, chefdeguerre:1, enfant:1};
@@ -3907,6 +3963,8 @@ function syncPeople(){
   // le toit qu'ils libèrent est aussitôt proposé à un nouveau venu
   settleCouples();
   keys.forEach(k=>{ if(k==='founder') return;
+    // un poste gardé au chaud pour un permissionnaire n'est pas un poste vide
+    if(isSoldierKey(k)&&S.people.some(p=>p.army===k)) return;
     if(!S.people.some(p=>p.home===k)){
       const np=newPerson(S.people.length,k,
         isSoldierKey(k)?soldierJob(k):(freeJob()||jobForBuilding(k)));
@@ -4677,9 +4735,9 @@ const ARMY_R=20;                    // encombrement de la troupe rangée
    formation. On déplace donc la TROUPE ENTIÈRE : on essaie le point visé, puis
    on tourne autour en spirale jusqu'à trouver une place où CHAQUE homme,
    porte-enseigne compris, est au clair. La ligne reste une ligne. */
-function armySlotsWorld(x,z){
+function armySlotsWorld(x,z,key){
   const rot=Math.atan2(x,z), cs=Math.cos(rot), sn=Math.sin(rot);
-  const out=formationSlots(4).map(pt=>[x+pt[0]*cs+pt[1]*sn, z-pt[0]*sn+pt[1]*cs]);
+  const out=formationSlots(4,key).map(pt=>[x+pt[0]*cs+pt[1]*sn, z-pt[0]*sn+pt[1]*cs]);
   out.push([x, z-14]);                       // le chef et son enseigne
   return out;
 }
@@ -4689,9 +4747,25 @@ function armySlotsWorld(x,z){
 function armyPathFree(x,z){
   return (V3.solids||[]).every(o=>Math.hypot(x-o.x, z-o.z)>=o.r+5);
 }
-function armyFits(x,z){
+/* le premier obstacle sur la ligne droite qui mène au but, s'il y en a un */
+function firstBlocker(x0,z0,x1,z1){
+  const dx=x1-x0, dz=z1-z0, d=Math.hypot(dx,dz);
+  if(d<1) return null;
+  const ux=dx/d, uz=dz/d, far=Math.min(d,70);
   const S2=V3.solids||[];
-  return armySlotsWorld(x,z).every(pt=>
+  for(let t=6;t<=far;t+=6){
+    const x=x0+ux*t, z=z0+uz*t;
+    for(const o of S2){
+      // l'arrivée a déjà été validée : ce qui la borde n'est pas un obstacle
+      if(Math.hypot(x1-o.x,z1-o.z)<o.r+10) continue;
+      if(Math.hypot(x-o.x,z-o.z)<o.r+6) return o;
+    }
+  }
+  return null;
+}
+function armyFits(x,z,key){
+  const S2=V3.solids||[];
+  return armySlotsWorld(x,z,key).every(pt=>
     S2.every(o=>Math.hypot(pt[0]-o.x, pt[1]-o.z)>=o.r+5.2));
 }
 /* replace la troupe une fois TOUS les obstacles connus */
@@ -4699,23 +4773,31 @@ function armyFits(x,z){
    EST, pas à l'arrivée de son ordre : sinon changer d'onglet la téléportait au
    bout du village et on ne la voyait jamais marcher. */
 function settleArmy(){
-  const here=V3.apos, want=here||(S.army&&S.army.x!=null?[S.army.x,S.army.z]:stancePoint());
-  if(!want) return;
-  const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
-  if(!a&&!c) return;
-  const sp=(here&&armyFits(here[0],here[1]))?here.slice():armySpot(want[0],want[1]);
-  V3.apos=[sp[0],sp[1]];
-  const rot=Math.atan2(sp[0],sp[1]);
-  if(a){ a.position.set(sp[0],0,sp[1]); a.rotation.y=rot; }
-  if(c){ c.position.set(sp[0],0,sp[1]-14); c.rotation.y=rot; }
+  V3.apos=(V3.apos&&typeof V3.apos==='object'&&!Array.isArray(V3.apos))?V3.apos:{};
+  let first=null;
+  squadKeys().forEach(key=>{
+    const g=V3.place&&V3.place[key]; if(!g) return;
+    const here=V3.apos[key], want=here||squadGoal(key);
+    if(!want) return;
+    const sp=(here&&armyFits(here[0],here[1],key))?here.slice():armySpot(want[0],want[1],key);
+    V3.apos[key]=[sp[0],sp[1]];
+    g.position.set(sp[0],0,sp[1]);
+    g.rotation.y=Math.atan2(sp[0],sp[1]);
+    if(!first) first=sp;
+  });
+  const c=V3.place&&V3.place['chefguerre'];
+  if(c){
+    const sp=first||squadGoal('guerriers');
+    if(sp){ c.position.set(sp[0],0,sp[1]-14); c.rotation.y=Math.atan2(sp[0],sp[1]); }
+  }
 }
-function armySpot(x,z){
-  if(armyFits(x,z)) return [x,z];
+function armySpot(x,z,key){
+  if(armyFits(x,z,key)) return [x,z];
   for(let r=8;r<=150;r+=8){
     for(let a=0;a<16;a++){
       const th=a*Math.PI/8, nx=x+Math.cos(th)*r, nz=z+Math.sin(th)*r;
       if(Math.hypot(nx,nz)>250) continue;
-      if(armyFits(nx,nz)) return [nx,nz];
+      if(armyFits(nx,nz,key)) return [nx,nz];
     }
   }
   const f=pushOutOfSolids(x,z,ARMY_R);       // village saturé : au moins on sort des murs
@@ -4726,7 +4808,55 @@ const FORMATIONS=[
   {k:'carre', ic:'▣', n:'En carré',   ne:'Square'},
   {k:'coin',  ic:'▲', n:'En pointe',  ne:'Wedge'}
 ];
-function formationOf(){ return (S.army&&S.army.f)||'ligne'; }
+/* ---------- les ordres, escouade par escouade ----------
+   Un seul S.army ne pouvait commander qu'une troupe. Chaque escouade a
+   maintenant les siens ; l'ancienne sauvegarde devient ceux de la première. */
+function armyOf(key){
+  S.armies=S.armies||{};
+  if(!S.armies[key]){
+    const old=(key==='guerriers'&&S.army&&(S.army.x!=null||S.army.st))?S.army:null;
+    S.armies[key]=old?{x:old.x,z:old.z,f:old.f||'ligne',st:old.st||'rang',watch:old.watch||null}
+                    :{x:null,z:null,f:'ligne',st:'rang',watch:null};
+  }
+  const a=S.armies[key];
+  if(key==='guerriers') S.army=a;            // les anciens tests et sauvegardes s'y retrouvent
+  return a;
+}
+/* les escouades visées par un ordre : celles qu'on a sélectionnées */
+function selectedSquads(){
+  const all=squadKeys();
+  const sel=(V3.sq||[]).filter(k=>all.indexOf(k)>=0);
+  if(sel.length) return sel;
+  if(V3.hud&&V3.hud.kind==='squad'&&all.indexOf(V3.hud.key)>=0) return [V3.hud.key];
+  return all.slice(0,1);
+}
+/* quartier libre : cette escouade a-t-elle le droit d'aller dormir ? */
+function nightRest(key){ return !!armyOf(key||selectedSquads()[0]||'guerriers').night; }
+function toggleNight(){
+  const sel=selectedSquads();
+  const on=!nightRest(sel[0]);
+  sel.forEach(k=>{ armyOf(k).night=on?1:0;
+    soldiersOf(k).forEach(r=>nudgeMood(r,on?0.12:-0.05)); });
+  if(sel.indexOf(squadKeys()[0])>=0) soldiersOf('chefguerre').forEach(r=>nudgeMood(r,on?0.12:-0.05));
+  save(); SFX.click();
+  toast(on ? '🌙 '+t('Quartier libre : ils dormiront au camp la nuit.',
+                     'Night leave: they will sleep at camp.')
+           : '🔥 '+t('Veille : ils tiennent leur poste toute la nuit.',
+                     'Night watch: they hold their post all night.'));
+  refreshOrders();
+  return on;
+}
+function toggleSquad(k){
+  const all=squadKeys(); if(all.indexOf(k)<0) return;
+  let sel=(V3.sq||[]).filter(x=>all.indexOf(x)>=0);
+  if(!sel.length&&V3.hud&&V3.hud.kind==='squad') sel=[V3.hud.key];
+  const i=sel.indexOf(k);
+  if(i>=0){ if(sel.length>1) sel.splice(i,1); }
+  else sel.push(k);
+  V3.sq=sel;
+  if(V3.hud&&V3.hud.kind==='squad') hudPaint();
+}
+function formationOf(key){ return armyOf(key||selectedSquads()[0]||'guerriers').f||'ligne'; }
 /* ---------- la consigne du jour ----------
    Au-delà du « où » (le point de rassemblement) et du « comment » (la
    formation), on décide de ce que la troupe FAIT. Chaque consigne place la
@@ -4745,23 +4875,36 @@ const STANCES=[
   d:'Ils rejoignent le feu de camp. L\'humeur remonte, la garde est baissée.',
   de:'They fall back to the campfire. Morale rises, the guard is down.'}
 ];
-function stanceOf(){ return (S.army&&S.army.st)||'rang'; }
+function stanceOf(key){ return armyOf(key||selectedSquads()[0]||'guerriers').st||'rang'; }
+function squadOrderOf(key){
+  if(V3.order===2) return 'guard';
+  if(V3.order===1) return 'move';
+  const a=armyOf(key);
+  return a.x!=null&&!a.watch?'move':(a.watch?'guard':(a.st||'rang'));
+}
 function setStance(k){
-  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
-  S.army.st=k; save(); SFX.click();
+  const sel=selectedSquads();
+  const d=(k==='repos'?0.2 : k==='patrouille'?-0.03 : 0);
+  sel.forEach(key=>{ const a=armyOf(key); a.st=k;
+    soldiersOf(key).forEach(r=>nudgeMood(r,d)); });
+  // le chef partage la consigne de sa première escouade
+  if(sel.indexOf(squadKeys()[0])>=0) soldiersOf('chefguerre').forEach(r=>nudgeMood(r,d));
+  save(); SFX.click();
   const st=STANCES.find(x=>x.k===k)||STANCES[0];
-  // la consigne se ressent : au repos on souffle, en garde on se tend
-  soldiersAll().forEach(r=>nudgeMood(r, k==='repos'?0.2 : k==='patrouille'?-0.03 : 0));
   toast(st.ic+' '+t(st.n+' — '+t(st.d,st.de), st.ne+' — '+t(st.d,st.de)));
   refreshOrders();                  // la troupe rejoint son nouveau poste à pied
 }
 /* où la troupe doit se trouver, selon la consigne et l'heure */
-function stancePoint(){
-  if(routine()==='sleep'){                       // la nuit, tout le monde rentre
+function stancePoint(key){ return stancePointFor(key||selectedSquads()[0]||'guerriers'); }
+function stancePointFor(key){
+  const a=armyOf(key), st=a.st||'rang';
+  /* Un villageois se couche à la nuit tombée ; un soldat, non. Il tient son
+     poste jusqu'à ce qu'on lui donne quartier libre — c'est une permission
+     qu'on accorde, escouade par escouade, pas une habitude. */
+  if(routine()==='sleep'&&a.night){
     const c=V3.place&&(V3.place['camp']||V3.place['entrainement']);
     if(c) return [c.position.x, c.position.z+18];
   }
-  const st=stanceOf();
   if(st==='garde') return [0,150];
   if(st==='repos'){ const f=V3.place&&V3.place['feu'];
     return f?[f.position.x+22, f.position.z+18]:[24,20]; }
@@ -4785,73 +4928,124 @@ function quartersPoint(){
    mouvement sert pour un point de rassemblement, une garde et une patrouille —
    il n'y a qu'une seule façon de marcher. */
 const MARCH_SPEED=26;                          // unités par seconde, au pas
-function armyGoal(){
-  if(S.army&&S.army.x!=null) return [S.army.x,S.army.z];
-  return stancePoint();
+/* où CETTE escouade doit se rendre. Deux escouades envoyées au même endroit ne
+   se marchent pas dessus : chacune décale son rang. */
+function squadGoal(key){
+  const a=armyOf(key);
+  const i=Math.max(0,squadKeys().indexOf(key));
+  if(a.x!=null){
+    if(!i) return [a.x,a.z];
+    const r=Math.hypot(a.x,a.z)||1;            // décalage le long du front
+    return [a.x - a.z/r*i*26, a.z + a.x/r*i*26];
+  }
+  const st=stancePointFor(key);
+  if(!st) return null;
+  if(!i) return st;
+  const r=Math.hypot(st[0],st[1])||1;
+  return [st[0]-st[1]/r*i*26, st[1]+st[0]/r*i*26];
 }
-function armyMarchTick(dt){
-  const a=V3.place&&V3.place['guerriers'], c=V3.place&&V3.place['chefguerre'];
-  if(!a&&!c) return;
-  const g=a||c;
-  const goal=armyGoal();
-  if(!goal){ V3.marching=0; return; }
+function armyGoal(key){ return squadGoal(key||selectedSquads()[0]||'guerriers'); }
+/* la marche : une escouade, son but, son pas */
+function squadMarch(key,g,dt,lead){
+  const goal=squadGoal(key);
+  if(!goal){ return false; }
   const sp=armySpot(goal[0],goal[1]);
   const dx=sp[0]-g.position.x, dz=sp[1]-g.position.z, d=Math.hypot(dx,dz);
   if(d<5.5){                                   // en place : on se remet face à l'extérieur
-    V3.marching=0;
     const face=Math.atan2(sp[0],sp[1]);
-    [a,c].forEach(o=>{ if(!o) return;
-      let df=face-o.rotation.y;
-      while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
-      o.rotation.y+=df*Math.min(1,4*dt);
-      // on garde un cap borné : sinon l'angle dérive de tours entiers
-      o.rotation.y=Math.atan2(Math.sin(o.rotation.y),Math.cos(o.rotation.y));
-      armyStride(o,0,dt);
-    });
-    if(a&&c){ const tx=sp[0]-Math.sin(face)*14, tz=sp[1]-Math.cos(face)*14;
-      c.position.x+=(tx-c.position.x)*Math.min(1,3*dt);
-      c.position.z+=(tz-c.position.z)*Math.min(1,3*dt); }
-    // en patrouille libre, on souffle puis on gagne le poste suivant
-    if(stanceOf()==='patrouille'&&!(S.army&&S.army.x!=null)){
-      V3.patT=(V3.patT||0)+dt;
-      if(V3.patT>4){ V3.patT=0; V3.patI=((V3.patI||0)+1)%4; }
-    }
-    return;
-  }
-  V3.patT=0; V3.marching=1;
-  const step=Math.min(d, MARCH_SPEED*dt);
-  /* on ne traverse pas une grange parce qu'elle est sur le chemin : on essaie
-     tout droit, puis de plus en plus de biais, jusqu'à trouver par où passer */
-  let ux=dx/d, uz=dz/d;
-  const base=Math.atan2(ux,uz);
-  /* Contourner un obstacle, c'est choisir un CÔTÉ et s'y tenir. Sans cette
-     mémoire la troupe essayait la gauche, puis la droite, puis la gauche : elle
-     dansait sur place au lieu d'avancer. */
-  const sd=V3.mside||1;
-  let picked=null;
-  for(const off of [0, sd*0.4, -sd*0.4, sd*0.9, -sd*0.9, sd*1.5, -sd*1.5, sd*2.1, -sd*2.1]){
-    const a2=base+off, tx=Math.sin(a2), tz=Math.cos(a2);
-    if(armyPathFree(g.position.x+tx*step, g.position.z+tz*step)){
-      ux=tx; uz=tz; picked=off; break; }
-  }
-  // rien de libre : la colonne passe quand même, elle ne se fige pas
-  if(picked) V3.mside=picked>0?1:-1;
-  const face=Math.atan2(ux,uz);
-  [a,c].forEach(o=>{ if(!o) return;
-    o.position.x+=ux*step; o.position.z+=uz*step;
-    let df=face-o.rotation.y;
+    let df=face-g.rotation.y;
     while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
-    o.rotation.y+=df*Math.min(1,6*dt);
-    o.rotation.y=Math.atan2(Math.sin(o.rotation.y),Math.cos(o.rotation.y));
-    armyStride(o,1,dt);
-  });
-  // le chef marche derrière ses hommes, enseigne au vent : il recale son écart
-  if(a&&c){
-    const tx=a.position.x-Math.sin(face)*14, tz=a.position.z-Math.cos(face)*14;
-    c.position.x+=(tx-c.position.x)*Math.min(1,2.5*dt);
-    c.position.z+=(tz-c.position.z)*Math.min(1,2.5*dt);
+    g.rotation.y+=df*Math.min(1,4*dt);
+    g.rotation.y=Math.atan2(Math.sin(g.rotation.y),Math.cos(g.rotation.y));
+    armyStride(g,0,dt);
+    if(lead){
+      const c=V3.place&&V3.place['chefguerre'];
+      if(c){ const tx=sp[0]-Math.sin(face)*14, tz=sp[1]-Math.cos(face)*14;
+        c.position.x+=(tx-c.position.x)*Math.min(1,3*dt);
+        c.position.z+=(tz-c.position.z)*Math.min(1,3*dt);
+        c.rotation.y=g.rotation.y; armyStride(c,0,dt); }
+      // en patrouille libre, on souffle puis on gagne le poste suivant
+      if(stanceOf(key)==='patrouille'&&armyOf(key).x==null){
+        V3.patT=(V3.patT||0)+dt;
+        if(V3.patT>4){ V3.patT=0; V3.patI=((V3.patI||0)+1)%4; }
+      }
+    }
+    return false;
   }
-  V3.apos=[g.position.x, g.position.z];        // pour retrouver la troupe après un rendu
+  if(lead) V3.patT=0;
+  const step=Math.min(d, MARCH_SPEED*dt);
+  /* Contourner une grange, ce n'est pas tâtonner : c'est viser un point DE
+     L'AUTRE CÔTÉ et y aller. Un éventail de directions recalculé à chaque
+     image faisait osciller la troupe devant l'obstacle sans jamais le passer ;
+     un point de passage tenu jusqu'à ce qu'il soit atteint la fait passer. */
+  V3.way=(V3.way&&typeof V3.way==='object')?V3.way:{};
+  V3.wayT=(V3.wayT&&typeof V3.wayT==='object')?V3.wayT:{};
+  let aim=sp, w=V3.way[key];
+  V3.wside=(V3.wside&&typeof V3.wside==='object')?V3.wside:{};
+  V3.wsideT=(V3.wsideT&&typeof V3.wsideT==='object')?V3.wsideT:{};
+  V3.wayT[key]=Math.max(0,(V3.wayT[key]||0)-dt);
+  V3.wsideT[key]=Math.max(0,(V3.wsideT[key]||0)-dt);
+  /* un détour n'est pas un but : on l'abandonne dès qu'il est atteint, dès que
+     la route est libre, dès qu'il s'éloigne plus qu'il ne rapproche, et de
+     toute façon au bout de quelques secondes */
+  if(w&&(Math.hypot(w[0]-g.position.x,w[1]-g.position.z)<6
+         || !V3.wayT[key]
+         || Math.hypot(w[0]-sp[0],w[1]-sp[1])>d
+         || !firstBlocker(g.position.x,g.position.z,sp[0],sp[1]))){
+    V3.way[key]=null; w=null;
+  }
+  if(w) aim=w;
+  else{
+    const hit=firstBlocker(g.position.x,g.position.z,sp[0],sp[1]);
+    if(hit){
+      const px=-dz/d, pz=dx/d;                    // perpendiculaire à la route
+      const R=hit.r+12;
+      const c1=[hit.x+px*R, hit.z+pz*R], c2=[hit.x-px*R, hit.z-pz*R];
+      /* On choisit un côté UNE fois et on le garde. Décider à chaque image
+         « lequel rapproche le plus du but » faisait basculer la troupe de
+         gauche à droite deux fois par seconde, sur place, indéfiniment. */
+      const side=V3.wsideT[key]>0&&V3.wside[key]
+        ? V3.wside[key]
+        : (Math.hypot(c1[0]-sp[0],c1[1]-sp[1])<=Math.hypot(c2[0]-sp[0],c2[1]-sp[1])?1:-1);
+      V3.wside[key]=side; V3.wsideT[key]=5;
+      aim=side>0?c1:c2;
+      V3.way[key]=aim; V3.wayT[key]=3;
+    }
+  }
+  const ax=aim[0]-g.position.x, az=aim[1]-g.position.z, ad=Math.hypot(ax,az)||1;
+  const ux=ax/ad, uz=az/ad;
+  const face=Math.atan2(ux,uz);
+  g.position.x+=ux*step; g.position.z+=uz*step;
+  let df=face-g.rotation.y;
+  while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+  g.rotation.y+=df*Math.min(1,6*dt);
+  g.rotation.y=Math.atan2(Math.sin(g.rotation.y),Math.cos(g.rotation.y));
+  armyStride(g,1,dt);
+  // le chef marche derrière la première escouade, enseigne au vent
+  if(lead){
+    const c=V3.place&&V3.place['chefguerre'];
+    if(c){ const tx=g.position.x-Math.sin(face)*14, tz=g.position.z-Math.cos(face)*14;
+      c.position.x+=(tx-c.position.x)*Math.min(1,2.5*dt);
+      c.position.z+=(tz-c.position.z)*Math.min(1,2.5*dt);
+      c.rotation.y=g.rotation.y; armyStride(c,1,dt); }
+  }
+  V3.apos=V3.apos||{};
+  V3.apos[key]=[g.position.x, g.position.z];   // pour retrouver la troupe après un rendu
+  return true;
+}
+function armyMarchTick(dt){
+  let moving=false, lead=true;
+  squadKeys().forEach(key=>{
+    const g=V3.place&&V3.place[key]; if(!g) return;
+    if(squadMarch(key,g,dt,lead)) moving=true;
+    lead=false;
+  });
+  // pas d'escouade mais un chef : il rentre quand même à son poste
+  if(lead){
+    const c=V3.place&&V3.place['chefguerre'];
+    if(c&&squadMarch('guerriers',c,dt,false)) moving=true;
+  }
+  V3.marching=moving?1:0;
 }
 /* le pas cadencé : bras qui balancent et léger roulis, comme les villageois */
 function armyStride(grp,on,dt){
@@ -4873,8 +5067,8 @@ function soldiersOf(id){
     .sort((a,b)=>String(a.home).localeCompare(String(b.home)));
 }
 function soldiersAll(){ return (S.people||[]).filter(isSoldier); }
-function formationSlots(n){
-  const f=formationOf(), out=[];
+function formationSlots(n,key){
+  const f=formationOf(key), out=[];
   for(let i=0;i<n;i++){
     if(f==='carre'){ const c=i%2, r=Math.floor(i/2);
       out.push([(c-0.5)*11, (r-0.5)*11, 0]);
@@ -4965,13 +5159,15 @@ Object.assign(B3,{
     return g; },
   guerriers(){ const g=new THREE.Group();
     // la formation choisie décide de la disposition et de l'orientation
-    const F=formationSlots(4);
-    const men=soldiersOf('guerriers');
+    const key=V3.bkey||'guerriers';
+    const F=formationSlots(4,key);
+    const men=soldiersOf(key);
     F.forEach((p,i)=>{
       const w=warrior(i+2,false); w.position.set(p[0],0,p[1]);
       w.rotation.y=p[2]; w.name='guard'; w.userData.p=i*0.7;
       // on lui accroche son identité : toucher le guerrier ouvre SA fiche
-      if(men[i]){ w.userData.rec=men[i]; w.userData.npc=1; }
+      w.userData.npc=1; w.userData.sqk=key;      // l'escouade est un bloc : on la commande, elle
+      if(men[i]) w.userData.rec=men[i];
       g.add(w); });
     g.userData.men=g.children.slice();          // pour le pas cadencé
     return g; },
@@ -5053,7 +5249,8 @@ Object.assign(B3,{
   chefguerre(){ const g=new THREE.Group();
     const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard';
     const chef=soldiersOf('chefguerre')[0];
-    if(chef){ w.userData.rec=chef; w.userData.npc=1; }
+    w.userData.npc=1; w.userData.sqk=squadKeys()[0]||'guerriers';
+    if(chef) w.userData.rec=chef;
     g.add(w); g.userData.men=[w];
     g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
@@ -5103,7 +5300,9 @@ function buildVillage(scene){
       let p=(S.vpos&&S.vpos[key])||(it.id==='chemin'?pathSpot(i):(i?hutSpot(spiral+i):base));
       // un chemin est à plat sur le sol : il ne bute contre rien et rien ne le repousse
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(key),key);
+      V3.bkey=key;                                  // l'escouade doit savoir laquelle elle est
       const g=B3[it.id](i>=3); g.position.set(p[0],0,p[1]);
+      V3.bkey=null;
       g.rotation.y=(S.vrot&&S.vrot[key]!=null) ? S.vrot[key]
                  : (it.id==='chemin'?0:Math.round(((i*0.7)%6.28)/ROT_STEP)*ROT_STEP);
       scene.add(g); anim.push(g); g.userData.pid=key; V3.place[key]=g;
@@ -5113,10 +5312,10 @@ function buildVillage(scene){
   SHOP.forEach(it=>{
     if(it.stack) return;   // déjà traités ci-dessus
     let p=(S.vpos&&S.vpos[it.id])||P3[it.id]||[0,0];
-    // l'armée obéit à son ordre de rassemblement
-    if(it.id==='guerriers'||it.id==='chefguerre'){
-      const sp=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
-      if(sp) p=[sp[0], sp[1]+(it.id==='chefguerre'?-14:0)];
+    // le chef obéit à l'ordre de la première escouade
+    if(it.id==='chefguerre'){
+      const sp=squadGoal(squadKeys()[0]||'guerriers');
+      if(sp) p=[sp[0], sp[1]-14];
     }
     if(owned.includes(it.id)){
       if(!NOCLIP[it.id]) p=resolveOverlap(p[0],p[1],footOf(it.id),it.id);
@@ -5124,8 +5323,8 @@ function buildVillage(scene){
       if(S.vrot&&S.vrot[it.id]!=null) g.rotation.y=S.vrot[it.id];
       else g.rotation.y=Math.round(g.rotation.y/ROT_STEP)*ROT_STEP;
       // la troupe fait face à l'extérieur du village : c'est de là que vient César
-      if(it.id==='guerriers'||it.id==='chefguerre'){
-        const sp=(S.army&&S.army.x!=null)?[S.army.x,S.army.z]:stancePoint();
+      if(it.id==='chefguerre'){
+        const sp=squadGoal(squadKeys()[0]||'guerriers');
         if(sp) g.rotation.y=Math.atan2(sp[0],sp[1]);
       }
       scene.add(g); anim.push(g);
@@ -5137,14 +5336,6 @@ function buildVillage(scene){
     }
   });
   relaxVillage();          // plus rien ne se traverse
-  // la troupe obéit à l'ordre reçu : elle n'est pas déplacée par la relaxation
-  if(S.army&&S.army.x!=null){
-    [['guerriers',0,0],['chefguerre',0,-14]].forEach(([id,dx,dz])=>{
-      const g=V3.place[id]; if(!g) return;
-      g.position.set(S.army.x+dx, 0, S.army.z+dz);
-      g.rotation.y=Math.atan2(S.army.x,S.army.z);
-    });
-  }
   // forêt + rochers
   const TR=[[8,96,1.1,0],[32,108,.9,1],[56,94,1.2,0],[80,112,1,1],[104,98,1.1,0],[128,114,.85,0],
             [152,100,1.15,1],[176,92,1,0],[200,110,1.2,0],[224,96,.9,1],[248,112,1.05,0],[272,94,1.15,0],
@@ -5473,6 +5664,7 @@ function v3dHost(){
   return '<div class="v3d'+(V3.edit?' editing':'')+(V3.order?' ordering':'')+'" id="v3d"><canvas id="v3dc"></canvas>'
     +'<div class="raidbar" id="raidbar"></div>'
     +'<div class="v3d-say" id="v3dsay"></div>'
+    +'<div class="whud" id="whud"></div>'
     +'<div class="v3d-hint">'+(V3.edit
         ? t('👆 glisse un bâtiment · ↺ ↻ pour l\'orienter','👆 drag a building · ↺ ↻ to turn it')
         : V3.order===2 ? t('🛡️ touche le bâtiment à garder','🛡️ tap the building to guard')
@@ -5559,7 +5751,7 @@ function v3dInit(){
   const pickNpc=e=>{ toNdc(e); ray.setFromCamera(ndc,cam);
     // les guerriers de l'escouade vivent dans leur groupe, pas dans built.walkers
     const targets=built.walkers.concat(
-      ['guerriers','chefguerre'].map(k=>V3.place&&V3.place[k]).filter(Boolean));
+      squadKeys().concat(['chefguerre']).map(k=>V3.place&&V3.place[k]).filter(Boolean));
     const hits=ray.intersectObjects(targets,true);
     for(const h of hits){ let o=h.object; while(o&&!o.userData.npc) o=o.parent; if(o) return o; }
     return null; };
@@ -5679,20 +5871,21 @@ function v3dInit(){
         V3.lastTap=now; V3.lastTapXY=[e.clientX,e.clientY];
         if(!V3.edit){
           const npc=pickNpc(e);
-          if(npc&&npc.userData.rec){ showPerson(npc.userData.rec,npc); }
-          else if(npc){ squadOrders(); }
+          if(npc&&npc.userData.sqk) hudOpen('squad',npc.userData.sqk);
+          else if(npc&&npc.userData.rec) tapPerson(npc.userData.rec);
           else{
             const bld=pickAt(e);
-            if(bld&&bld.userData.pid) showBuilding(bld.userData.pid);
+            if(bld&&bld.userData.pid) tapBuilding(bld.userData.pid);
             else{
               // le doigt est large et les toits sont petits : à défaut d'un
               // toucher pile dessus, on prend ce qu'il y a de plus proche
               const g=groundAt(e);
               if(g){
                 const w=nearestWalker(g.x,g.z,14);
-                if(w&&w.userData.rec) showPerson(w.userData.rec,w);
-                else{ const k=nearestBuilding(g.x,g.z); if(k) showBuilding(k); }
-              }
+                if(w&&w.userData.sqk) hudOpen('squad',w.userData.sqk);
+                else if(w&&w.userData.rec) tapPerson(w.userData.rec);
+                else{ const k=nearestBuilding(g.x,g.z); if(k) tapBuilding(k); else hudClose(); }
+              }else hudClose();
             }
           }
         }
@@ -5986,6 +6179,7 @@ function v3dInit(){
     else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
+    if(V3.hud) hudTrack(cam);
     ren.render(scene,cam);
     V3.raf=requestAnimationFrame(loop);
   };
@@ -6147,10 +6341,10 @@ function nearestWalker(x,z,r){
   /* Les soldats ne sont pas des promeneurs : ils vivent dans le groupe de leur
      escouade. Sans eux ici, un appui un peu à côté d'un guerrier retombait sur
      la fiche du BÂTIMENT « escouade » — et les ordres restaient introuvables. */
-  ['guerriers','chefguerre'].forEach(k=>{
+  squadKeys().concat(['chefguerre']).forEach(k=>{
     const g=V3.place&&V3.place[k]; if(!g) return;
     (g.userData.men||g.children||[]).forEach(m=>{
-      if(!m.userData||!m.userData.rec) return;
+      if(!m.userData||!(m.userData.rec||m.userData.sqk)) return;
       W.push({position:{x:g.position.x+m.position.x, z:g.position.z+m.position.z},
               userData:m.userData});
     });
@@ -6361,7 +6555,7 @@ function burnVillage(){
   S.village=['feu'];            // il ne reste que le feu de camp au milieu des cendres
   S.res={food:0,wood:0,iron:0};
   S.vpos={}; S.vrot={}; S.vacated={};
-  S.army={x:null,z:null,f:'ligne',st:'rang'};
+  S.army={x:null,z:null,f:'ligne',st:'rang'}; S.armies={};
   S.burned=Date.now();
   S.dead=(S.dead||[]).concat(dead.map(r=>nameOf(r))).slice(-40);
   dead.forEach(r=>chron('🔥 '+nameOf(r)+t(' est tombé en défendant le village.',' fell defending the village.'),
@@ -6411,7 +6605,7 @@ function raidAsk(){
   if(!raidReady()){ toast('🏛️ '+t('César a déjà tenté sa chance aujourd\'hui.','Caesar has already tried his luck today.')); return; }
   const F=romanForce();
   const mine=(S.people||[]).filter(x=>!isChild(x)).length
-    + (S.village.includes('guerriers')?4:0) + (S.village.includes('chefguerre')?1:0);
+    + squadKeys().length*4 + (S.village.includes('chefguerre')?1:0);
   showOverlay('🏛️', t('Les Romains approchent','The Romans are coming'),
     t('Une colonne de <b>'+F.n+' légionnaires</b>'+(F.boss?t(' menée par un <b>centurion</b>',' led by a <b>centurion</b>'):'')
       +' marche sur le village.','A column of <b>'+F.n+' legionaries</b>'+(F.boss?' led by a <b>centurion</b>':'')
@@ -6485,14 +6679,14 @@ function raidBuild(scene){
   if(fort>1) units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
     u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); } });
   // --- les guerriers de l'escouade quittent leur groupe pour se battre
-  ['guerriers','chefguerre'].forEach(key=>{
+  squadKeys().concat(['chefguerre']).forEach(key=>{
     const grp=V3.place&&V3.place[key]; if(!grp) return;
     const V=new THREE.Vector3();
     grp.children.filter(c=>c.name==='guard').forEach(w=>{
       w.getWorldPosition(V);
       grp.remove(w); scene.add(w);
       w.position.copy(V); w.position.y=0;
-      add(w,'gaul',key==='chefguerre'?'chef':'guerrier',V.x,V.z);
+      add(w,'gaul',String(key).split('#')[0]==='chefguerre'?'chef':'guerrier',V.x,V.z);
     });
   });
   // --- la garnison : le camp militaire et le terrain d'entraînement ne sont
@@ -6884,7 +7078,7 @@ function vDefenceHtml(){
       :ap>=50?t('Défenses solides — continue, il reste des failles.','Solid defenses — keep going, there are still gaps.')
       :t('Village vulnérable ! Construis la forge, puis le camp militaire.','Village vulnerable! Build the forge, then the military camp.'))
    +' · '+t('puissance','power')+' <b>'+pw+'/'+ARMY_MAX+'</b></p>'
-   +(owned.includes('guerriers')?armyOrdersHtml():'')
+   +(squadKeys().length?armyOrdersHtml():'')
    +fortHtml()
    +raidBtnHtml()
    +'</div>'
@@ -7043,6 +7237,9 @@ function showPerson(rec,obj){
         +mem.map(m=>'<span style="color:var(--dim)">· '+esc(t(m.fr,m.en))+'</span>').join('<br>')
       +'</div>':'')
     +tradePickHtml(rec)
+    +'<div class="tradepick"><div class="hsec" style="margin-top:0">✏️ '+t('Son nom','Their name')+'</div>'
+    +'<div class="whrow"><input class="whin" id="renbox" maxlength="18" value="'+esc(nameOf(rec))+'">'
+    +'<button class="whb go" onclick="G.renameVillager('+rec.id+',document.getElementById(\'renbox\').value)">✓</button></div></div>'
     +(isSoldier(rec)?orderPadHtml():'')
     +'</div>');
 }
@@ -7117,7 +7314,7 @@ function garrisonHtml(){
     }).join('')+'</div>';
 }
 function armyOrdersHtml(){
-  const a=S.army||{}, placed=(a.x!=null);
+  const sel=selectedSquads(), a=armyOf(sel[0]||'guerriers'), placed=(a.x!=null);
   let h='<div class="armyord"><div class="eyebrow" style="margin:12px 0 8px">📣 '
    +t('ORDRES À LA TROUPE','ORDERS TO THE SQUAD')+'</div>'
    +'<div class="formrow">';
@@ -7131,9 +7328,16 @@ function armyOrdersHtml(){
    +STANCES.map(x=>'<button class="stancebtn'+(stanceOf()===x.k?' on':'')+'" onclick="G.setStance(\''+x.k+'\')">'
       +'<span class="fic">'+x.ic+'</span>'+esc(t(x.n,x.ne))+'</button>').join('')
    +'</div>'
+   +'<div class="formrow" style="margin-top:8px">'
+   +'<button class="nightbtn'+(nightRest()?' on':'')+'" onclick="G.toggleNight()">'
+   +'<span class="fic">'+(nightRest()?'🌙':'🔥')+'</span>'
+   +esc(nightRest()?t('Quartier libre','Night leave'):t('Veille de nuit','Night watch'))+'</button></div>'
    +'<p class="small" style="margin:8px 0 0">'
    +esc(t((STANCES.find(x=>x.k===stanceOf())||STANCES[0]).d,(STANCES.find(x=>x.k===stanceOf())||STANCES[0]).de))
-   +(routine()==='sleep'?' <b>'+t('(la nuit, ils rentrent au camp)','(at night they return to camp)')+'</b>':'')
+   +' <b>'+(nightRest()
+      ?t('Ils ont quartier libre : la nuit, ils rentrent dormir au camp.','They have night leave: at night they sleep at camp.')
+      :t('Un soldat n\'est pas un villageois : sans permission, il tient son poste toute la nuit.',
+         'A soldier is not a villager: without leave, they hold their post all night.'))+'</b>'
    +'</p>'
    +garrisonHtml()
    +'<div class="menu" style="margin-top:10px">'
@@ -7189,6 +7393,43 @@ function chronHtml(){
   return h+'</div></div>';
 }
 function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) showPerson(r,null); }
+/* Un appui n'ouvre plus une fiche plein écran : il pose un petit panneau
+   au-dessus de la tête. La fiche complète reste à un bouton de là. */
+function tapPerson(rec){
+  if(!rec) return;
+  if(isSoldier(rec)){ hudOpen('squad', String(rec.home||'').split('@')[0]||squadKeys()[0]); return; }
+  hudOpen('person',rec.id);
+}
+function tapBuilding(key){
+  if(NODRAG[String(key).split('#')[0]]){ hudOpen('squad',
+    String(key).split('#')[0]==='chefguerre'?(squadKeys()[0]||'guerriers'):key); return; }
+  hudClose(); showBuilding(key);
+}
+/* ---------- renommer un habitant ----------
+   Les noms gaulois sont drôles, mais ce village est le tien : tu dois pouvoir
+   y mettre les noms que tu veux. Le nom choisi vaut dans les deux langues. */
+function renameFrom(id,el){
+  const rec=(S.people||[]).find(x=>x.id===id);
+  const box=el&&el.parentNode&&el.parentNode.querySelector('.whin');
+  const v=box?String(box.value||'').trim():'';
+  return renameVillager(id,v);
+}
+function renameVillager(id,name){
+  const rec=(S.people||[]).find(x=>x.id===id);
+  if(!rec) return false;
+  const v=String(name==null?'':name).replace(/\s+/g,' ').trim().slice(0,18);
+  if(!v){ toast(t('Il lui faut un nom.','They need a name.')); return false; }
+  const old=nameOf(rec);
+  if(v===old) return false;
+  rec.name=v; rec.nameEn=v;
+  remember(rec,'✏️ '+t('On l\'appelle désormais ','Now called ')+v+'.','✏️ Now called '+v+'.');
+  chron('✏️ '+old+t(' se fait appeler ',' now goes by ')+v+'.','✏️ '+old+' now goes by '+v+'.');
+  save();
+  if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.ren=false; hudPaint(); }
+  if(CUR.screen==='village') refreshOrders();
+  toast('✏️ '+v);
+  return true;
+}
 /* ---------- fiche d'un bâtiment ----------
    Ce que c'est, à quoi ça sert, qui l'habite, ce que ça coûte et ce que ça rapporte. */
 function buildingLabel(key){
@@ -7273,7 +7514,7 @@ function showBuilding(key){
 /* fait pivoter le bâtiment sélectionné (ou le dernier touché) */
 /* ---------- ordres à l'armée ---------- */
 function armyOrder(){
-  if(!S.village.includes('guerriers')){
+  if(!squadKeys().length){
     toast(t('⚔️ Recrute d\'abord une escouade de guerriers.','⚔️ Recruit a warrior squad first.')); return; }
   if(V3.order){ V3.order=0; refreshOrders(); toast(t('⚔️ Ordre annulé.','⚔️ Order cancelled.')); return; }
   V3.order=1; V3.edit=false; V3.sel=null;
@@ -7281,25 +7522,28 @@ function armyOrder(){
   toast(t('📣 Touche le sol : la troupe s\'y rendra au pas.','📣 Tap the ground: the squad will march there.'));
 }
 function setFormation(k){
-  S.army=S.army||{x:null,z:null,f:'ligne'};
-  S.army.f=k; save(); SFX.click();
+  selectedSquads().forEach(key=>{ armyOf(key).f=k; });
+  save(); SFX.click();
   const f=FORMATIONS.find(x=>x.k===k)||FORMATIONS[0];
   toast(f.ic+' '+t('Formation : '+f.n,'Formation: '+f.ne));
   if(CUR.screen==='village') render();        // la disposition des hommes change : il faut rebâtir
 }
 function rallyAt(x,z){
-  S.army=S.army||{x:null,z:null,f:'ligne'};
   const r=Math.hypot(x,z);
   if(r>250){ x=x/r*250; z=z/r*250; }
   // la troupe se range SUR le terrain, jamais dans un mur : le rayon couvre
   // toute la formation, sinon les guerriers des ailes finiraient dans un toit
-  const free=armySpot(x,z);
+  const sel=selectedSquads();
+  const free=armySpot(x,z,sel[0]);
   const moved=Math.hypot(free[0]-x, free[1]-z)>1;
-  S.army.x=+free[0].toFixed(1); S.army.z=+free[1].toFixed(1); S.army.watch=null;
+  sel.forEach(key=>{ const a=armyOf(key);
+    a.x=+free[0].toFixed(1); a.z=+free[1].toFixed(1); a.watch=null; });
   save(); SFX.win(); V3.order=0;
   toast(moved
     ? t('⚔️ Pas de place ici — la troupe se range juste à côté.','⚔️ No room there — the squad forms up right beside it.')
-    : t('⚔️ En marche vers la position !','⚔️ Marching to position!'));
+    : (sel.length>1
+       ? t('⚔️ '+sel.length+' escouades en marche !','⚔️ '+sel.length+' squads on the march!')
+       : t('⚔️ En marche vers la position !','⚔️ Marching to position!')));
   refreshOrders();               // pas de render() : la troupe doit y aller à pied
 }
 /* ---------- LES ORDRES, DEPUIS LE SOLDAT QU'ON TOUCHE ----------
@@ -7325,7 +7569,7 @@ const ORDERS=[
 ];
 function orderNow(){ return V3.order===2?'guard':V3.order?'move':stanceOf(); }
 function giveOrder(k){
-  if(!S.village.includes('guerriers')){
+  if(!squadKeys().length){
     toast(t('⚔️ Recrute d\'abord une escouade de guerriers.','⚔️ Recruit a warrior squad first.')); return false; }
   hideOverlay();
   if(k==='move'||k==='guard'){
@@ -7340,7 +7584,8 @@ function giveOrder(k){
   }
   V3.order=0;
   if(k==='fall'){ armyRecall(); return true; }
-  if(S.army&&S.army.x!=null){ S.army.x=null; S.army.z=null; }   // une consigne libère le point fixe
+  // une consigne libère le point fixe : la troupe reprend sa vie de troupe
+  selectedSquads().forEach(key=>{ const a=armyOf(key); a.x=null; a.z=null; a.watch=null; });
   setStance(k);
   return true;
 }
@@ -7352,9 +7597,10 @@ function guardBuilding(key){
   const bx=g.position.x, bz=g.position.z;
   const r=Math.hypot(bx,bz)||1;
   const off=footOf(key)*0.7+18;
-  const sp=armySpot(bx+bx/r*off, bz+bz/r*off);
-  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
-  S.army.x=+sp[0].toFixed(1); S.army.z=+sp[1].toFixed(1); S.army.watch=key;
+  const sel=selectedSquads();
+  const sp=armySpot(bx+bx/r*off, bz+bz/r*off, sel[0]);
+  sel.forEach(k2=>{ const a=armyOf(k2);
+    a.x=+sp[0].toFixed(1); a.z=+sp[1].toFixed(1); a.watch=key; });
   V3.order=0; save(); SFX.win();
   toast('🛡️ '+t('L\'escouade va garder ','The squad will guard ')+buildingLabel(key)+'.');
   chron('🛡️ '+t('L\'escouade prend la garde devant ','The squad takes guard in front of ')+buildingLabel(key)+'.',
@@ -7365,6 +7611,7 @@ function guardBuilding(key){
 /* rafraîchir le bandeau d'ordres SANS reconstruire la scène : sinon la troupe
    repartirait de zéro à chaque bouton et on ne la verrait jamais marcher */
 function refreshOrders(){
+  if(V3.hud) hudPaint();
   if(CUR.screen!=='village') return;
   const box=document.getElementById('vtabs');
   if(box&&typeof vTabBody==='function'){ box.innerHTML=vTabBody(); }
@@ -7386,6 +7633,145 @@ function orderPadHtml(){
           (ORDERS.find(o=>o.k===cur)||{de:''}).de||(STANCES.find(x=>x.k===cur)||{de:''}).de||''))
    +'</p></div>';
 }
+/* ============================================================
+   LE PANNEAU FLOTTANT
+   ------------------------------------------------------------
+   Il s'accroche au-dessus de ce qu'on touche et suit la caméra. Rien ne
+   recouvre l'écran, la scène continue de tourner derrière, et deux appuis
+   suffisent pour donner un ordre ou changer un métier.
+   ============================================================ */
+function hudEl(){ return document.getElementById('whud'); }
+function hudClose(){
+  V3.hud=null;
+  const el=hudEl(); if(el){ el.classList.remove('show'); el.innerHTML=''; }
+}
+/* ce que le panneau doit suivre dans la scène */
+function hudAnchor(){
+  const h=V3.hud; if(!h) return null;
+  if(h.kind==='squad'){ const g=V3.place&&V3.place[h.key]; return g?[g.position.x,22,g.position.z]:null; }
+  const w=hudWalker(h.id);
+  return w?[w.position.x,17,w.position.z]:null;
+}
+function hudWalker(id){
+  const W=(V3.built&&V3.built.walkers)||[];
+  for(const w of W) if(w.userData.rec&&w.userData.rec.id===id) return w;
+  return null;
+}
+/* on projette le point sur l'écran : une seule projection par image */
+const HUDV=(typeof THREE!=='undefined')?new THREE.Vector3():null;
+function hudTrack(cam){
+  const el=hudEl(), a=hudAnchor();
+  if(!el||!a){ if(el&&V3.hud&&V3.hud.kind!=='squad') hudClose(); return; }
+  const host=document.getElementById('v3d'); if(!host) return;
+  HUDV.set(a[0],a[1],a[2]).project(cam);
+  if(HUDV.z>1){ el.classList.remove('show'); return; }   // derrière la caméra
+  const w=host.clientWidth, h=host.clientHeight;
+  const x=Math.max(84,Math.min(w-84,(HUDV.x*0.5+0.5)*w));
+  const y=Math.max(96,Math.min(h-8,(-HUDV.y*0.5+0.5)*h));
+  el.style.transform='translate(-50%,-100%) translate('+Math.round(x)+'px,'+Math.round(y)+'px)';
+  el.classList.add('show');
+}
+/* ouvrir le panneau sur un habitant ou sur une escouade */
+function hudOpen(kind,ref){
+  const el=hudEl();
+  if(!el){                                    // pas de vue 3D : on retombe sur la fiche
+    if(kind==='person'){ const r=(S.people||[]).find(x=>x.id===ref); if(r) showPerson(r,null); }
+    else squadOrders();
+    return;
+  }
+  V3.hud=(kind==='squad')?{kind:'squad',key:ref}:{kind:'person',id:ref};
+  hudPaint();
+  SFX.click&&SFX.click();
+}
+function hudPaint(){
+  const el=hudEl(), h=V3.hud; if(!el||!h) return;
+  el.innerHTML='<div class="whcard">'+(h.kind==='squad'?hudSquadHtml(h):hudPersonHtml(h))+'</div>';
+  el.classList.add('show');
+}
+function hudHead(ic,name){
+  return '<div class="whtop"><span class="whic">'+ic+'</span>'
+   +'<span class="whname">'+esc(name)+'</span>'
+   +'<button class="whx" onclick="G.hudClose()" aria-label="'+t('fermer','close')+'">✕</button></div>';
+}
+/* ---------- un habitant : l'essentiel, et la fiche complète à un appui ---------- */
+function hudPersonHtml(h){
+  const rec=(S.people||[]).find(x=>x.id===h.id);
+  if(!rec) return hudHead('🧑','—');
+  const job=JOBS.find(j=>j.k===rec.job)||null;
+  const H=happinessOf(rec);
+  const kid=isChild(rec);
+  let sub='<b>'+esc(kid?t('Enfant','Child'):(job?t(job.n,job.ne):'—'))+'</b>';
+  if(!kid&&job) sub+=' <span style="color:#E0A800">'+skillStars(rec)+'</span>';
+  sub+='<br>'+moodIcon(rec)+' '+H.pct+'% · '+esc(homeLabel(rec));
+  const back=(rec.army&&!isSoldier(rec))
+    ?'<button class="whb wide go" onclick="G.rejoinArmy('+rec.id+')">⚔️ '+t('Reprendre du service','Return to service')+'</button>':'';
+  return hudHead(kid?'🧒':(job?job.ic:'🧑'), nameOf(rec))
+   +'<div class="whsub">'+sub+'</div>'
+   +'<div class="whrow">'
+   +'<button class="whb" onclick="G.showPerson('+rec.id+')">📜 '+t('Sa fiche','Profile')+'</button>'
+   +(tradeChoices(rec).length?'<button class="whb" onclick="G.hudTrades('+rec.id+')">🔁 '+t('Métier','Trade')+'</button>':'')
+   +'<button class="whb" onclick="G.hudRename('+rec.id+')" aria-label="'+t('renommer','rename')+'">✏️</button>'
+   +'</div>'+back
+   +(h.ren?'<div class="whrow" style="margin-top:4px">'
+      +'<input class="whin" maxlength="18" value="'+esc(nameOf(rec))+'" '
+      +'onkeydown="if(event.key===\'Enter\')G.renameFrom('+rec.id+',this)">'
+      +'<button class="whb go" onclick="G.renameFrom('+rec.id+',this)">✓</button></div>':'')
+   +(h.trades?hudTradeList(rec):'');
+}
+function hudTradeList(rec){
+  return '<div class="whmen">'+tradeChoices(rec).map(j=>
+    '<button class="whm'+(j.k===rec.job?' on':'')+'" onclick="G.setTrade('+rec.id+',\''+j.k+'\')">'
+    +'<b>'+j.ic+'</b><span>'+esc(t(j.n,j.ne))+'</span>'
+    +(j.k===rec.job?'<i>'+t('actuel','current')+'</i>':'')+'</button>').join('')+'</div>';
+}
+function hudTrades(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.trades=!V3.hud.trades; V3.hud.ren=false; hudPaint(); } }
+function hudRename(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.ren=!V3.hud.ren; V3.hud.trades=false; hudPaint();
+  const b=document.querySelector('.whin'); if(b){ b.focus(); b.select(); } } }
+/* ---------- une escouade : un bloc, avec ses ordres ---------- */
+function hudSquadHtml(h){
+  const sel=selectedSquads();
+  const many=sel.length>1;
+  const men=soldiersOf(h.key);
+  const a=armyOf(h.key);
+  const cur=squadOrderOf(h.key);
+  let sub='<b>'+men.length+' '+t('hommes','men')+'</b> · '+t('force','strength')+' '+squadPower(h.key);
+  if(a.watch) sub+='<br>🛡️ '+esc(buildingLabel(a.watch));
+  return hudHead('🛡️', squadLabel(h.key)+(many?' +'+(sel.length-1):''))
+   +'<div class="whsub">'+sub+'</div>'
+   +'<div class="whrow">'
+   +ORDERS.map(o=>'<button class="whb'+(o.k===cur?' on':'')+'" title="'+esc(t(o.n,o.ne))+'"'
+      +' onclick="G.giveOrder(\''+o.k+'\')">'+o.ic+'</button>').join('')
+   +'</div><div class="whrow" style="margin-top:4px">'
+   +FORMATIONS.map(f=>'<button class="whb'+(formationOf(h.key)===f.k?' on':'')+'"'
+      +' onclick="G.setFormation(\''+f.k+'\')">'+f.ic+'</button>').join('')
+   +'<button class="whb'+(nightRest(h.key)?' on':'')+'" onclick="G.toggleNight()"'
+   +' title="'+esc(nightRest(h.key)?t('quartier libre la nuit','night leave'):t('veille toute la nuit','night watch'))+'">'
+   +(nightRest(h.key)?'🌙':'🔥')+'</button>'
+   +(squadKeys().length>1?'<button class="whb'+(many?' on':'')+'" onclick="G.hudSquads()">👥</button>':'')
+   +'</div>'
+   +'<div class="whsub" style="margin:5px 0 0">'+(nightRest(h.key)
+      ?'🌙 '+t('Dort au camp la nuit','Sleeps at camp at night')
+      :'🔥 '+t('Tient son poste la nuit','Holds its post at night'))+'</div>'
+   +(men.length?'<div class="whrow" style="margin-top:4px">'
+      +'<button class="whb wide" onclick="G.hudLeave()">🌾 '+t('Donner un congé','Grant leave')+'</button></div>':'')
+   +(h.leave?hudLeaveList(h,men):'')
+   +(h.squads?hudSquadList(h):'')
+   +(many?'<div class="whsel">👥 '+sel.length+' '+t('escouades sélectionnées','squads selected')+'</div>':'');
+}
+function hudLeaveList(h,men){
+  return '<div class="whmen">'+men.map(r=>
+    '<button class="whm" onclick="G.grantLeave('+r.id+')"><b>⚔️</b><span>'+esc(nameOf(r))+'</span>'
+    +'<i>'+t('congé','leave')+' →</i></button>').join('')+'</div>';
+}
+function hudSquadList(h){
+  const sel=selectedSquads();
+  return '<div class="whmen">'+squadKeys().map(k=>
+    '<button class="whm'+(sel.indexOf(k)>=0?' on':'')+'" onclick="G.toggleSquad(\''+k+'\')">'
+    +'<b>'+(sel.indexOf(k)>=0?'☑':'☐')+'</b><span>'+esc(squadLabel(k))+'</span>'
+    +'<i>'+soldiersOf(k).length+' '+t('h.','men')+'</i></button>').join('')+'</div>';
+}
+function hudLeave(){ if(V3.hud&&V3.hud.kind==='squad'){ V3.hud.leave=!V3.hud.leave; V3.hud.squads=false; hudPaint(); } }
+function hudSquads(){ if(V3.hud&&V3.hud.kind==='squad'){ V3.hud.squads=!V3.hud.squads; V3.hud.leave=false; hudPaint(); } }
 /* toucher la troupe elle-même (et non un homme) ouvre la même table d'ordres */
 function squadOrders(){
   const men=soldiersAll();
@@ -7393,9 +7779,61 @@ function squadOrders(){
   showOverlay('⚔️', t('L\'escouade','The squad'),
     '<div style="text-align:left">'+orderPadHtml()+'</div>');
 }
+/* ============================================================
+   LE CONGÉ
+   ------------------------------------------------------------
+   Un guerrier peut poser les armes : il redevient un villageois comme un
+   autre, avec un toit, un métier et une place à table. Sans logement libre,
+   le congé est refusé — on n'envoie personne dormir dehors. Il peut reprendre
+   du service tant que sa place n'a pas été reprise.
+   ============================================================ */
+function freeDwelling(){
+  return housingKeys().find(k=>!isSoldierKey(k)&&isDwelling(k)&&dwellingHasRoom(k))||null;
+}
+function grantLeave(id){
+  const rec=(S.people||[]).find(x=>x.id===id);
+  if(!rec||!isSoldier(rec)) return false;
+  const home=freeDwelling();
+  if(!home){
+    toast(t('🏚️ Aucun logement libre : construis une hutte avant de le libérer.',
+            '🏚️ No free home: build a hut before letting them go.'));
+    return false;
+  }
+  rec.army=rec.home;                       // sa place à l'escouade lui reste ouverte
+  rec.home=home;
+  rec.fixed=0;
+  setJob(rec, freeJob()||'bois');
+  rec.xp=0;                                // il apprend un nouveau métier de zéro
+  nudgeMood(rec,0.25);
+  remember(rec,'🌾 '+t('A quitté l\'escouade pour le village.','Left the squad for village life.'),
+               '🌾 Left the squad for village life.');
+  chron('🌾 '+nameOf(rec)+t(' rend ses armes et rejoint le village.',' lays down their arms and joins the village.'),
+        '🌾 '+nameOf(rec)+' lays down their arms and joins the village.');
+  save(); hudClose(); render();
+  toast('🌾 '+nameOf(rec)+t(' est en congé.',' is on leave.'));
+  return true;
+}
+function rejoinArmy(id){
+  const rec=(S.people||[]).find(x=>x.id===id);
+  if(!rec||!rec.army||isSoldier(rec)) return false;
+  const slot=rec.army;
+  if(soldierKeys().indexOf(slot)<0){
+    toast(t('⚔️ Son escouade n\'existe plus.','⚔️ Their squad is gone.')); return false; }
+  if((S.people||[]).some(x=>x!==rec&&x.home===slot)){
+    toast(t('⚔️ Sa place a été reprise.','⚔️ Their post has been taken.')); return false; }
+  rec.home=slot; rec.army=null; rec.fixed=0;
+  setJob(rec, soldierJob(slot));
+  rec.xp=0;
+  remember(rec,'⚔️ '+t('A repris du service.','Returned to service.'),'⚔️ Returned to service.');
+  chron('⚔️ '+nameOf(rec)+t(' reprend du service.',' returns to service.'),
+        '⚔️ '+nameOf(rec)+' returns to service.');
+  save(); hudClose(); render();
+  toast('⚔️ '+nameOf(rec)+t(' rejoint les rangs.',' falls back in.'));
+  return true;
+}
 function armyRecall(){
-  S.army=S.army||{x:null,z:null,f:'ligne',st:'rang'};
-  S.army.x=null; S.army.z=null; S.army.watch=null; V3.order=0; save(); SFX.click();
+  selectedSquads().forEach(key=>{ const a=armyOf(key); a.x=null; a.z=null; a.watch=null; });
+  V3.order=0; save(); SFX.click();
   toast(t('🏕️ La troupe regagne son cantonnement.','🏕️ The squad returns to quarters.'));
   refreshOrders();
 }
@@ -8072,7 +8510,9 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, setTrade, giveOrder, guardBuilding, squadOrders};
+  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, setTrade, giveOrder, guardBuilding, squadOrders,
+  hudOpen, hudClose, hudTrades, hudRename, hudLeave, hudSquads, toggleSquad,
+  grantLeave, rejoinArmy, renameVillager, renameFrom, tapPerson, tapBuilding, toggleNight};
 window.G=G;
 /* ---------- hors-ligne ----------
    Le service worker garde l'application entière en cache. Une fois ouverte une
