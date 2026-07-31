@@ -515,6 +515,14 @@ html,body{overflow-x:hidden}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ce que valent les défenses */
 .fortbox{margin-top:12px;padding:10px;border:2px solid var(--edge);border-radius:12px;background:var(--lane2)}
+/* rangée d'état d'armée. Un nom à part : .fgrow appartient déjà à la table des
+   forces, et son affichage en flex faisait déborder celle-ci de l'écran. */
+.arow{display:block;padding:6px 0;border-bottom:1px dashed var(--edge)}
+.arow:last-child{border-bottom:0}
+.an{display:block;font-family:var(--px);font-size:8px;color:var(--bus);line-height:1.6;
+  white-space:normal;overflow-wrap:anywhere}
+.av{display:block;font-size:11px;color:var(--dim);line-height:1.5;overflow-wrap:anywhere}
+.ah{display:block;font-size:11.5px;color:var(--ink);line-height:1.5;overflow-wrap:anywhere}
 .fortbox .frow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);padding:3px 0}
 .fortbox .frow.on{color:var(--ink)}
 .fortbox .frow span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
@@ -1654,7 +1662,8 @@ const defaults=()=>({
   feast:0,             // festins payés d'avance : butin ×1,5 sur la prochaine série
   vrot:{},             // clé de bâtiment -> orientation choisie (radians)
   vacated:{},          // logement libéré par un emménagement -> quand
-  army:{x:null, z:null, f:'ligne', st:'rang'},  // rassemblement, formation, consigne
+  army:{x:null, z:null, f:'ligne', st:'rang'},  // rassemblement, formation, consigne (1re escouade)
+  armies:{},           // clé d'escouade -> ses ordres, sa formation, sa consigne, son moral
   flag:{},             // qid -> date : questions marquées « trop dure » à la main
   bossWins:{},         // worldId -> true
   blitzBest:0,
@@ -4850,6 +4859,134 @@ function selectedSquads(){
   if(V3.hud&&V3.hud.kind==='squad'&&all.indexOf(V3.hud.key)>=0) return [V3.hud.key];
   return all.slice(0,1);
 }
+/* ============================================================
+   LE METIER DES ARMES
+   ------------------------------------------------------------
+   Une escouade n'etait qu'un chiffre de puissance. Ce sont maintenant des
+   hommes qui montent en grade, dont le moral pese sur leurs coups, qui
+   saignent apres une bataille et mettent des heures a s'en remettre. Chaque
+   choix du joueur - formation, repos, exercice, veille de nuit - se paie ou se
+   recolte sur le champ de bataille.
+   ============================================================ */
+const RANK_STEPS=[0,20,55,120,240];
+const RANK_NAME=[['Recrue','Recruit'],['Soldat','Soldier'],['Vétéran','Veteran'],
+                 ['Élite','Elite'],['Héros','Hero']];
+function mxpOf(rec){ const x=rec&&rec.mxp; return (typeof x==='number'&&isFinite(x))?Math.max(0,x):0; }
+function rankOf(rec){ const x=mxpOf(rec); let r=1;
+  for(let i=1;i<RANK_STEPS.length;i++) if(x>=RANK_STEPS[i]) r=i+1;
+  return r; }
+function rankName(rec){ const n=RANK_NAME[rankOf(rec)-1]; return t(n[0],n[1]); }
+function rankPct(rec){ const r=rankOf(rec); if(r>=RANK_STEPS.length) return 100;
+  const a=RANK_STEPS[r-1], b=RANK_STEPS[r];
+  return Math.max(0,Math.min(100,Math.round((mxpOf(rec)-a)/(b-a)*100))); }
+function rankStars(rec){ const r=rankOf(rec); return '\u2726'.repeat(r)+'\u00b7'.repeat(5-r); }
+/* un grade, ce sont des coups mieux places et une carcasse plus dure */
+function rankAtk(rec){ return 1+0.16*(rankOf(rec)-1); }
+function rankHp(rec){ return 1+0.12*(rankOf(rec)-1); }
+function gainRank(rec,n){
+  if(!rec||!n||n<0) return 0;
+  const before=rankOf(rec);
+  rec.mxp=mxpOf(rec)+n;
+  const after=rankOf(rec);
+  if(after<=before) return 0;
+  const nm=RANK_NAME[after-1];
+  nudgeMood(rec,0.15);
+  remember(rec,'\ud83c\udf96\ufe0f '+t('Promu ','Promoted to ')+t(nm[0],nm[1])+'.','\ud83c\udf96\ufe0f Promoted to '+nm[1]+'.');
+  if(after>=3) chron('\ud83c\udf96\ufe0f '+nameOf(rec)+t(' est promu ',' is promoted to ')+t(nm[0],nm[1])+'.',
+                     '\ud83c\udf96\ufe0f '+nameOf(rec)+' is promoted to '+nm[1]+'.');
+  V3.saveSoon=1;
+  return after-before;
+}
+/* ---------- les blessures ----------
+   On ne meurt pas d'une escarmouche, mais on n'en sort pas indemne : un homme
+   diminue se bat moins bien tant qu'il n'a pas eu le temps de se refaire. */
+const HEAL_HOURS=6;
+function healHours(){ return (S.village&&S.village.indexOf('chaudron')>=0)?HEAL_HOURS*0.6:HEAL_HOURS; }
+function woundOf(rec){
+  if(!rec||!rec.wound) return 0;
+  const h=(Date.now()-(rec.woundAt||0))/36e5;
+  const left=rec.wound*Math.max(0,1-h/healHours());
+  return left<0.02?0:Math.min(0.7,left);
+}
+function woundMan(rec,frac){
+  if(!rec||!(frac>0.02)) return;
+  rec.wound=Math.min(0.7,woundOf(rec)+frac); rec.woundAt=Date.now();
+}
+function healedIn(rec){
+  const w=woundOf(rec); if(!w) return 0;
+  const h=(Date.now()-(rec.woundAt||0))/36e5;
+  return Math.max(1,Math.round((healHours()-h)*60));
+}
+/* ---------- le moral ----------
+   Une troupe qui vient de gagner charge ; une troupe epuisee traine les pieds. */
+function moraleOf(key){
+  const a=armyOf(key||selectedSquads()[0]||'guerriers');
+  const m=a.mor;
+  return (typeof m==='number'&&isFinite(m))?Math.max(0,Math.min(1,m)):0.7;
+}
+function nudgeMorale(key,d){ const a=armyOf(key); a.mor=Math.max(0,Math.min(1,moraleOf(key)+d)); }
+function moraleWord(key){
+  const m=moraleOf(key);
+  return m>=0.85?t('au sommet','sky-high'):m>=0.65?t('bon','good')
+        :m>=0.4?t('mitige','shaky'):t('au plus bas','rock-bottom');
+}
+function moraleIcon(key){ const m=moraleOf(key);
+  return m>=0.85?'\ud83d\udd25':m>=0.65?'\ud83d\ude42':m>=0.4?'\ud83d\ude10':'\ud83d\ude1f'; }
+function moraleAtk(key){ return 0.8+0.4*moraleOf(key); }
+/* ---------- les formations ----------
+   Elles n'etaient qu'une disposition a l'ecran. Chacune a maintenant son prix
+   et son benefice, et le joueur choisit selon ce qui arrive. */
+const FORM_FX={ligne:{a:1,h:1}, carre:{a:0.9,h:1.22}, coin:{a:1.28,h:0.9}};
+function formFx(key){ return FORM_FX[formationOf(key)]||FORM_FX.ligne; }
+function formNote(key){
+  const f=formationOf(key);
+  return f==='carre'?t('+22 % de resistance, -10 % de frappe','+22% tougher, -10% hitting power')
+       : f==='coin'?t('+28 % de frappe, -10 % de resistance','+28% hitting power, -10% tougher')
+       : t('équilibré','balanced');
+}
+/* la valeur d'un homme, tout compris : grade, moral, formation, murs, blessures */
+function soldierPower(rec,key){
+  const F=FIGHT[fightKindOf(rec)]||{hp:20,atk:0};
+  const fx=formFx(key), w=1-woundOf(rec);
+  return {
+    hp:Math.max(1,Math.round(F.hp*rankHp(rec)*fx.h*fortMult()*w)),
+    atk:Math.max(1,Math.round(F.atk*rankAtk(rec)*fx.a*moraleAtk(key)))
+  };
+}
+function squadStrength(key){
+  const men=soldiersOf(key);
+  let hp=0, atk=0, rank=0;
+  men.forEach(r=>{ const p=soldierPower(r,key); hp+=p.hp; atk+=p.atk; rank+=rankOf(r); });
+  return {n:men.length, hp, atk, rank:men.length?+(rank/men.length).toFixed(1):0,
+          wounded:men.filter(r=>woundOf(r)>0).length};
+}
+/* ---------- l'exercice ----------
+   Le terrain d'entrainement etait un decor. On peut y envoyer une escouade :
+   elle y gagne du grade, elle y mange du grain, elle y laisse un peu d'entrain.
+   C'est le seul moyen de faire monter des hommes sans bataille. */
+const DRILL_TICK=6;                       // secondes de manoeuvre par ration
+function drillTick(dt){
+  const keys=squadKeys().filter(k=>armyOf(k).st==='exercice');
+  if(!keys.length) return;
+  V3.drillT=(V3.drillT||0)+dt;
+  if(V3.drillT<DRILL_TICK) return;
+  V3.drillT=0;
+  keys.forEach(key=>{
+    const g=V3.place&&V3.place[key], pt=stancePointFor(key);
+    if(!g||!pt||Math.hypot(g.position.x-pt[0],g.position.z-pt[1])>30) return;   // pas encore arrives
+    if(((S.res&&S.res.food)||0)<1){
+      armyOf(key).st='rang';
+      toast('\ud83c\udf3e '+t("Plus de grain : l'exercice est leve.",'No grain left: the drill is called off.'));
+      refreshOrders(); return;
+    }
+    S.res.food-=1;
+    soldiersOf(key).forEach(r=>gainRank(r,2));
+    if(squadKeys()[0]===key) soldiersOf('chefguerre').forEach(r=>gainRank(r,2));
+    nudgeMorale(key,-0.02);
+    V3.saveSoon=1;
+    if(V3.hud&&V3.hud.kind==='squad') rosterPaint();
+  });
+}
 /* quartier libre : cette escouade a-t-elle le droit d'aller dormir ? */
 function nightRest(key){ return !!armyOf(key||selectedSquads()[0]||'guerriers').night; }
 function toggleNight(){
@@ -4892,8 +5029,11 @@ const STANCES=[
   d:'Ils font le tour du village, un côté après l\'autre.',
   de:'They circle the village, one side after another.'},
  {k:'repos',  ic:'🍺', n:'Au repos',   ne:'At ease',
-  d:'Ils rejoignent le feu de camp. L\'humeur remonte, la garde est baissée.',
-  de:'They fall back to the campfire. Morale rises, the guard is down.'}
+  d:'Ils rejoignent le feu de camp. Le moral remonte, la garde est baissée.',
+  de:'They fall back to the campfire. Morale rises, the guard is down.'},
+ {k:'exercice', ic:'🎯', n:'À l\'exercice', ne:'Drilling',
+  d:'Manœuvres au terrain d\'entraînement : du grade gagné, du grain mangé.',
+  de:'Drill at the training ground: rank earned, grain eaten.'}
 ];
 function stanceOf(key){ return armyOf(key||selectedSquads()[0]||'guerriers').st||'rang'; }
 function squadOrderOf(key){
@@ -4904,8 +5044,12 @@ function squadOrderOf(key){
 }
 function setStance(k){
   const sel=selectedSquads();
-  const d=(k==='repos'?0.2 : k==='patrouille'?-0.03 : 0);
+  if(k==='exercice'&&S.village.indexOf('entrainement')<0){
+    toast('\ud83c\udfaf '+t("Il faut un terrain d'entraînement.",'You need a training ground.')); return; }
+  const d=(k==='repos'?0.2 : k==='patrouille'?-0.03 : k==='exercice'?-0.05 : 0);
   sel.forEach(key=>{ const a=armyOf(key); a.st=k;
+    // le moral suit la consigne : on souffle au feu, on s'use à manœuvrer
+    nudgeMorale(key, k==='repos'?0.12 : k==='exercice'?-0.03 : k==='patrouille'?-0.01 : 0);
     soldiersOf(key).forEach(r=>nudgeMood(r,d)); });
   // le chef partage la consigne de sa première escouade
   if(sel.indexOf(squadKeys()[0])>=0) soldiersOf('chefguerre').forEach(r=>nudgeMood(r,d));
@@ -4932,6 +5076,8 @@ function stancePointFor(key){
     const ring=[[0,150],[150,0],[0,-150],[-150,0]];
     return ring[(V3.patI||0)%4];
   }
+  if(st==='exercice'){ const e=V3.place&&(V3.place['entrainement']||V3.place['camp']);
+    return e?[e.position.x+20, e.position.z+20]:quartersPoint(); }
   return quartersPoint();                         // « en rang » : retour au cantonnement
 }
 /* le cantonnement : le camp militaire, sinon la place de l'escouade */
@@ -5180,8 +5326,11 @@ Object.assign(B3,{
   guerriers(){ const g=new THREE.Group();
     // la formation choisie décide de la disposition et de l'orientation
     const key=V3.bkey||'guerriers';
-    const F=formationSlots(4,key);
+    /* On dessinait quatre guerriers quoi qu'il arrive : une escouade qui en
+       comptait six en montrait quatre, et le panneau annonçait un chiffre que
+       la scène démentait. Un homme, une silhouette. */
     const men=soldiersOf(key);
+    const F=formationSlots(Math.max(1,Math.min(8,men.length||BARRACKS.guerriers)),key);
     F.forEach((p,i)=>{
       const w=warrior(i+2,false); w.position.set(p[0],0,p[1]);
       w.rotation.y=p[2]; w.name='guard'; w.userData.p=i*0.7;
@@ -5349,11 +5498,10 @@ function buildVillage(scene){
       }
       scene.add(g); anim.push(g);
       if(it.id!=='muraille'&&it.id!=='palissade'){ g.userData.pid=it.id; V3.place[it.id]=g; }
-    }else if(it.id!=='palissade'){
-      const m=new THREE.Mesh(new THREE.RingGeometry(4,5.2,12),
-        new THREE.MeshBasicMaterial({color:0xcfe8a0,transparent:true,opacity:.45,side:THREE.DoubleSide}));
-      m.rotation.x=-Math.PI/2; m.position.set(p[0],0.25,p[1]); scene.add(m);
     }
+    /* Les anneaux verts marquaient l'emplacement des bâtiments pas encore
+       construits. Personne ne pouvait deviner ce que c'était : la boutique dit
+       déjà ce qui manque, le pré reste un pré. */
   });
   relaxVillage();          // plus rien ne se traverse
   // forêt + rochers
@@ -6205,7 +6353,7 @@ function v3dInit(){
       }
     });
     }
-    if(!V3.raid) armyMarchTick(dt);
+    if(!V3.raid){ armyMarchTick(dt); drillTick(dt); }
     /* L'heure tourne pendant qu'on regarde : à 23 h pile, chacun coupe court à
        ce qu'il faisait et rentre se coucher, au lieu d'attendre la fin de sa
        flânerie. Les militaires, eux, ne se couchent que sur permission. */
@@ -6512,6 +6660,10 @@ const ARMED_JOBS={chasse:1, bois:1, forge:1};
 function fightKindOf(rec){
   if(!rec) return 'paysan';
   if(isChild(rec)) return 'enfant';
+  // un guerrier de l'escouade est un guerrier : il l'était déjà dans la mêlée,
+  // il ne doit pas être compté comme un paysan sur la feuille d'escouade
+  if(rec.job==='chefdeguerre') return 'chef';
+  if(rec.job==='guerre') return 'guerrier';
   if(rec.job==='garde') return 'garde';
   return ARMED_JOBS[rec.job]?'outil':'paysan';
 }
@@ -6726,6 +6878,7 @@ function raidBuild(scene){
               +(S.village.includes('camp')?0.15:0);
   if(fort>1) units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
     u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); } });
+  V3.fort=fort;
   // --- les guerriers de l'escouade quittent leur groupe pour se battre
   squadKeys().concat(['chefguerre']).forEach(key=>{
     const grp=V3.place&&V3.place[key]; if(!grp) return;
@@ -6734,8 +6887,18 @@ function raidBuild(scene){
       w.getWorldPosition(V);
       grp.remove(w); scene.add(w);
       w.position.copy(V); w.position.y=0;
-      add(w,'gaul',String(key).split('#')[0]==='chefguerre'?'chef':'guerrier',V.x,V.z);
-      // il garde son nom sous le casque : la feuille d'escouade suit ses PV
+      const u=add(w,'gaul',String(key).split('#')[0]==='chefguerre'?'chef':'guerrier',V.x,V.z);
+      /* Le grade, le moral, la formation et les blessures ne sont pas des
+         chiffres d'écran : ils décident de ce que cet homme encaisse et de ce
+         qu'il rend. Un vétéran en pointe, moral haut, frappe du double d'une
+         recrue blessée en carré. */
+      const rec2=w.userData.rec;
+      if(rec2){
+        const sq=String(key).split('#')[0]==='chefguerre'?(squadKeys()[0]||'guerriers'):key;
+        const P=soldierPower(rec2,sq);
+        u.hp=u.hpMax=P.hp; u.atk=P.atk; u.rec=rec2; u.sqk=sq; u.kills=0;
+        setBar(u);
+      }
     });
   });
   // --- la garnison : le camp militaire et le terrain d'entraînement ne sont
@@ -6830,7 +6993,7 @@ function raidTick(dt,tt,scene){
   R.t+=dt;
   const U=R.units;
   // éclats de coups
-  R.spark.forEach(sp=>{ if(!sp.visible) return;
+  (R.spark||[]).forEach(sp=>{ if(!sp.visible) return;
     sp.userData.t-=dt; sp.scale.setScalar(1+(0.22-sp.userData.t)*6);
     if(sp.userData.t<=0) sp.visible=false; });
   for(const u of U){
@@ -6902,6 +7065,7 @@ function raidTick(dt,tt,scene){
           if(T.hp<=0&&!T.dead){
             T.dead=1; T.tgt=null;
             R.kills=(R.kills||0)+1;
+            if(u.side==='gaul') u.kills=(u.kills||0)+1;   // ça se retrouve sur son grade
             raidBanner();
           }
         }
@@ -6922,9 +7086,31 @@ function raidTick(dt,tt,scene){
     else if(!raidAlive('gaul')) raidEnd(false);
   }
 }
+/* ---------- le bilan de la bataille ----------
+   Ce qu'on retient d'un assaut : qui a bien combattu, qui saigne, et dans quel
+   état la troupe en ressort. Sans ça, une bataille ne laissait aucune trace. */
+function raidAftermath(win){
+  const R=V3.raid; if(!R) return {promoted:[], hurt:0, kills:0};
+  const promoted=[], seen={};
+  let hurt=0, kills=0;
+  (R.units||[]).forEach(u=>{
+    if(u.side!=='gaul'||!u.rec) return;
+    kills+=(u.kills||0);
+    // survivre a un assaut vaut du metier ; abattre un legionnaire en vaut plus
+    const won=win?10:5;
+    if(gainRank(u.rec, won+(u.kills||0)*6)) promoted.push(u.rec);
+    // ce qu'il a encaisse le suit dans les heures qui viennent
+    const lost=u.dead?0.55:Math.max(0,1-(u.hp/Math.max(1,u.hpMax)));
+    if(lost>0.15){ woundMan(u.rec, lost*0.8); hurt++; }
+    if(!seen[u.sqk||'guerriers']) seen[u.sqk||'guerriers']=1;
+  });
+  squadKeys().forEach(k=>nudgeMorale(k, win?0.28:-0.3));
+  return {promoted, hurt, kills};
+}
 function raidEnd(win){
   const R=V3.raid; if(!R||R.over) return;
   R.over=1;
+  const AF=raidAftermath(win);
   S.raid=S.raid||{day:todayStr(),won:0,lost:0};
   if(R.final) return finalEnd(win);
   const F=romanForce();
@@ -6943,7 +7129,8 @@ function raidEnd(win){
       t('Ton village a tenu. Butin ramassé sur le champ de bataille : <b>+'+loot+' 🪙</b> et <b>+'+(6+F.n)+' ⚙️</b>.',
         'Your village held. Loot gathered on the battlefield: <b>+'+loot+' 🪙</b> and <b>+'+(6+F.n)+' ⚙️</b>.')
       +'<br><br>'+t('Les blessés se relèvent : personne ne meurt pour de bon dans ce village.',
-                    'The wounded get back up: nobody dies for good in this village.'));
+                    'The wounded get back up: nobody dies for good in this village.')
+      +aftermathHtml(AF));
   }else{
     S.raid.lost=(S.raid.lost||0)+1;
     S.res=S.res||{food:0,wood:0,iron:0};
@@ -6958,12 +7145,24 @@ function raidEnd(win){
       t('Les légionnaires ont emporté <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.',
         'The legionaries carried off <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.')
       +'<br><br>'+t('Personne n\'est mort — mais un camp militaire et une escouade de guerriers changeraient tout. Reviens demain, ils reviendront aussi.',
-                    'Nobody died — but a military camp and a warrior squad would change everything. Come back tomorrow; so will they.'));
+                    'Nobody died — but a military camp and a warrior squad would change everything. Come back tomorrow; so will they.')
+      +aftermathHtml(AF));
   }
   checkBadges(); save();
   V3.raid=null; V3.raidCam=0;
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },900);
+}
+function aftermathHtml(AF){
+  if(!AF) return '';
+  const bits=[];
+  if(AF.kills) bits.push('\u2694\ufe0f '+t(AF.kills+' Romains abattus',AF.kills+' Romans cut down'));
+  if(AF.promoted.length) bits.push('\ud83c\udf96\ufe0f '+t('Promus : ','Promoted: ')
+    +AF.promoted.map(r=>esc(nameOf(r))+' ('+esc(rankName(r))+')').join(', '));
+  if(AF.hurt) bits.push('\ud83e\ude78 '+t(AF.hurt+' blessés — ils se remettront en quelques heures',
+                                            AF.hurt+' wounded — they will mend within hours'));
+  if(!bits.length) return '';
+  return '<br><br><span style="color:var(--dim)">'+bits.join('<br>')+'</span>';
 }
 /* l'issue du jour J : gloire, ou cendres */
 function finalEnd(win){
@@ -7349,6 +7548,33 @@ function happyHtml(rec){
 }
 /* ---------- ordres à la troupe ---------- */
 /* la liste nominative de la garnison, touchable */
+/* Ce que vaut l'armée, escouade par escouade, avec le pourquoi du chiffre :
+   c'est là que le joueur voit que sa formation et son moral comptent. */
+function readyHtml(){
+  const keys=squadKeys();
+  if(!keys.length) return '';
+  let h='<div class="eyebrow" style="margin:12px 0 8px">\ud83d\udcca '
+   +t('ÉTAT DE L\'ARMÉE','ARMY READINESS')+'</div><div class="fortbox">';
+  let tot=0;
+  keys.forEach(k=>{
+    const S2=squadStrength(k);
+    tot+=S2.atk;
+    h+='<div class="arow"><span class="an">'+esc(squadLabel(k))+'</span>'
+     +'<span class="av">'+moraleIcon(k)+' '+esc(moraleWord(k))+' · '
+     +(FORMATIONS.find(f=>f.k===formationOf(k))||{ic:''}).ic+' '+esc(formNote(k))+'</span>'
+     +'<span class="ah">\u2694\ufe0f '+S2.atk+' · \u2764\ufe0f '+S2.hp
+     +' · \u2726'+S2.rank+(S2.wounded?' · \ud83e\ude78'+S2.wounded:'')+'</span></div>';
+  });
+  const chef=soldiersOf('chefguerre')[0];
+  if(chef) h+='<div class="arow"><span class="an">'+esc(nameOf(chef))+'</span>'
+     +'<span class="av">'+t('chef de guerre','warlord')+' · '+esc(rankName(chef))+'</span>'
+     +'<span class="ah">'+rankStars(chef)+'</span></div>';
+  h+='</div><p class="small" style="margin:6px 0 0">'
+   +t('Frappe totale <b>'+tot+'</b>. Le grade se gagne au combat et à l\'exercice, le moral au repos et à la victoire, et la formation choisit entre encaisser et frapper.',
+      'Total hitting power <b>'+tot+'</b>. Rank is earned in battle and at drill, morale by rest and victory, and the formation trades toughness against hitting power.')
+   +'</p>';
+  return h;
+}
 function garrisonHtml(){
   const men=soldiersAll(); if(!men.length) return '';
   return '<div class="eyebrow" style="margin:12px 0 6px">⚔️ '+t('LA GARNISON','THE GARRISON')+' · '+men.length+'</div>'
@@ -7388,6 +7614,7 @@ function armyOrdersHtml(){
       :t('Un soldat n\'est pas un villageois : sans permission, il tient son poste toute la nuit.',
          'A soldier is not a villager: without leave, they hold their post all night.'))+'</b>'
    +'</p>'
+   +readyHtml()
    +garrisonHtml()
    +'<div class="menu" style="margin-top:10px">'
    +'<button class="btn '+(V3.order?'btn-bus':'btn-stop')+'" style="justify-content:center" onclick="G.armyOrder()">'
@@ -7623,6 +7850,9 @@ const ORDERS=[
  {k:'repos', ic:'🍺', n:'Repos au feu', ne:'Rest by the fire',
   d:'Retour au feu de camp, l\'humeur remonte.',
   de:'Back to the campfire, morale rises.'},
+ {k:'exercice', ic:'🎯', n:'À l\'exercice', ne:'Drill',
+  d:'Manœuvres au terrain d\'entraînement : ils y gagnent du grade.',
+  de:'Drill at the training ground: they earn rank there.'},
  {k:'fall',  ic:'🏕️', n:'Rompre les rangs', ne:'Fall out',
   d:'Retour au cantonnement, la consigne reprend le dessus.',
   de:'Back to quarters, the standing order takes over.'}
@@ -7769,29 +7999,35 @@ function rosterPaint(){
   const h=V3.hud;
   if(!h||h.kind!=='squad'){ el.classList.remove('show'); el.innerHTML=''; return; }
   const sel=selectedSquads();
-  const men=[].concat.apply([], sel.map(k=>soldiersOf(k)))
-    .concat(sel.indexOf(squadKeys()[0])>=0?soldiersOf('chefguerre'):[]);
+  const troop=[].concat.apply([], sel.map(k=>soldiersOf(k)));
+  const chef=sel.indexOf(squadKeys()[0])>=0?soldiersOf('chefguerre'):[];
+  const men=troop.concat(chef);
   if(!men.length){ el.classList.remove('show'); el.innerHTML=''; return; }
   el.innerHTML='<div class="sqrhead"><span>'+esc(sel.length>1
-      ? sel.length+' '+t('ESCOUADES','SQUADS')
-      : squadLabel(h.key).toUpperCase())+'</span>'
+      ? sel.length+' '+t('ESCOUADES','SQUADS')+' · '+troop.length+' '+t('h.','men')
+      : squadLabel(h.key).toUpperCase()+' · '+troop.length+' '+t('h.','men'))+'</span>'
     +'<button class="sqrx" onclick="G.hudClose()" aria-label="'+t('fermer','close')+'">✕</button></div>'
-    +men.map(rosterMan).join('');
+    +troop.map(r=>rosterMan(r)).join('')
+    +(chef.length?'<div class="sqrhead" style="margin-top:6px">'+t('COMMANDEMENT','COMMAND')+'</div>'
+       +chef.map(r=>rosterMan(r)).join(''):'');
   el.classList.add('show');
 }
 function rosterMan(rec){
-  const F=FIGHT[fightKindOf(rec)]||{hp:20,atk:0};
-  const u=((V3.raid&&V3.raid.units)||[]).find(x=>x.g&&x.g.userData&&x.g.userData.rec===rec);
-  const max=Math.max(1,(u&&u.hpMax)||Math.round(F.hp*fortMult()));
-  const hp=Math.max(0,(u?u.hp:max));
+  const key=isSoldierKey(rec.home)?String(rec.home).split('@')[0]:(squadKeys()[0]||'guerriers');
+  const sq=String(key).split('#')[0]==='chefguerre'?(squadKeys()[0]||'guerriers'):key;
+  const P=soldierPower(rec,sq);
+  const u=((V3.raid&&V3.raid.units)||[]).find(x=>x.rec===rec);
+  const max=Math.max(1,(u&&u.hpMax)||P.hp);
+  const hp=Math.max(0,(u?Math.round(u.hp):max));
   const pct=Math.round(hp/max*100);
   const cls=pct>=66?'':(pct>=33?' hurt':' low');
-  const j=JOBS.find(x=>x.k===rec.job);
-  const tr=traitOf(rec.tr);
-  return '<div class="sqrm"><div class="sqrn">'+(j?j.ic:'⚔️')+' '+esc(nameOf(rec))+'</div>'
-   +'<div class="sqrj">'+esc(j?t(j.n,j.ne):'')+' · '+esc(t(tr.n,tr.ne))+'</div>'
+  const w=woundOf(rec), tr=traitOf(rec.tr);
+  return '<div class="sqrm"><div class="sqrn">'+(w?'🩸':'⚔️')+' '+esc(nameOf(rec))+'</div>'
+   +'<div class="sqrj">'+esc(rankName(rec))+' <span style="color:#E0A800">'+rankStars(rec)+'</span></div>'
+   +'<div class="sqrj">'+esc(t(tr.n,tr.ne))+(w?' · '+t('blessé','wounded')+' '+healedIn(rec)+' min':'')+'</div>'
    +'<div class="sqrbar'+cls+'"><i style="width:'+pct+'%"></i></div>'
-   +'<div class="sqrst"><span>❤️ '+hp+'/'+max+'</span><span>'+moodIcon(rec)+' ⚔️'+F.atk+'</span></div>'
+   +'<div class="sqrst"><span>❤️ '+hp+'/'+max+'</span><span>'+moodIcon(rec)+' ⚔️'+P.atk
+   +(u&&u.kills?' · 💀'+u.kills:'')+'</span></div>'
    +'</div>';
 }
 /* le bonus de fortification : des murs, ça tient un homme debout plus longtemps */
@@ -7812,7 +8048,7 @@ function hudPersonHtml(h){
   const H=happinessOf(rec);
   const kid=isChild(rec);
   let sub='<b>'+esc(kid?t('Enfant','Child'):(job?t(job.n,job.ne):'—'))+'</b>';
-  if(!kid&&job) sub+=' <span style="color:#E0A800">'+skillStars(rec)+'</span>';
+  if(!kid&&job) sub+=' · '+esc(skillLabel(rec))+' <span style="color:#E0A800">'+skillStars(rec)+'</span>';
   sub+='<br>'+moodIcon(rec)+' '+H.pct+'% · '+esc(homeLabel(rec));
   const back=(rec.army&&!isSoldier(rec))
     ?'<button class="whb wide go" onclick="G.rejoinArmy('+jid(rec.id)+')">⚔️ '+t('Reprendre du service','Return to service')+'</button>':'';
@@ -7875,8 +8111,13 @@ function hudSquadHtml(h){
   const men=soldiersOf(h.key);
   const a=armyOf(h.key);
   const cur=squadOrderOf(h.key);
-  let sub='<b>'+men.length+' '+t('hommes','men')+'</b> · '+t('force','strength')+' '+squadPower(h.key);
+  const St=squadStrength(h.key);
+  let sub='<b>'+men.length+' '+t('hommes','men')+'</b> · ⚔️'+St.atk+' ❤️'+St.hp
+    +' · ✦'+St.rank+(St.wounded?' · 🩸'+St.wounded:'');
+  sub+='<br>'+moraleIcon(h.key)+' '+t('moral','morale')+' '+esc(moraleWord(h.key))
+    +' · '+esc(formNote(h.key));
   if(a.watch) sub+='<br>🛡️ '+esc(buildingLabel(a.watch));
+  if(a.st==='exercice') sub+='<br>🎯 '+t('à l\'exercice — 1 🌾 par manœuvre','drilling — 1 🌾 per round');
   return hudHead('🛡️', squadLabel(h.key)+(many?' +'+(sel.length-1):''))
    +'<div class="whsub">'+sub+'</div>'
    +'<div class="whrow">'
