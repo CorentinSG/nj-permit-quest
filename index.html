@@ -2172,8 +2172,12 @@ function prodBase(){
   const out={food:0,wood:0,iron:0};
   SHOP.forEach(it=>{ if(!it.prod) return;
     const n=nOwned(it.id); if(!n) return;
-    Object.keys(it.prod).forEach(k=>{ out[k]+=it.prod[k]*n; });
+    /* la saison compte aussi dans la référence : sinon le multiplicateur
+       « main-d'œuvre » affiché mélangeait le mérite des habitants et la météo,
+       et un village de maîtres semblait médiocre en hiver. */
+    Object.keys(it.prod).forEach(k=>{ out[k]+=it.prod[k]*n*seasonMult(k); });
   });
+  Object.keys(out).forEach(k=>{ out[k]=Math.round(out[k]); });
   return out;
 }
 /* production réelle : un atelier ne vaut que par les bras qui le tiennent.
