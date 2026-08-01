@@ -5303,11 +5303,13 @@ function stancePointFor(key){
     const c=V3.place&&(V3.place['camp']||V3.place['entrainement']);
     if(c) return [c.position.x, c.position.z+18];
   }
-  if(st==='garde') return [0,150];
+  if(st==='garde') return clampInside(0,150,ARMY_R*0.5);
   if(st==='repos'){ const f=V3.place&&V3.place['feu'];
     return f?[f.position.x+22, f.position.z+18]:[24,20]; }
   if(st==='patrouille'){
-    const ring=[[0,150],[150,0],[0,-150],[-150,0]];
+    // le tour de ronde longe l'INTÉRIEUR de l'enceinte quand il y en a une
+    const w=wallRing(), R=w?w.r-30:150;
+    const ring=[[0,R],[R,0],[0,-R],[-R,0]];
     return ring[(V3.patI||0)%4];
   }
   if(st==='exercice'){ const e=V3.place&&(V3.place['entrainement']||V3.place['camp']);
@@ -5333,16 +5335,20 @@ const MARCH_SPEED=26;                          // unités par seconde, au pas
 function squadGoal(key){
   const a=armyOf(key);
   const i=Math.max(0,squadKeys().indexOf(key));
+  let g;
   if(a.x!=null){
-    if(!i) return [a.x,a.z];
-    const r=Math.hypot(a.x,a.z)||1;            // décalage le long du front
-    return [a.x - a.z/r*i*26, a.z + a.x/r*i*26];
+    if(!i) g=[a.x,a.z];
+    else{ const r=Math.hypot(a.x,a.z)||1;      // décalage le long du front
+      g=[a.x - a.z/r*i*26, a.z + a.x/r*i*26]; }
+  }else{
+    const st=stancePointFor(key);
+    if(!st) return null;
+    if(!i) g=st;
+    else{ const r=Math.hypot(st[0],st[1])||1;
+      g=[st[0]-st[1]/r*i*26, st[1]+st[0]/r*i*26]; }
   }
-  const st=stancePointFor(key);
-  if(!st) return null;
-  if(!i) return st;
-  const r=Math.hypot(st[0],st[1])||1;
-  return [st[0]-st[1]/r*i*26, st[1]+st[0]/r*i*26];
+  // un ordre donné hors les murs s'arrête au pied du mur : la troupe ne sort pas
+  return clampInside(g[0],g[1],ARMY_R*0.5);
 }
 function armyGoal(key){ return squadGoal(key||selectedSquads()[0]||'guerriers'); }
 /* la marche : une escouade, son but, son pas */
@@ -5416,6 +5422,15 @@ function squadMarch(key,g,dt,lead){
   const ux=ax/ad, uz=az/ad;
   const face=Math.atan2(ux,uz);
   g.position.x+=ux*step; g.position.z+=uz*step;
+  /* Ramener la troupe à l'intérieur, oui — mais en la faisant MARCHER. Une
+     escouade surprise dehors (mur bâti autour d'elle, vieille sauvegarde) était
+     téléportée de quarante unités d'un coup. */
+  const kin=keepInside(g.position.x,g.position.z,ARMY_R*0.5);
+  if(kin){
+    const cx=kin[0]-g.position.x, cz=kin[1]-g.position.z, cd=Math.hypot(cx,cz);
+    const m=Math.min(cd, Math.max(step, MARCH_SPEED*dt));
+    if(cd>0.001){ g.position.x+=cx/cd*m; g.position.z+=cz/cd*m; }
+  }
   let df=face-g.rotation.y;
   while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
   g.rotation.y+=df*Math.min(1,6*dt);
@@ -6628,7 +6643,8 @@ function v3dInit(){
       }
     }
     if(V3.raid){ raidCamFollow(dt); raidTick(dt,tt,scene); }
-    else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt); }
+    else{ separateWalkers(built.walkers,dt); avoidSolids(built.walkers,dt);
+          keepWalkersInside(built.walkers); }
     scene.traverse(o=>{ if(o.name==='walker'){ o.position.y=Math.abs(Math.sin(tt*5+o.userData.p))*0.9; } });
     if(V3.saveSoon&&now-(V3.savedAt||0)>4000){ V3.saveSoon=0; V3.savedAt=now; save(); }
     if(V3.hud) hudTrack(cam);
@@ -6819,6 +6835,52 @@ function rebuildSolids(){
   });
   V3.solids=out;
 }
+/* ============================================================
+   LA MURAILLE EST UN MUR
+   ------------------------------------------------------------
+   Palissade et rempart étaient marqués NOCLIP : ils n'arrêtaient personne. On
+   voyait les gardes traverser les rondins pour rejoindre un poste de patrouille
+   placé dehors, et la légion entrer tout droit à travers le bois. C'est
+   désormais un anneau infranchissable, percé d'une seule porte — des DEUX
+   côtés : qui est dedans reste dedans, qui est dehors reste dehors.
+   ============================================================ */
+const WALLS={muraille:{r:152, gate:0, half:0.16}, palissade:{r:138, gate:1.691, half:0.15}};
+function wallRing(){
+  if(V3.wallDown) return null;              // la porte a cédé : plus rien n'arrête personne
+  if(S.village&&S.village.indexOf('muraille')>=0) return WALLS.muraille;
+  if(S.village&&S.village.indexOf('palissade')>=0) return WALLS.palissade;
+  return null;
+}
+/* La porte est un COULOIR, pas un secteur angulaire : un secteur s'élargit
+   avec la distance et laissait des unités frôler le mur très loin de l'ouverture.
+   Ici, il faut vraiment se trouver dans l'embrasure pour passer. */
+function gateDist(x,z){
+  const w=wallRing(); if(!w) return 0;
+  return Math.hypot(x-Math.cos(w.gate)*w.r, z-Math.sin(w.gate)*w.r);
+}
+function gateWide(){ const w=wallRing(); return w?w.r*w.half+6:0; }
+function atGate(x,z){ const w=wallRing(); return !w || gateDist(x,z)<gateWide(); }
+/* on ne change de côté qu'au CŒUR de l'embrasure : décider au bord faisait
+   sauter l'unité de plusieurs unités d'un coup, ce qui ressemblait à une
+   traversée du mur */
+function gateDeep(x,z){ return gateDist(x,z)<gateWide()*0.55; }
+function wallClamp(x,z,body,outside){
+  const w=wallRing(); if(!w) return null;
+  if(atGate(x,z)) return null;                       // par la porte, on passe
+  const d=Math.hypot(x,z);
+  const lim=outside ? w.r+(body||0)+3 : w.r-(body||0)-3;
+  if(outside ? d>=lim : d<=lim) return null;
+  const a=Math.atan2(z,x);
+  return [Math.cos(a)*lim, Math.sin(a)*lim];
+}
+function keepInside(x,z,body){ return wallClamp(x,z,body,false); }
+function clampInside(x,z,body){ const f=keepInside(x,z,body); return f?f:[x,z]; }
+/* le point de passage, vu du dehors ou du dedans */
+function gatePoint(outside){
+  const w=wallRing(); if(!w) return null;
+  const r=w.r+(outside?20:-20);
+  return [Math.cos(w.gate)*r, Math.sin(w.gate)*r];
+}
 /* renvoie le point libre le plus proche de (x,z) */
 function pushOutOfSolids(x,z,body){
   const S2=V3.solids||[];
@@ -6874,6 +6936,21 @@ function steerAround(x,z,ux,uz,body,goal,u){
   return [mx/m,mz/m];
 }
 /* chaque image : personne ne rentre dans un mur ni dans un tronc */
+/* les promeneurs ne franchissent pas l'enceinte, et ne se donnent pas de but
+   au-delà : sinon ils passeraient leur vie collés au mur */
+function keepWalkersInside(list){
+  if(!wallRing()) return;
+  for(const p of list){
+    const r=bodyR(p);
+    const f=keepInside(p.position.x,p.position.z,r);
+    // on rentre au pas, pas d'un bond : un villageois pris dehors revient
+    if(f){ const cx=f[0]-p.position.x, cz=f[1]-p.position.z, cd=Math.hypot(cx,cz);
+      const m=Math.min(cd,3);
+      if(cd>0.001){ p.position.x+=cx/cd*m; p.position.z+=cz/cd*m; } }
+    const u=p.userData;
+    if(u&&u.tgt){ const t2=clampInside(u.tgt.x,u.tgt.z,r); u.tgt.set(t2[0],0,t2[1]); }
+  }
+}
 function avoidSolids(walkers,dt){
   const S2=V3.solids||[]; if(!S2.length) return;
   const k=Math.min(1,22*dt);
@@ -7116,6 +7193,8 @@ function raidBuild(scene){
              cd:0.4+Math.random()*0.9, swing:0, tgt:null, rescan:0, dead:0, fall:0,
              sp:kind==='enfant'?11:(side==='rome'?8.5:9)+Math.random()*2};
     if(x!=null) g.position.set(x,0,z);
+    // de quel côté du mur il commence : il n'en changera qu'en passant la porte
+    u.out=Math.hypot(g.position.x,g.position.z)>((wallRing()||{r:1e9}).r);
     setBar(u); units.push(u); return u;
   };
   // --- les Gaulois : les marcheurs déjà présents changent de mission
@@ -7248,6 +7327,14 @@ function raidBanner(){
 function raidTick(dt,tt,scene){
   const R=V3.raid; if(!R) return;
   R.t+=dt;
+  /* Un siège ne dure pas éternellement : si la légion tourne autour des murs
+     sans trouver la porte, elle finit par l'enfoncer. Sans ça, une muraille
+     pouvait figer la bataille au lieu de la gagner. */
+  if(!V3.wallDown&&R.t>75&&wallRing()){
+    V3.wallDown=1;
+    toast('🪓 '+t('La porte cède ! Ils sont dans le village.','The gate gives way! They are inside the village.'));
+    SFX.ko();
+  }
   const U=R.units;
   // éclats de coups
   (R.spark||[]).forEach(sp=>{ if(!sp.visible) return;
@@ -7297,9 +7384,28 @@ function raidTick(dt,tt,scene){
     const d=Math.hypot(dx,dz)||1;
     const reach=u.kind==='centurion'||u.kind==='chef'?13:11;
     if(d>reach){                                   // on marche au contact
-      const st=steerAround(u.g.position.x,u.g.position.z,dx/d,dz/d,4,d,u.g.userData);
+      /* Un mur sépare-t-il les deux ? Alors on ne charge pas les rondins : on
+         se présente à la porte. C'est ce qui rend une muraille utile. */
+      let ax=T.g.position.x, az=T.g.position.z;
+      const w=wallRing();
+      if(w&&u.out!==(Math.hypot(ax,az)>w.r)){
+        const gp=gatePoint(u.out);
+        if(gp&&!atGate(u.g.position.x,u.g.position.z)){ ax=gp[0]; az=gp[1]; }
+      }
+      const adx=ax-u.g.position.x, adz=az-u.g.position.z, ad=Math.hypot(adx,adz)||1;
+      const st=steerAround(u.g.position.x,u.g.position.z,adx/ad,adz/ad,4,ad,u.g.userData);
       u.g.position.x+=st[0]*u.sp*dt; u.g.position.z+=st[1]*u.sp*dt;
-      turnTo(u.g,T.g.position.x,T.g.position.z,dt,9);
+      const kc=wallClamp(u.g.position.x,u.g.position.z,4,u.out);
+      if(kc){
+        // on le repousse d'un pas, pas d'un bond : un rattrapage brutal juste
+        // après la porte ressemblait à une traversée du mur
+        const cx=kc[0]-u.g.position.x, cz=kc[1]-u.g.position.z, cd=Math.hypot(cx,cz);
+        const m=Math.min(cd, Math.max(1.5, u.sp*dt));
+        if(cd>0.001){ u.g.position.x+=cx/cd*m; u.g.position.z+=cz/cd*m; }
+      }
+      else if(w&&gateDeep(u.g.position.x,u.g.position.z))
+        u.out=Math.hypot(u.g.position.x,u.g.position.z)>w.r;   // il a franchi la porte
+      turnTo(u.g,ax,az,dt,9);
       u.g.position.y=Math.abs(Math.sin(tt*7+u.hpMax))*0.8;
       if(ar){ const sw=Math.sin(tt*7+u.hpMax);
         ar[0].rotation.x=sw*0.5; ar[1].rotation.x=-sw*0.5; }
@@ -7406,7 +7512,7 @@ function raidEnd(win){
       +aftermathHtml(AF));
   }
   checkBadges(); save();
-  V3.raid=null; V3.raidCam=0;
+  V3.raid=null; V3.raidCam=0; V3.wallDown=0;
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },900);
 }
@@ -7452,11 +7558,11 @@ function finalEnd(win){
                     'Ashes remain, and enough to start again. Nothing stops you rebuilding — but they are not coming back.'));
   }
   checkBadges(); save();
-  V3.raid=null; V3.raidCam=0;
+  V3.raid=null; V3.raidCam=0; V3.wallDown=0;
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?900:2600);
 }
-function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; }
+function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; V3.wallDown=0; }
 function raidBtnHtml(){
   if(finalDue()){
     const F=legionForce();
