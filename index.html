@@ -105,7 +105,11 @@ main#app{display:block;padding-top:14px}
 .hudlang:active{transform:translateY(1px)}
 .goalchip{font-family:var(--mono);font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .goalchip b{color:var(--bus)}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+/* Le battement du compte à rebours agrandissait le bandeau de 6 % : passé en
+   mode urgent, il débordait de l'écran et ouvrait un défilement horizontal.
+   On fait battre la lueur, pas la taille. */
+@keyframes pulse{0%,100%{box-shadow:0 4px 0 #00000066, 0 0 0 0 #E5383B00}
+                 50%{box-shadow:0 4px 0 #00000066, 0 0 16px 3px #E5383B66}}
 
 /* ---------- typographic bits ---------- */
 .px{font-family:var(--px)}
@@ -345,14 +349,21 @@ html,body{overflow-x:hidden}
 
 /* ---------- compte à rebours invasion ---------- */
 .cdbox{background:linear-gradient(#2A1012,#1A0C10);border:3px solid var(--stopD);border-radius:12px;
-  padding:12px 14px;margin-bottom:14px;text-align:center;box-shadow:0 4px 0 #00000066}
+  padding:12px 10px;margin-bottom:14px;text-align:center;box-shadow:0 4px 0 #00000066}
 .cdbox.hot{border-color:var(--stop);animation:pulse 1.6s infinite}
 .cdbox.past{border-color:var(--bus);background:linear-gradient(#2A2405,#1A1604)}
-.cdt{font-family:var(--px);font-size:10px;color:var(--stop);letter-spacing:1px;margin-bottom:9px}
+.cdt{font-family:var(--px);font-size:10px;color:var(--stop);letter-spacing:1px;margin-bottom:9px;
+  white-space:normal;overflow-wrap:anywhere}
+/* le bandeau ne doit jamais être plus large que l'écran : en police à chasse
+   fixe, son titre poussait la page de vingt pixels vers la droite */
+.cdbox{max-width:100%}
+.cdrow{max-width:100%}
 .cdbox.past .cdt{color:var(--bus)}
-.cdrow{display:flex;justify-content:center;gap:7px}
+.cdrow{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+/* quatre cases de 46 px et leurs marges dépassaient l'écran à 360 px : elles se
+   resserrent maintenant au lieu de pousser la page vers la droite */
 .cdc{display:flex;flex-direction:column;align-items:center;background:#00000066;border:2px solid var(--stopD);
-  border-radius:8px;padding:6px 9px;min-width:46px}
+  border-radius:8px;padding:6px 7px;min-width:0;flex:0 1 auto}
 .cdc b{font-family:var(--px);font-size:15px;color:#FFD7D8;font-variant-numeric:tabular-nums}
 .cdc i{font-style:normal;font-family:var(--px);font-size:7px;color:var(--dim);margin-top:4px}
 .cdsub{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:9px}
@@ -521,9 +532,12 @@ html,body{overflow-x:hidden}
 .stock span.full b{color:var(--stop)}
 .carabox{margin-top:12px;padding:10px;border:2px solid var(--bus);border-radius:12px;background:var(--lane2)}
 .carabox.off{border:1px dashed var(--edge);padding:8px 10px;font-size:11px;color:var(--dim)}
-.carow{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
-.cak{flex:0 0 62px;font-size:12px;color:var(--ink)}
-.carow .sbuy{flex:1 1 0;min-width:0;font-size:11px;white-space:nowrap}
+/* Les deux boutons du marchand tenaient sur une seule ligne en nowrap : ils
+   réclamaient 186 px là où il y en avait 94, et poussaient l'écran entier. */
+.carow{display:flex;align-items:stretch;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cak{flex:1 1 100%;font-size:12px;color:var(--ink)}
+.carow .sbuy{flex:1 1 0;min-width:0;font-size:11px;line-height:1.35;
+  white-space:normal;overflow-wrap:anywhere;text-align:center;padding:7px 6px}
 .skill{margin:10px 0;padding:9px 10px;border:1px solid var(--edge);border-radius:10px;background:var(--lane2)}
 .skillhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px}
 .skillst{color:#E0A800;letter-spacing:1px;font-size:11px;white-space:nowrap}
@@ -1469,7 +1483,19 @@ const Q=[
 {w:'surv',q:"Your brakes are in good order if, at 20 mph, the car stops within:",a:["25 feet","10 feet","60 feet","100 feet"],x:"25 pieds à 20 mph : c'est le test du manuel. Au-delà, les freins sont à faire vérifier avant de reprendre la route.",xe:"25 feet at 20 mph is the manual's test. Longer than that and the brakes need checking before you drive on."},
 {w:'surv',q:"What share of the information a driver needs arrives through the eyes?",a:["More than 95%","About half","About 25%","About 75%"],x:"Plus de 95 % de l'information est visuelle. D'où les contrôles de vue, et d'où le danger d'un regard qui quitte la route.",xe:"Over 95% of what you need is visual. Hence the eye tests, and hence the danger of eyes leaving the road."},
 {w:'surv',q:"When backing up, your speed should be about:",a:["Walking speed, 2 to 4 mph","10 to 15 mph","As fast as forward","Whatever clears the space quickest"],x:"Au pas : 2 à 4 mph. À l'examen, on te fera reculer sur 30 mètres bien droit, lentement et sans à-coups.",xe:"Walking pace: 2 to 4 mph. On the road test you will back about 100 feet in a straight line, slowly and smoothly."},
-{w:'dist',q:"A train travelling at 60 mph or more needs how far to stop?",a:["More than a mile","About 200 feet","About 500 feet","The length of the train"],x:"Plus d'un mile. Le train ne peut pas t'éviter, ni s'arrêter pour toi : c'est toujours à toi de céder.",xe:"More than a mile. The train cannot swerve and cannot stop for you: yielding is always your job."}
+{w:'dist',q:"A train travelling at 60 mph or more needs how far to stop?",a:["More than a mile","About 200 feet","About 500 feet","The length of the train"],x:"Plus d'un mile. Le train ne peut pas t'éviter, ni s'arrêter pour toi : c'est toujours à toi de céder.",xe:"More than a mile. The train cannot swerve and cannot stop for you: yielding is always your job."},
+/* -------- Manuel 2025, suite : test routier, virages, ronds-points, poste de conduite -------- */
+{w:'gdl',q:"The MVC examiner can refuse to start your road test because of the CAR if:",a:["Its inspection sticker is missing or expired, or the brake light is on","It is not freshly washed outside","It is more than ten years old","It has no radio"],x:"La voiture passe l'examen avant toi : vignette de contrôle valide, freins sains, feux et clignotants en état, pneus corrects, intérieur propre, et l'examinateur doit pouvoir atteindre le frein.",xe:"The car is examined before you are: valid inspection sticker, sound brakes, working lights and signals, decent tyres, a reasonably clean interior — and the examiner must be able to reach the brake."},
+{w:'gdl',q:"After you are first licensed, the MVC monitors your driving habits for:",a:["One year","One month","Three years","It does not monitor them"],x:"Un an sous surveillance. C'est la période probatoire : les infractions y pèsent bien plus lourd qu'ensuite.",xe:"One year of monitoring. That is the probationary period: violations there weigh far more than later."},
+{w:'dist',q:"Two vehicles meet at an intersection and BOTH have signaled to turn left. Each should:",a:["Turn to the left of the centre of the intersection","Turn in front of the other","Wait for the other to go first","Turn right instead"],x:"Chacun passe à gauche du centre du carrefour : les deux voitures se croisent par l'arrière et personne ne coupe la route de l'autre.",xe:"Each passes to the left of the centre of the intersection: the cars pass behind one another and neither cuts across the other."},
+{w:'dist',q:"Turning left from a one-way road onto another one-way road, you should:",a:["Approach in the left lane and turn into the left lane","Approach in the right lane and swing wide","Use the centre of the road","Turn from whichever lane is empty"],x:"Voie de gauche à voie de gauche : on entre dans la file la plus proche, sans balayer les autres.",xe:"Left lane to left lane: you enter the nearest lane without sweeping across the others."},
+{w:'dist',q:"To make a safe right turn you should approach the intersection:",a:["As far to the right as possible, close to the curb","From the centre of the road","From the left lane, to swing wide","In whichever lane is fastest"],x:"Serrer à droite AVANT de tourner : ça empêche une moto ou un vélo de se glisser dans l'espace que tu laisserais à ta droite.",xe:"Hug the right BEFORE turning: it stops a motorcycle or cyclist slipping into the gap you would otherwise leave on your right."},
+{w:'dist',q:"In a New Jersey traffic circle, who has the right-of-way?",a:["There is no fixed rule — signs and the established flow decide; when in doubt, yield to the vehicle on your right","Whoever enters first, always","Traffic entering the circle, always","Traffic already in the circle, always"],x:"Le manuel est formel : pas de règle unique en NJ. On lit les panneaux, on observe le flux dominant, et dans le doute on cède à celui qui vient de la droite.",xe:"The manual is explicit: no single rule in NJ. Read the signs, watch the dominant flow, and when in doubt yield to the vehicle coming from your right."},
+{w:'surv',q:"On a highway running through a city during rush hour, the manual advises driving:",a:["In the left or centre lane, to avoid merge conflicts","In the right lane, always","On the shoulder to pass jams","As close to the exits as possible"],x:"La file de droite est celle des entrées et des sorties : à l'heure de pointe, c'est là qu'on se fait accrocher. On la laisse aux échanges.",xe:"The right lane is the on-and-off lane: at rush hour that is where the conflicts are. Leave it to the merging traffic."},
+{w:'surv',q:"Your car breaks down and you have pulled onto the shoulder. Besides the flashers, the manual says to:",a:["Raise the hood, stay belted inside with the doors locked, and call for help","Stand in front of the car and wave","Walk along the shoulder to the next exit","Accept a lift from whoever stops"],x:"Capot levé pour signaler, ceinture bouclée, portes verrouillées. On demande à celui qui s'arrête d'appeler — on ne monte pas dans sa voiture.",xe:"Hood up as a signal, belt on, doors locked. Ask whoever stops to phone for help — do not get into their vehicle."},
+{w:'surv',q:"Before starting the engine, the manual's checklist includes:",a:["Seat adjusted about an arm's length from the wheel, mirrors set, belt on, doors locked","Radio tuned and phone paired","Engine warmed for five minutes","Windows all the way down"],x:"Siège à une longueur de bras, rétroviseurs réglés, ceinture, portes verrouillées, boîte au point mort ou park et frein à main. Dans cet ordre, avant de tourner la clé.",xe:"Seat an arm's length away, mirrors set, belt fastened, doors locked, gear in park or neutral with the parking brake on. In that order, before the key turns."},
+{w:'surv',q:"To fight glare when driving at night, the manual advises:",a:["Avoiding coloured lenses, which distort colour, and using anti-reflective coatings","Wearing sunglasses at night","Turning on the interior light","Using high beams in traffic"],x:"Les verres teintés faussent les couleurs — dangereux quand il faut distinguer un feu rouge d'un feu orange. Traitement antireflet, oui ; verres colorés, non.",xe:"Tinted lenses distort colour — dangerous when you must tell a red light from an amber one. Anti-reflective coating yes, coloured lenses no."},
+{w:'speed',q:"The fine for letting your engine idle longer than New Jersey allows is:",a:["$250 to $1,000 per violation","$25","A warning only","$5,000"],x:"Trois minutes maximum, et de 250 à 1 000 $ par infraction. Les embouteillages et les drive font partie des exceptions.",xe:"Three minutes maximum, and $250 to $1,000 per violation. Traffic jams and drive-throughs are among the exemptions."}
 ];
 
 /* ---------------- BLITZ : les Petites Règles™ (55) ---------------- */
