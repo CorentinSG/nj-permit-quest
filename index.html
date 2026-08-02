@@ -380,6 +380,7 @@ html,body{overflow-x:hidden}
   opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .v3d-say.show{opacity:1;transform:translateY(0)}
 .v3d-say b{color:var(--bus)}
+.v3d.editing .v3d-hint{display:none}    /* la place du bas revient au bouton TERMINÉ */
 .v3d-hint{position:absolute;left:10px;bottom:14px;z-index:1;font-size:10.5px;color:#fff;opacity:.85;
   pointer-events:none;text-shadow:0 1px 3px #000;max-width:calc(100% - 252px);line-height:1.3;
   overflow-wrap:anywhere}
@@ -396,11 +397,11 @@ html,body{overflow-x:hidden}
 .v3d-rot button:active{transform:translateY(1px)}
 /* sortir du mode déplacement depuis la vue : le bouton de l'onglet Bâtir n'est
    pas toujours à l'écran, et on se retrouvait coincé à traîner des maisons */
-.v3d-done{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:4;
+.v3d-done{position:absolute;left:8px;bottom:8px;transform:none;z-index:4;
   padding:9px 18px;border:2px solid var(--exit);border-radius:11px;background:#0B2416EE;
   color:#BFF3D2;font-family:var(--px);font-size:9px;letter-spacing:.5px;
   box-shadow:0 4px 0 #00000066;white-space:nowrap}
-.v3d-done:active{transform:translateX(-50%) translateY(2px)}
+.v3d-done:active{transform:translateY(2px)}
 /* ordres à la troupe */
 .armyord{border-top:1px dashed var(--edge);margin-top:12px}
 .formrow{display:flex;gap:8px}
@@ -727,14 +728,18 @@ html,body{overflow-x:hidden}
 /* ---------- level-up overlay ---------- */
 #overlay{
   position:fixed;inset:0;z-index:90;display:none;justify-items:center;align-items:start;
+  /* « safe » : centré tant que la fiche tient, collé en haut dès qu'elle
+     déborde — sinon elle sortait par le haut et la croix devenait hors de
+     portée. Les navigateurs qui ignorent le mot-clé gardent align-items:start. */
+  align-items:safe center;
   background:#0C1118E0;padding:20px;
   overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 #overlay.show{display:grid}
-/* margin:auto centre la carte quand elle tient, et la laisse défiler sinon —
-   avec place-items:center une fiche trop haute débordait par le haut et le
-   bouton de fermeture devenait inatteignable */
-.ov-card{position:relative;margin:auto;background:var(--lane);border:4px solid var(--bus);border-radius:16px;padding:28px 22px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 0 60px #FFC61A33;animation:ovIn .35s cubic-bezier(.2,1.4,.4,1)}
+/* Le centrage vertical est l'affaire du conteneur (align-items:safe center) :
+   un margin:auto ici recentrait de force une fiche trop haute, et son bord
+   supérieur passait au-dessus de l'écran. */
+.ov-card{position:relative;margin:0 auto;background:var(--lane);border:4px solid var(--bus);border-radius:16px;padding:28px 22px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 0 60px #FFC61A33;animation:ovIn .35s cubic-bezier(.2,1.4,.4,1)}
 /* croix toujours accessible, collée en haut de la carte pendant le défilement */
 .ov-x{position:sticky;top:0;float:right;margin:-14px -8px 0 0;z-index:2;
   width:38px;height:38px;border-radius:10px;border:2px solid var(--edge);
@@ -3584,6 +3589,13 @@ function v3dStop(){
   if(V3.raf){ cancelAnimationFrame(V3.raf); V3.raf=0; }
   if(typeof miniStop==='function') miniStop();
   if(V3.ren){ V3.ren.dispose(); V3.ren.forceContextLoss&&V3.ren.forceContextLoss(); V3.ren=null; }
+  /* Le relâchement du doigt s'écoute sur la FENÊTRE, pas sur la vue : sans ce
+     coup de balai, chaque redessin du village en empilait un de plus. Au bout
+     de quelques manœuvres, poser un bâtiment déclenchait dix sauvegardes, et
+     le garde-fou des boutons (uiTap), remis à zéro par le premier écouteur,
+     ne protégeait plus des suivants — l'appui sur TERMINÉ partait alors dans
+     la scène au lieu de valider. */
+  if(V3.ac){ V3.ac.abort(); V3.ac=null; }
   V3.scene=null; V3.host=null; V3.mixers=[];
 }
 function v3dTurn(d){ V3.auto=false; V3.raidCam=0; V3.rot+=d*Math.PI/180; }
@@ -6258,6 +6270,7 @@ function v3dInit(){
         squadOrders(); if(e.cancelable) e.preventDefault(); return;
       }
       if(o){ V3.sel=o; V3.lastPid=o.userData.pid; V3.selOk=[o.position.x,o.position.z]; V3.auto=false;
+             V3.pre=[o.position.x,o.position.z];   // pour pouvoir revenir en arrière
              host.classList.add('dragging');
              if(V3.ring){ V3.ring.visible=true; V3.ring.position.set(o.position.x,0.4,o.position.z); }
              if(e.cancelable) e.preventDefault(); return; }
@@ -6300,12 +6313,17 @@ function v3dInit(){
     if(e.cancelable) e.preventDefault();
   };
   const up=e=>{
-    if(V3.uiTap){ V3.uiTap=0; return; }        // l'appui appartenait à un bouton
+    if(!V3.ren||V3.host!==host) return;        // scène périmée : on ne touche à rien
+    if(V3.uiTap){ V3.uiTap=0; V3.tapMax=999; return; }  // l'appui appartenait à un bouton
     if(V3.sel){ S.vpos=S.vpos||{};
-      S.vpos[V3.sel.userData.pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
-      if(String(V3.sel.userData.pid).split('#')[0]==='chemin') orientPath(V3.sel.userData.pid);
+      const pid=V3.sel.userData.pid;
+      S.vpos[pid]=[+V3.sel.position.x.toFixed(1),+V3.sel.position.z.toFixed(1)];
+      if(String(pid).split('#')[0]==='chemin') orientPath(pid);
       save(); V3.sel=null; rebuildSolids();
-      if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click(); }
+      if(V3.sun) V3.sun.shadow.needsUpdate=true; SFX.click();
+      /* Le bâtiment a bougé : on le dit, et on met la validation SOUS le doigt.
+         Chercher le bouton ailleurs dans l'écran, c'était rester coincé. */
+      if((V3.tapMax||0)>=TAP_SLOP) hudOpen('moved',pid); }
     // simple tape : c'est une sélection, pas un déplacement
     else if(e && (V3.tapMax||0)<TAP_SLOP){
       const now=performance.now();
@@ -6363,16 +6381,18 @@ function v3dInit(){
     V3.rot-=da; V3.ang=pinchA(e); V3.auto=false;
     if(e.cancelable) e.preventDefault(); } };
   const tend=e=>{ if(!e.touches||e.touches.length<2) V3.pinch=0; };
-  host.addEventListener('wheel',wheel,{passive:false});
-  host.addEventListener('contextmenu',e=>e.preventDefault());
-  host.addEventListener('touchstart',tstart,{passive:false});
-  host.addEventListener('touchmove',tmove,{passive:false});
-  host.addEventListener('touchend',tend);
-  host.addEventListener('touchcancel',tend);
-  host.addEventListener('pointerdown',down);
-  host.addEventListener('pointermove',move,{passive:false});
-  window.addEventListener('pointerup',up);
-  host.addEventListener('pointercancel',up);
+  /* un seul jeu d'écouteurs par scène : v3dStop() coupe le précédent */
+  const ac=new AbortController(), sig=ac.signal; V3.ac=ac;
+  host.addEventListener('wheel',wheel,{passive:false,signal:sig});
+  host.addEventListener('contextmenu',e=>e.preventDefault(),{signal:sig});
+  host.addEventListener('touchstart',tstart,{passive:false,signal:sig});
+  host.addEventListener('touchmove',tmove,{passive:false,signal:sig});
+  host.addEventListener('touchend',tend,{signal:sig});
+  host.addEventListener('touchcancel',tend,{signal:sig});
+  host.addEventListener('pointerdown',down,{signal:sig});
+  host.addEventListener('pointermove',move,{passive:false,signal:sig});
+  window.addEventListener('pointerup',up,{signal:sig});
+  window.addEventListener('pointercancel',up,{signal:sig});
   if(matchMedia('(prefers-reduced-motion: reduce)').matches) V3.auto=false;
 
   V3.phase=applyTimeOfDay(scene,sun,scene.children.find(o=>o.isHemisphereLight),fill,stars);
@@ -8292,7 +8312,7 @@ function hudClose(){
 function hudAnchor(){
   const h=V3.hud; if(!h) return null;
   if(h.kind==='squad'){ const g=V3.place&&V3.place[h.key]; return g?[g.position.x,22,g.position.z]:null; }
-  if(h.kind==='bld'){ const g=V3.place&&V3.place[h.key];
+  if(h.kind==='bld'||h.kind==='moved'){ const g=V3.place&&V3.place[h.key];
     return g?[g.position.x, Math.min(46,footOf(h.key)*1.7+10), g.position.z]:null; }
   const w=hudWalker(h.id);
   return w?[w.position.x,17,w.position.z]:null;
@@ -8334,11 +8354,12 @@ function hudOpen(kind,ref){
   if(!el){                                    // pas de vue 3D : on retombe sur la fiche
     if(kind==='person'){ const r=(S.people||[]).find(x=>x.id===ref); if(r) showPerson(r,null); }
     else if(kind==='bld') showBuilding(ref);
+    else if(kind==='moved'){ /* pas de vue 3D : rien à confirmer */ }
     else squadOrders();
     return;
   }
   V3.hud=(kind==='squad')?{kind:'squad',key:ref}
-        :(kind==='bld')?{kind:'bld',key:ref}
+        :(kind==='bld'||kind==='moved')?{kind:kind,key:ref}
         :{kind:'person',id:ref};
   hudFocus();
   hudPaint();
@@ -8359,7 +8380,8 @@ function hudFocus(){
 function hudPaint(){
   const el=hudEl(), h=V3.hud; if(!el||!h) return;
   el.innerHTML='<div class="whcard">'
-    +(h.kind==='squad'?hudSquadHtml(h):h.kind==='bld'?hudBldHtml(h):hudPersonHtml(h))+'</div>';
+    +(h.kind==='squad'?hudSquadHtml(h):h.kind==='bld'?hudBldHtml(h)
+      :h.kind==='moved'?hudMovedHtml(h):hudPersonHtml(h))+'</div>';
   el.classList.add('show');
   rosterPaint();
   // on le place tout de suite : attendre l'image suivante le laissait une
@@ -8489,6 +8511,42 @@ function hudBldHtml(h){
        +it.ic+' '+t('En bâtir un autre','Build another')+' — '+priceOf(it)+' 🪙</button></div>':'');
 }
 function hudMove(key){ hudClose(); toggleEdit(key); }
+/* ---------- un bâtiment qu'on vient de poser : valider, annuler, orienter ---------- */
+function hudMovedHtml(h){
+  const key=h.key, it=SHOP.find(x=>x.id===String(key).split('#')[0]);
+  const pre=V3.pre, g=V3.place&&V3.place[key];
+  const far=(pre&&g)?Math.round(Math.hypot(g.position.x-pre[0],g.position.z-pre[1])):0;
+  return hudHead(it?it.ic:'🏠', buildingLabel(key))
+   +'<div class="whsub">'+t('Déplacé de ','Moved ')+far+' '+t('pas','steps')
+   +' · '+t('glisse encore, ou valide','drag again, or confirm')+'</div>'
+   +'<div class="whrow">'
+   +'<button class="whb" onclick="G.rotSel(-1)" aria-label="'+t('pivoter à gauche','turn left')+'">↺</button>'
+   +'<button class="whb" onclick="G.rotSel(1)" aria-label="'+t('pivoter à droite','turn right')+'">↻</button>'
+   +'<button class="whb" onclick="G.undoMove()">↩ '+t('Annuler','Undo')+'</button>'
+   +'</div>'
+   +'<div class="whrow"><button class="whb wide go" onclick="G.placeDone()">✓ '
+   +t('Valider l\'emplacement','Confirm the spot')+'</button></div>';
+}
+/* remettre le bâtiment là où il était avant qu'on y touche */
+function undoMove(){
+  const h=V3.hud; if(!h||h.kind!=='moved') return;
+  const g=V3.place&&V3.place[h.key], pre=V3.pre;
+  if(!g||!pre){ hudClose(); return; }
+  g.position.x=pre[0]; g.position.z=pre[1];
+  S.vpos=S.vpos||{}; S.vpos[h.key]=[+pre[0].toFixed(1),+pre[1].toFixed(1)];
+  if(String(h.key).split('#')[0]==='chemin') orientPath(h.key);
+  save(); rebuildSolids();
+  if(V3.ring) V3.ring.position.set(pre[0],0.4,pre[1]);
+  if(V3.sun) V3.sun.shadow.needsUpdate=true;
+  SFX.click(); toast('↩ '+t('Remis à sa place.','Put back.'));
+  hudPaint();
+}
+/* valider : on referme le panneau ET le mode placement */
+function placeDone(){
+  hudClose();
+  if(V3.edit) toggleEdit();
+  else { SFX.click(); toast(t('✅ Village enregistré','✅ Village saved')); }
+}
 /* ---------- une escouade : un bloc, avec ses ordres ---------- */
 function hudSquadHtml(h){
   const sel=selectedSquads();
@@ -8643,6 +8701,7 @@ function markSel(g){
 function toggleEdit(pid){
   V3.edit=!V3.edit; V3.order=false;
   V3.sel=null;
+  if(V3.hud&&V3.hud.kind==='moved') hudClose();
   // venu de la fiche d'un bâtiment : il reste choisi, les flèches marchent tout de suite
   V3.lastPid=(V3.edit&&typeof pid==='string')?pid:null;
   if(!V3.edit&&V3.ring) V3.ring.visible=false;
@@ -9280,7 +9339,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, giveOrder, guardBuilding, squadOrders,
   hudOpen, hudClose, hudRename, hudLeave, hudSquads, toggleSquad,
   grantLeave, rejoinArmy, renameVillager, renameFrom, tapPerson, tapBuilding, toggleNight, hudMove,
-  caravanSell, caravanBuy};
+  caravanSell, caravanBuy, undoMove, placeDone};
 window.G=G;
 /* ---------- hors-ligne ----------
    Le service worker garde l'application entière en cache. Une fois ouverte une
