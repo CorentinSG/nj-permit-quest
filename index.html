@@ -1642,8 +1642,12 @@ const SHOP=[
 {id:'barde',ic:'🎶',n:'Le barde (ligoté)',ne:'The bard (tied up)',p:180},
 {id:'taverne',ic:'🍺',n:'Taverne',ne:'Tavern',p:200,rc:{wood:16,food:10}},
 {id:'chaudron',ic:'⚗️',n:'Chaudron de potion',ne:'Potion cauldron',p:220,rc:{iron:12,wood:6}},
-{id:'druide',ic:'🧙',n:'Le druide',ne:'The druid',p:250},
-{id:'chef',ic:'👑',n:'Le chef sur son bouclier',ne:'The chief on his shield',p:300},
+{id:'druide',ic:'🧙',n:'La hutte du druide',ne:'The druid\'s hut',p:250,rc:{wood:12,food:6},
+ d:'Le druide s\'installe au village, gui et serpe à la main',
+ de:'The druid moves into the village, mistletoe and sickle in hand'},
+{id:'chef',ic:'👑',n:'La hutte du chef',ne:'The chief\'s hut',p:300,rc:{wood:16,iron:6},
+ d:'Le chef du village prend ses quartiers — bouclier posé devant la porte',
+ de:'The village chief takes up quarters — shield propped by the door'},
 {id:'banquet',ic:'🍗',n:'LE BANQUET FINAL',ne:'THE FINAL BANQUET',p:400,rc:{food:40,wood:20}},
 /* --- armée : chaîne de progression contre Rome --- */
 {id:'camp',ic:'⛺',n:'Camp militaire',ne:'Military camp',p:260,cat:'army',req:'forge',pw:10,rc:{wood:18,iron:10},
@@ -4129,13 +4133,17 @@ function isSoldierKey(k){ return /@\d+$/.test(String(k||'')); }
 function soldierJob(k){ return String(k).split('@')[0].split('#')[0]==='chefguerre'?'chefdeguerre':'guerre'; }
 function isSoldier(rec){ return !!rec&&(rec.job==='guerre'||rec.job==='chefdeguerre'); }
 /* leur métier ne se renégocie pas : on ne réaffecte pas un guerrier au poulailler */
-const FIXED_JOBS={guerre:1, chefdeguerre:1, enfant:1};
+const FIXED_JOBS={guerre:1, chefdeguerre:1, enfant:1, druide:1, chef:1};
 /* ---------- où l'on DORT ----------
    Seuls ces bâtiments sont des logements, et eux seuls font venir un habitant
    de plus au village. On n'habite ni un champ, ni un puits, ni une forge : on
    y travaille. Les noms de la boutique le disent déjà — hutte, maison de
    chasseur, ferme, cabane du bûcheron. */
-const DWELL={hutte:1, chasseur:1, fermier:1, bucheron:1};
+/* Le druide et le chef ne sont pas des meubles : ce sont deux habitants, et
+   comme tout habitant il leur faut un toit. Leur hutte EST leur logement, et
+   elle n'accueille qu'eux — d'où HOMEJOB, qui fixe le métier de l'occupant. */
+const DWELL={hutte:1, chasseur:1, fermier:1, bucheron:1, druide:1, chef:1};
+const HOMEJOB={druide:'druide', chef:'chef'};
 function isDwelling(key){ return !!DWELL[String(key||'').split('#')[0]]; }
 /* un poste de travail par bâtiment de métier construit */
 function jobSlots(){
@@ -4193,6 +4201,7 @@ function hutJobPool(){
 function jobForBuilding(id){
   if(isSoldierKey(id)) return soldierJob(id);
   const base=id.split('#')[0];
+  if(HOMEJOB[base]) return HOMEJOB[base];
   if(base==='hutte'){ const pool=hutJobPool(); return pool[Math.floor(Math.random()*pool.length)]; }
   return HOUSED[base]||'bois';
 }
@@ -4235,6 +4244,8 @@ function allBuildingKeys(){
 }
 /* un logement peut abriter un couple et ses enfants, pas une colocation */
 function dwellingHasRoom(key){
+  // la hutte du druide et celle du chef sont à eux seuls : pas de colocation
+  if(HOMEJOB[String(key||'').split('#')[0]]) return false;
   return (S.people||[]).filter(x=>x.home===key&&!isChild(x)).length<2;
 }
 /* Anciennes sauvegardes : ceux qui « habitaient » un champ ou une forge sont
@@ -4272,7 +4283,8 @@ function syncPeople(){
     if(isSoldierKey(k)&&S.people.some(p=>p.army===k)) return;
     if(!S.people.some(p=>p.home===k)){
       const np=newPerson(S.people.length,k,
-        isSoldierKey(k)?soldierJob(k):(freeJob()||jobForBuilding(k)));
+        isSoldierKey(k)?soldierJob(k)
+        :HOMEJOB[String(k).split('#')[0]]||(freeJob()||jobForBuilding(k)));
       S.people.push(np);
       np.dream=pickDream();
       const libre=S.vacated&&S.vacated[k];
@@ -4297,6 +4309,9 @@ function syncPeople(){
   });
   // un habitant installé sur une clé de garnison EST un soldat
   S.people.forEach(p=>{ if(isSoldierKey(p.home)&&p.job!==soldierJob(p.home)) p.job=soldierJob(p.home); });
+  // qui vit dans la hutte du druide EST le druide, quoi qu'en dise la sauvegarde
+  S.people.forEach(p=>{ const j=HOMEJOB[String(p.home||'').split('#')[0]];
+    if(j&&!isChild(p)&&p.job!==j) p.job=j; });
   staffJobs();
   save(); return S.people;
 }
@@ -4825,6 +4840,12 @@ const JOBS=[
  {k:'enfant', ic:'🧒',need:null,  n:'Enfant',ne:'Child',tool:null,
   say:['On joue à cache-cache ?','Papa dit que je suis trop petit.','J\'ai attrapé une grenouille !'],
   saye:['Shall we play hide and seek?','Dad says I am too small.','I caught a frog!']},
+ {k:'druide', ic:'🧙',need:'druide', n:'Druide',ne:'Druid',tool:'louche',
+  say:['Le gui se coupe à la serpe d\'or.','Ma potion n\'est pas pour les enfants.','La forêt parle, il faut savoir écouter.'],
+  saye:['Mistletoe is cut with a golden sickle.','My potion is not for children.','The forest speaks, one must listen.']},
+ {k:'chef',   ic:'👑',need:'chef',   n:'Chef du village',ne:'Village chief',tool:null,
+  say:['Le village tiendra.','Portez-moi sur le bouclier !','Je ne crains qu\'une chose : que le ciel nous tombe sur la tête.'],
+  saye:['The village will hold.','Carry me on the shield!','I fear but one thing: that the sky may fall on our heads.']},
  {k:'feu',    ic:'🔥',need:null,     n:'Conteur',ne:'Storyteller',tool:null,  say:['…et le sanglier fit trois bonds !','Écoutez cette histoire…','C\'était au temps de mon père.'],saye:['…and the boar leapt thrice!','Listen to this tale…','It was in my father\'s day.']}
 ];
 /* outil tenu en main */
@@ -4978,15 +4999,26 @@ const B3={
     const p=new THREE.Mesh(new THREE.CircleGeometry(3.1,12),new THREE.MeshBasicMaterial({color:0x8ef07a}));
     p.rotation.x=-Math.PI/2; p.name='potion'; g.add(at(p,0,5.7,0));
     g.userData.smoke={x:0,y:7,z:0,n:3,green:1}; return g; },
-  druide(){ const g=new THREE.Group(); const p=person(4);
-    p.scale.setScalar(1.15); g.add(p);
-    g.add(at(cone(2.6,4,0xf2f2ea,7),0,9.6,0));
-    g.add(at(cyl(.5,.5,12,COL.wood,5),2.8,6,0)); g.name='hopper'; return g; },
-  chef(){ const g=new THREE.Group(); const p=person(0); p.scale.setScalar(1.2); g.add(p);
-    const sh=new THREE.Mesh(new THREE.CylinderGeometry(4,4,.8,12),mat(0xc0a030));
-    g.add(at(sh,0,.5,0)); p.position.y=.9;
-    const cr=new THREE.Mesh(new THREE.CylinderGeometry(2,2,1.4,8),new THREE.MeshBasicMaterial({color:0xffd24a}));
-    g.add(at(cr,0,10.6,0)); return g; },
+  /* Le druide et le chef habitent le village : leur hutte se bâtit ici, et
+     eux-mêmes vont et viennent comme n'importe quel villageois. */
+  druide(){ const g=house(15,13,11,11,0x6f8f52);
+    // le gui séché au-dessus de la porte, et la serpe plantée dans le billot
+    for(let i=0;i<3;i++) g.add(at(sph(1.1,0x8ed07a,0),(i-1)*2.2,13.4,7.2));
+    g.add(at(cyl(1.6,1.9,2.2,COL.woodDark,8),-8,1.1,7));
+    const sc=box(3.4,.5,.7,0xe8c447); sc.rotation.z=0.5; g.add(at(sc,-8,3.4,7));
+    // un petit chaudron de voyage, qui fume doucement
+    g.add(at(cyl(1.8,1.4,2.2,0x3a3a44,9),8,1.2,6));
+    g.userData.smoke={x:8,y:3.4,z:6,n:2,green:1}; return g; },
+  chef(){ const g=house(19,15,12,12,COL.thatchDark);
+    // le bouclier d'apparat contre le mur, et l'enseigne du village
+    const sh=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.4,.7,12),mat(0xc0a030));
+    sh.rotation.x=Math.PI/2; g.add(at(sh,7,5.2,8));
+    g.add(at(box(.6,16,.6,COL.wood),-9,8,7));
+    const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
+      new THREE.MeshLambertMaterial({color:0xd94b2a,side:THREE.DoubleSide}));
+    fl.name='flag'; g.add(at(fl,-6,13.5,7));
+    g.add(at(box(3,6,3,COL.stone),5,17,-4));
+    g.userData.smoke={x:5,y:21,z:-4,n:3}; return g; },
   banquet(){ const g=new THREE.Group();
     g.add(at(box(40,1.6,12,0xc79155),0,7,0));
     [[-17,0],[17,0]].forEach(p=>g.add(at(box(2.4,7,10,COL.wood),p[0],3.5,p[1])));
@@ -4999,7 +5031,7 @@ const B3={
 /* positions (x,z) dans la scène */
 const P3={ palissade:[0,0], feu:[0,6], puits:[32,-32], hutte:[-33,-33], menhir:[0,-48], chemin:[16,26],
   taverne:[47,3], ble:[31,34], banquet:[0,52], poule:[-34,34], forge:[-48,3],
-  chaudron:[-19,16], druide:[-20,2], chef:[20,14], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
+  chaudron:[-19,16], druide:[-26,-14], chef:[26,20], barde:[22,-12], chien:[8,24], sanglier:[-10,32] };
 
 /* ---------- formations ----------
    Trois ordres possibles. Chaque emplacement porte aussi le cap du guerrier,
@@ -5686,11 +5718,17 @@ Object.assign(B3,{
     arm.position.set(0,12,2); arm.rotation.x=-0.9; arm.name='arm'; g.add(arm);
     return g; },
   chefguerre(){ const g=new THREE.Group();
-    const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard';
     const chef=soldiersOf('chefguerre')[0];
-    w.userData.npc=1; w.userData.sqk=squadKeys()[0]||'guerriers';
-    if(chef) w.userData.rec=chef;
-    g.add(w); g.userData.men=[w];
+    /* En congé, le chef est chez lui : il ne doit pas rester planté là en
+       fantôme. Seule son enseigne garde le poste, et le panneau propose de le
+       rappeler. */
+    if(chef){
+      const w=warrior(0,true); w.scale.setScalar(1.25); w.name='guard';
+      w.userData.npc=1; w.userData.sqk=squadKeys()[0]||'guerriers';
+      w.userData.rec=chef; w.userData.warlord=1;
+      g.add(w); g.userData.men=[w];
+    }else g.userData.men=[];
+    g.userData.empty=chef?0:1;
     g.add(at(box(.6,17,.6,COL.wood),-5,8.5,-2));
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(6,4),
       new THREE.MeshLambertMaterial({color:0xd4b23c,side:THREE.DoubleSide}));
@@ -5866,6 +5904,9 @@ function buildVillage(scene){
   addSpot('banquet',0,46,'boire');
   addSpot('entrainement',52,-28,'garde'); addSpot('camp',-56,-26,'garde');
   if(!addAll('chaudron',0,7,'potion')) addSpot('chaudron',-17,14,'potion');
+  // le druide relève son gui, le chef tient conseil devant sa porte
+  if(!addAll('druide',8,10,'druide')) addSpot('druide',-24,-4,'druide');
+  if(!addAll('chef',0,12,'chef')) addSpot('chef',26,30,'chef');
   addSpot(null,-88,-70,'bois'); addSpot(null,92,74,'bois');   // lisière de forêt
   spots.push({x:-96,z:86,job:'chasse'},{x:104,z:-84,job:'chasse'});  // terrains de chasse
   if(spots.length<3) spots.push({x:20,z:20,job:'feu'},{x:-20,z:18,job:'bois'});
@@ -5902,6 +5943,13 @@ function buildVillage(scene){
   for(let i=0;i<n;i++){
     const rec=folk[i];
     const p=person(rec.ci);
+    // deux silhouettes qu'on distingue d'un coup d'œil dans la foule
+    if(rec.job==='druide') p.add(at(cone(2.6,3.8,0xf2f2ea,7),0,9.5,0));
+    else if(rec.job==='chef'){
+      const cr=new THREE.Mesh(new THREE.TorusGeometry(1.9,.42,6,10),
+        new THREE.MeshBasicMaterial({color:0xffd24a}));
+      cr.rotation.x=Math.PI/2; p.add(at(cr,0,9.2,0));
+    }
     // un enfant est plus petit et grandit vraiment au fil des jours
     if(isChild(rec)) p.scale.setScalar(0.5+childAge(rec)*0.35);
     const job=JOBS.find(j=>j.k===rec.job)||JOBS[JOBS.length-1];
@@ -6735,7 +6783,7 @@ function miniInit(){
 const FOOT={
   feu:9, hutte:13, ble:22, poule:10, puits:9, chasseur:13, fermier:20, bucheron:12,
   chemin:10, menhir:6, sanglier:8, forge:13, taverne:16, chaudron:7, banquet:14,
-  druide:5, chef:5, barde:5, chien:4, camp:14, entrainement:16, guerriers:9, grenier:10,
+  druide:12, chef:14, barde:5, chien:4, camp:14, entrainement:16, guerriers:9, grenier:10,
   tour:9, catapulte:9, chefguerre:6
 };
 /* enceintes et dallage : pas d'emprise au sol. Un chemin est à plat, on doit
@@ -7010,7 +7058,7 @@ const FIGHT={
   centurion:{hp:140, atk:17, n:'Centurion',         ne:'Centurion'}
 };
 /* les métiers qui tiennent déjà un outil tranchant se défendent mieux */
-const ARMED_JOBS={chasse:1, bois:1, forge:1};
+const ARMED_JOBS={chasse:1, bois:1, forge:1, druide:1, chef:1};
 function fightKindOf(rec){
   if(!rec) return 'paysan';
   if(isChild(rec)) return 'enfant';
@@ -8041,12 +8089,16 @@ function showPersonById(id){ const r=(S.people||[]).find(x=>x.id===id); if(r) sh
    au-dessus de la tête. La fiche complète reste à un bouton de là. */
 function tapPerson(rec){
   if(!rec) return;
+  /* Le chef de guerre n'est pas un homme de troupe : le toucher ouvrait la
+     fiche de la première escouade, et on ne pouvait jamais rien lui dire. */
+  if(rec.job==='chefdeguerre'){ hudOpen('warlord','chefguerre'); return; }
   if(isSoldier(rec)){ hudOpen('squad', String(rec.home||'').split('@')[0]||squadKeys()[0]); return; }
   hudOpen('person',rec.id);
 }
 function tapBuilding(key){
-  if(NODRAG[String(key).split('#')[0]]){ hudOpen('squad',
-    String(key).split('#')[0]==='chefguerre'?(squadKeys()[0]||'guerriers'):key); return; }
+  const base=String(key).split('#')[0];
+  if(base==='chefguerre'){ hudOpen('warlord','chefguerre'); return; }
+  if(NODRAG[base]){ hudOpen('squad',key); return; }
   hudOpen('bld',key);
 }
 /* ---------- renommer un habitant ----------
@@ -8312,6 +8364,8 @@ function hudClose(){
 function hudAnchor(){
   const h=V3.hud; if(!h) return null;
   if(h.kind==='squad'){ const g=V3.place&&V3.place[h.key]; return g?[g.position.x,22,g.position.z]:null; }
+  if(h.kind==='warlord'){ const g=V3.place&&V3.place['chefguerre'];
+    return g?[g.position.x,24,g.position.z]:null; }
   if(h.kind==='bld'||h.kind==='moved'){ const g=V3.place&&V3.place[h.key];
     return g?[g.position.x, Math.min(46,footOf(h.key)*1.7+10), g.position.z]:null; }
   const w=hudWalker(h.id);
@@ -8355,10 +8409,12 @@ function hudOpen(kind,ref){
     if(kind==='person'){ const r=(S.people||[]).find(x=>x.id===ref); if(r) showPerson(r,null); }
     else if(kind==='bld') showBuilding(ref);
     else if(kind==='moved'){ /* pas de vue 3D : rien à confirmer */ }
+    else if(kind==='warlord'){ const c=soldiersOf('chefguerre')[0]; if(c) showPerson(c,null); }
     else squadOrders();
     return;
   }
   V3.hud=(kind==='squad')?{kind:'squad',key:ref}
+        :(kind==='warlord')?{kind:'warlord',key:'chefguerre'}
         :(kind==='bld'||kind==='moved')?{kind:kind,key:ref}
         :{kind:'person',id:ref};
   hudFocus();
@@ -8381,7 +8437,8 @@ function hudPaint(){
   const el=hudEl(), h=V3.hud; if(!el||!h) return;
   el.innerHTML='<div class="whcard">'
     +(h.kind==='squad'?hudSquadHtml(h):h.kind==='bld'?hudBldHtml(h)
-      :h.kind==='moved'?hudMovedHtml(h):hudPersonHtml(h))+'</div>';
+      :h.kind==='moved'?hudMovedHtml(h):h.kind==='warlord'?hudWarlordHtml(h)
+      :hudPersonHtml(h))+'</div>';
   el.classList.add('show');
   rosterPaint();
   // on le place tout de suite : attendre l'image suivante le laissait une
@@ -8479,7 +8536,8 @@ function hudPersonHtml(h){
       +'<button class="whb go" onclick="G.renameFrom('+jid(rec.id)+',this)">✓</button></div>':'')
    ;
 }
-function hudRename(id){ if(V3.hud&&V3.hud.kind==='person'&&V3.hud.id===id){ V3.hud.ren=!V3.hud.ren; hudPaint();
+function hudRename(id){ if(V3.hud&&(V3.hud.kind==='warlord'
+    ||(V3.hud.kind==='person'&&V3.hud.id===id))){ V3.hud.ren=!V3.hud.ren; hudPaint();
   const b=document.querySelector('.whin'); if(b){ b.focus(); b.select(); } } }
 /* ---------- un bâtiment : ce qu'il fait, qui y vit, et rien de plus ---------- */
 function hudBldHtml(h){
@@ -8582,6 +8640,51 @@ function hudSquadHtml(h){
    +(h.leave?hudLeaveList(h,men):'')
    +(h.squads?hudSquadList(h):'')
    +(many?'<div class="whsel">👥 '+sel.length+' '+t('escouades sélectionnées','squads selected')+'</div>':'');
+}
+/* ---------- le chef de guerre : un homme, pas un décor ----------
+   Il commande, il a un grade et une humeur, il peut rendre les armes et
+   reprendre du service. Le toucher ouvrait la fiche de la première escouade :
+   on ne pouvait rien lui dire du tout. */
+function warlordRec(){
+  return soldiersOf('chefguerre')[0]
+      || (S.people||[]).find(x=>x.army==='chefguerre@0')
+      || null;
+}
+function hudWarlordHtml(h){
+  const rec=warlordRec();
+  if(!rec) return hudHead('⚔️',t('Chef de guerre','Warlord'))
+    +'<div class="whsub">'+t('Le poste est vacant.','The post stands empty.')+'</div>';
+  const away=!isSoldier(rec);            // en congé : il vit au village
+  const led=squadKeys();
+  const men=led.reduce((n,k)=>n+soldiersOf(k).length,0);
+  const tr=traitOf(rec.tr);
+  let sub='<b>'+esc(rankName(rec))+'</b> <span style="color:#E0A800">'+rankStars(rec)+'</span>'
+        +'<br>'+moodIcon(rec)+' '+happinessOf(rec).pct+'% · '+esc(t(tr.n,tr.ne));
+  sub+='<br>'+(away
+    ? '🌾 '+t('En congé — il vit au village.','On leave — living in the village.')
+    : (led.length
+        ? '🎖️ '+t('Mène ','Leads ')+led.length+' '+t('escouade','squad')+(led.length>1?'s':'')
+          +' · '+men+' '+t('hommes','men')
+        : '🎖️ '+t('Aucune escouade sous ses ordres.','No squad under his command.')));
+  const w=woundOf(rec);
+  if(w) sub+='<br>🩸 '+t('blessé','wounded')+' ('+Math.round(w*100)+'%)';
+  return hudHead('⚔️', nameOf(rec)+' · '+t('chef de guerre','warlord'))
+   +'<div class="whsub">'+sub+'</div>'
+   +'<div class="whrow">'
+   +'<button class="whb" onclick="G.showPerson('+jid(rec.id)+')">📜 '+t('Sa fiche','Profile')+'</button>'
+   +'<button class="whb" onclick="G.hudRename('+jid(rec.id)+')" aria-label="'+t('renommer','rename')+'">✏️</button>'
+   +(away?'':'<button class="whb" onclick="G.grantLeave('+jid(rec.id)+')">🌾 '+t('Congé','Leave')+'</button>')
+   +'</div>'
+   +(away
+      ?'<div class="whrow" style="margin-top:4px"><button class="whb wide go" onclick="G.rejoinArmy('+jid(rec.id)+')">⚔️ '
+        +t('Reprendre du service','Return to service')+'</button></div>'
+      :(led.length?'<div class="whrow" style="margin-top:4px">'
+        +'<button class="whb wide go" onclick="G.hudOpen(\'squad\','+jid(led[0])+')">🛡️ '
+        +t('Commander ses escouades','Command his squads')+'</button></div>':''))
+   +(h.ren?'<div class="whrow" style="margin-top:4px">'
+      +'<input class="whin" maxlength="18" value="'+esc(nameOf(rec))+'" '
+      +'onkeydown="if(event.key===\'Enter\')G.renameFrom('+jid(rec.id)+',this)">'
+      +'<button class="whb go" onclick="G.renameFrom('+jid(rec.id)+',this)">✓</button></div>':'');
 }
 function hudLeaveList(h,men){
   return '<div class="whmen">'+men.map(r=>
