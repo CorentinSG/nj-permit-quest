@@ -2439,7 +2439,15 @@ function floatXp(txt,x,y){
 }
 
 /* ---------- XP / badges ---------- */
-function gainCoins(n){ S.coins+=n; S.coinsTotal+=n; }
+/* ============================================================
+   LE SIÈGE GÈLE TOUT CE QUI ENTRE
+   ------------------------------------------------------------
+   L'heure de l'examen est passée et la bataille n'a pas été livrée : plus une
+   pièce, plus un point d'expérience, plus un grain. On peut continuer à
+   réviser autant qu'on veut — c'est même toute l'idée — mais rien ne
+   s'accumule tant qu'on n'est pas sorti se battre.
+   ============================================================ */
+function gainCoins(n){ if(underSiege()) return 0; S.coins+=n; S.coinsTotal+=n; return n; }
 /* ---------- besoins du village ----------
    Chaque bonne réponse produit une ressource (blé / bois / fer) au hasard.
    Les besoins montent avec la taille du village : il faut continuer à
@@ -2571,6 +2579,21 @@ function foodBalance(){ return prodPerHour().food-upkeepPerHour(); }
    rien n'entre — ni récolte, ni tribut, ni marchand. Le seul moyen de rouvrir
    les champs, c'est de sortir et de gagner. */
 function underSiege(){ return finalDue(); }
+/* Le même avertissement, en version courte, pour les écrans de révision. */
+function siegeWarn(){
+  if(!underSiege()) return '';
+  return '<div class="panel siegebox" style="margin-bottom:12px">'
+   +'<div class="rbtitle">🏛️ '+t('L\'HEURE EST PASSÉE — PLUS RIEN NE RAPPORTE','THE HOUR HAS PASSED — NOTHING PAYS')+'</div>'
+   +'<p class="small" style="margin:8px 0 0">'
+   +t('La légion campe devant le village. Tu peux réviser autant que tu veux, mais tant que '
+      +'l\'assaut n\'a pas eu lieu : <b>0 sesterce, 0 XP, 0 ressource</b>. Tes réponses comptent '
+      +'quand même pour tes statistiques.',
+      'The legion is camped outside. Revise as much as you like, but until the assault has happened: '
+      +'<b>0 sesterces, 0 XP, 0 resources</b>. Your answers still count towards your stats.')+'</p>'
+   +'<div class="menu" style="margin-top:10px">'
+   +'<button class="btn btn-stop" style="justify-content:center" onclick="G.go(\'village\')">⚔️ '
+   +t('AU VILLAGE — LANCER L\'ASSAUT','TO THE VILLAGE — LAUNCH THE ASSAULT')+'</button></div></div>';
+}
 function siegeNote(){
   return '<div class="panel siegebox" style="margin-bottom:12px">'
    +'<div class="rbtitle">🏛️ '+t('LES CHAMPS SONT COUPÉS','THE FIELDS ARE CUT OFF')+'</div>'
@@ -3054,6 +3077,7 @@ function questHtml(){
   return h+'</div>';
 }
 function gainXp(n,ev){
+  if(underSiege()) return;
   const before=levelIdx();
   S.xp+=n;
   const after=levelIdx();
@@ -3607,6 +3631,7 @@ function scrHome(){
    +'<button class="langbtn'+(S.lang==='en'?' on':'')+'" onclick="G.setLang(\'en\')">🇺🇸 English · feet</button>'
    +'</div>'
    +djLine
+   +siegeWarn()
    +ruinsHtml()
    +finalWarnHtml()
    +installHtml()
@@ -3649,7 +3674,8 @@ function scrHome(){
 
 /* ---------- carte des mondes ---------- */
 function scrWorlds(){
-  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Carte du NJ','NJ Map')+'</div></div><div class="worlds">';
+  let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Carte du NJ','NJ Map')+'</div></div>'
+    +siegeWarn()+'<div class="worlds">';
   WORLDS.forEach(w=>{
     const m=mastery(w.id), beaten=S.bossWins[w.id];
     html+='<button class="wcard'+(beaten?' done':'')+'" onclick="G.openWorld(\''+w.id+'\')">'
@@ -3794,6 +3820,23 @@ function sessionLoot(c,combo){
 /* on verse le bonus et on rend le récapitulatif */
 function lootHtml(c,combo){
   if(c._loot!==undefined) return c._loot;      // le bilan peut être re-rendu : on ne verse qu'une fois
+  /* Sous le siège, la révision reste utile — elle entre dans les statistiques et
+     dans la Bête Noire — mais elle ne rapporte rien. On le dit au lieu de
+     laisser croire à un bug. */
+  if(underSiege()){
+    c._loot='<div class="panel siegebox"><div class="rbtitle">🏛️ '
+      +t('RIEN N\'A ÉTÉ EMPOCHÉ','NOTHING WAS BANKED')+'</div>'
+      +'<p class="small" style="margin:8px 0 0">'
+      +t('L\'heure de l\'examen est passée : <b>ni sesterces, ni XP, ni ressources</b> tant que la '
+         +'légion campe devant les portes. Tes réponses comptent quand même pour tes statistiques '
+         +'et pour la Bête Noire.',
+         'The hour of the test has passed: <b>no sesterces, no XP, no resources</b> while the legion '
+         +'is camped at the gates. Your answers still count towards your stats and your Nemesis.')
+      +'</p><div class="menu" style="margin-top:10px">'
+      +'<button class="btn btn-stop" style="justify-content:center" onclick="G.go(\'village\')">⚔️ '
+      +t('AU VILLAGE — LANCER L\'ASSAUT','TO THE VILLAGE — LAUNCH THE ASSAULT')+'</button></div></div>';
+    return c._loot;
+  }
   const L=sessionLoot(c,combo);
   ['food','wood','iron'].forEach(k=>{ if(L.bonus[k]) S.res[k]=(S.res[k]||0)+L.bonus[k]; });
   if(L.feast) S.feast=Math.max(0,(S.feast||0)-1);   // le festin ne sert qu'une fois
@@ -3878,6 +3921,10 @@ function startBoss(wid){
 }
 function scrBoss(){
   const c=CUR, w=WORLDS.find(x=>x.id===c.wid);
+  /* On n'entre dans une arène que par openWorld(). Y arriver autrement — un
+     G.go('boss') direct, un retour d'historique — laissait CUR sans monde et
+     sans questions : l'écran plantait. On renvoie alors à la carte. */
+  if(!w||!c.qs||!c.qs.length) return scrWorlds();
   if(c.hp<=0) return bossWinHtml(w);
   if(c.hearts<=0) return bossLoseHtml(w);
   const q=c.qs[c.i%c.qs.length].q;
@@ -10044,10 +10091,13 @@ function toggleEdit(pid){
 function buy(id){
   if(V3.raid){ SFX.ko();
     toast('⚔️ '+t('Pas maintenant — la bataille fait rage !','Not now — the battle is raging!')); return; }
-  /* Le siège ne fige plus le village. Ce qu'il coupe, ce sont les RESSOURCES :
-     rien n'entre tant qu'on n'est pas sorti se battre. Avec ce qu'on a déjà en
-     réserve, en revanche, on bâtit — et après la bataille, gagnée ou perdue, on
-     continue de jouer. Bloquer tout revenait à confisquer le jeu. */
+  /* Rien ne s'améliore avant la bataille : ni achat, ni renfort. Le village est
+     celui qu'on a su bâtir AVANT l'heure dite — c'est tout le sens de la jauge.
+     Le reste du jeu, lui, continue : on déplace, on commande ses escouades, on
+     lit sa chronique, et on sort quand on veut. */
+  if(underSiege()){ SFX.ko();
+    toast('🏛️ '+t('Trop tard pour bâtir : la légion est aux portes. Il faut livrer bataille.',
+                   'Too late to build: the legion is at the gates. You must give battle.')); return; }
   const it=SHOP.find(s=>s.id===id); if(!it) return;
   if(!it.stack&&S.village.includes(id)) return;
   if(it.req&&!S.village.includes(it.req)){
@@ -10109,6 +10159,7 @@ function buy(id){
 /* ---------- examens (3 modes) ---------- */
 function scrExams(){
   return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Salle d\'examen','Exam room')+'</div></div>'
+   +siegeWarn()
    +'<div class="menu">'
    +'<button class="btn btn-shield" onclick="G.startExam(\'full\')"><span class="ic">🎓</span><span>'+t('Examen officiel','Official exam')+'<span class="sub">'+t('50 Q · 40 pour réussir — la simulation exacte du MVC','50 Q · 40 to pass — the exact MVC simulation')+(S.examBest?' · record : '+S.examBest+'/50':'')+'</span></span></button>'
    +'<button class="btn btn-bus" onclick="G.startExam(\'eclair\')"><span class="ic">⚡</span><span>'+t('Examen éclair','Lightning exam')+'<span class="sub">'+t('25 Q · 20 pour réussir — le format café','25 Q · 20 to pass — the coffee-break format')+(S.examEclairBest?' · record : '+S.examEclairBest+'/25':'')+'</span></span></button>'
@@ -10236,6 +10287,7 @@ function scrBlitz(){
   const c=CUR;
   if(c.phase==='intro'){
     return '<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">Blitz 60s</div></div>'
+     +siegeWarn()
      +'<div class="panel" style="text-align:center">'
      +'<div style="font-size:50px">⚡</div>'
      +'<h2 class="px" style="font-size:13px;margin:10px 0;color:var(--bus)">'+t('LES PETITES RÈGLES™','THE LITTLE RULES™')+'</h2>'
@@ -10253,7 +10305,10 @@ function scrBlitz(){
      +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.go(\'home\')">🏠 '+t('QG','HQ')+'</button>'
      +'</div></div>';
   }
-  // phase 'play'
+  /* phase 'play' — mais on n'y arrive que par startBlitz(). Y entrer autrement
+     (un G.go('blitz') direct, un retour d'historique) laissait CUR sans paquet
+     et l'écran plantait ; on retombe alors sur la présentation. */
+  if(!c.deck||!c.deck.length||!c.deck[c.di]||!c.opts){ c.phase='intro'; return scrBlitz(); }
   const d=c.deck[c.di].d;
   return '<div class="blitzhead"><div class="timer'+(c.t<=10?' low':'')+'" id="timer">'+c.t+'s</div>'
    +'<div class="blitzscore">🏆 '+c.score+(c.streak>=3?' <span style="color:var(--zone)">🔥'+c.streak+'</span>':'')+'</div></div>'
