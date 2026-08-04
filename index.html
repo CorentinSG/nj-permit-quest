@@ -804,6 +804,40 @@ html,body{overflow-x:hidden}
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
 
+/* ---------- LA VICTOIRE ----------
+   Une fois la légion brisée, ce n'est pas un compteur qui change : c'est
+   l'application entière qui porte les couleurs du village libre. Or partout,
+   laurier sur le logo, et une bannière qui respire. Tout est en CSS pur : rien
+   de tout cela ne coûte une image par seconde. */
+body.vic{ --edge:#3A3520; }
+body.vic #wrap::before{ content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(130% 62% at 50% -12%,rgba(255,198,26,.14),transparent 64%); }
+body.vic .logo{ color:var(--bus); text-shadow:0 0 20px rgba(255,198,26,.42); }
+body.vic .logo::after{ content:' 🏆'; font-size:.7em; }
+body.vic #hud{ box-shadow:inset 0 -2px 0 rgba(255,198,26,.35); }
+.vicban{ position:relative; overflow:hidden; border:2px solid var(--bus); border-radius:14px;
+  background:linear-gradient(160deg,#1F1806,#0E1118); padding:12px 14px; margin-bottom:12px; }
+.vicban .rbtitle{ color:var(--bus); }
+.vicban .small{ margin:6px 0 0; }
+.vicban::after{ content:''; position:absolute; top:-60%; bottom:-60%; left:-60%; right:-60%;
+  background:linear-gradient(115deg,transparent 44%,rgba(255,198,26,.20) 50%,transparent 56%);
+  animation:vicsheen 5s linear infinite; pointer-events:none; }
+@keyframes vicsheen{ from{ transform:translateX(-38%);} to{ transform:translateX(38%);} }
+.vicwreath{ display:flex; gap:8px; align-items:center; font-size:22px; margin-bottom:4px; }
+.vicstat{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.vicstat span{ background:#241C08; border:1px solid var(--busD); color:var(--bus);
+  border-radius:999px; padding:3px 9px; font-size:11px; font-family:var(--mono); }
+#overlay.ovwin .ov-card{ border-color:var(--bus); box-shadow:0 0 70px rgba(255,198,26,.3); }
+#overlay.ovwin .ov-card::before{ content:''; position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; background:radial-gradient(80% 45% at 50% 0%,rgba(255,198,26,.16),transparent 70%); }
+#overlay.ovwin .oic{ display:inline-block; animation:vicpop 1s cubic-bezier(.2,1.7,.4,1) both; }
+#overlay.ovwin h2{ color:var(--bus); }
+@keyframes vicpop{ 0%{ transform:scale(.2) rotate(-28deg); opacity:0; }
+  62%{ transform:scale(1.28) rotate(7deg); opacity:1; } 100%{ transform:scale(1) rotate(0); } }
+@media (prefers-reduced-motion:reduce){
+  .vicban::after,#overlay.ovwin .oic{ animation:none; }
+}
+
 </style>
 </head>
 <body>
@@ -1874,7 +1908,7 @@ const defaults=()=>({
   /* Le registre de tout ce qui est DÉJÀ arrivé : sans lui dans les valeurs par
      défaut, load() effaçait la clé au rechargement et le village revivait les
      mêmes journées à l'infini. */
-  told:[],                 // empreintes des péripéties déjà racontées
+  told:[], finalWin:{},                 // empreintes des péripéties déjà racontées
   lastWhat:[],             // les faits racontés ces derniers jours, pour varier
   lovers:{},               // couple -> {at, seen} : de quoi varier les scènes
   arenaWins:0,
@@ -2395,7 +2429,8 @@ const SFX={
   win(){ [523,659,784,880,1047,1319].forEach((f,i)=>tone(f,i*.09,.14,'square',.09)); },
   hit(){ tone(220,0,.06,'square',.1); tone(90,.04,.14,'sawtooth',.12); },
   tick(){ tone(1200,0,.03,'square',.03); },
-  click(){ tone(440,0,.04,'square',.04); }
+  click(){ tone(440,0,.04,'square',.04); },
+  pop(){ tone(880,0,.05,'square',.05); tone(1320,.05,.09,'square',.05); }
 };
 
 /* ---------- confettis ---------- */
@@ -3227,11 +3262,14 @@ function countdown(){
 function cdHtml(){
   const c=countdown(); if(!c) return '';
   const cell=(v,l)=>'<span class="cdc"><b>'+String(v).padStart(2,'0')+'</b><i>'+l+'</i></span>';
-  if(c.past) return '<div class="cdbox past"><div class="cdt">⚔️ '
-    +(S.finalDone?t('LE JOUR J EST PASSÉ','THE DAY HAS PASSED')
-                 :t('LA LÉGION T\'ATTEND','THE LEGION IS WAITING'))+'</div>'
+  if(c.past) return '<div class="cdbox past'+(victorious()?' vicban':'')+'"><div class="cdt">'
+    +(victorious()?'🏆 '+t('LE JOUR J A ÉTÉ GAGNÉ','THE DAY WAS WON')
+      :'⚔️ '+(S.finalDone?t('LE JOUR J EST PASSÉ','THE DAY HAS PASSED')
+                 :t('LA LÉGION T\'ATTEND','THE LEGION IS WAITING')))+'</div>'
     +'<p class="small" style="margin:6px 0 0">'
-    +(S.finalDone?t('Alors, ce permis ?','So, that permit?')
+    +(victorious()?t('La légion est repartie sans rien. Il ne reste qu\'un examen à passer.',
+                     'The legion left with nothing. There is only a test left to pass.')
+      :S.finalDone?t('Alors, ce permis ?','So, that permit?')
                  :t('Tu étais au MVC, pas devant l\'écran : la bataille n\'a pas eu lieu sans toi. '
                     +'Va au village quand tu veux.',
                     'You were at the MVC, not at the screen: the battle did not happen without you. '
@@ -3247,7 +3285,9 @@ function renderHud(){
   const L=levelInfo(); touchDaily();
   const dj=daysToExam();
   let chip='';
-  if(dj!==null){
+  if(dj!==null&&victorious()) chip='<div class="jchip vicban" style="padding:4px 9px">🏆 '
+      +t('VILLAGE LIBRE','VILLAGE FREE')+'</div>';
+  else if(dj!==null){
     if(dj>1) chip='<div class="jchip'+(dj<=2?' hot':'')+'">J−'+dj+' · BAYONNE</div>';
     else if(dj===1) chip='<div class="jchip hot">'+t('DEMAIN · BAYONNE','TOMORROW · BAYONNE')+'</div>';
     else if(dj===0) chip='<div class="jchip hot">'+t('JOUR J 🍀','THE DAY 🍀')+'</div>';
@@ -3406,8 +3446,10 @@ function signReveal(q){
 }
 
 /* ---------- overlay ---------- */
-function showOverlay(ic,title,html){
+function showOverlay(ic,title,html,cls){
   const ov=$('#overlay');
+  ov.className=ov.className.replace(/\bov[a-z]+\b/g,'').trim();
+  if(cls) ov.classList.add(cls);
   ov.innerHTML='<div class="ov-card">'
    +'<button class="ov-x" onclick="G.hideOverlay()" aria-label="'+t('Fermer','Close')+'" title="'+t('Fermer','Close')+'">✕</button>'
    +'<span class="oic">'+ic+'</span><h2>'+esc(title)+'</h2><p>'+html+'</p>'
@@ -3521,6 +3563,7 @@ function render(){
     }
     return;
   }
+  try{ vicSkin(); }catch(e){}
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
   /* La vue 3D est la partie la plus fragile (WebGL, 600 ko de bibliothèque) :
      si elle tombe, elle ne doit pas emporter l'écran avec elle. */
@@ -3632,6 +3675,7 @@ function scrHome(){
    +'</div>'
    +djLine
    +siegeWarn()
+   +vicHtml()
    +ruinsHtml()
    +finalWarnHtml()
    +installHtml()
@@ -3675,7 +3719,7 @@ function scrHome(){
 /* ---------- carte des mondes ---------- */
 function scrWorlds(){
   let html='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Carte du NJ','NJ Map')+'</div></div>'
-    +siegeWarn()+'<div class="worlds">';
+    +siegeWarn()+vicHtml()+'<div class="worlds">';
   WORLDS.forEach(w=>{
     const m=mastery(w.id), beaten=S.bossWins[w.id];
     html+='<button class="wcard'+(beaten?' done':'')+'" onclick="G.openWorld(\''+w.id+'\')">'
@@ -6214,6 +6258,93 @@ function signifer(i){
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   return g;
 }
+/* ---------- LE TROPHÉE ----------
+   L'aigle de la légion, planté à l'envers au milieu de la place, deux lances
+   romaines en croix et un casque au sol. Il reste là pour toujours : c'est la
+   seule preuve durable que le jour J a été gagné. */
+function trophy(){
+  const g=new THREE.Group();
+  const pole=box(.8,30,.8,COL.woodDark);
+  pole.rotation.z=0.14; g.add(at(pole,0,15,0));
+  const eagle=new THREE.Group();
+  eagle.add(at(sph(1.7,0xd8b24a,0),0,0,0));
+  [-1,1].forEach(k=>{ const w=box(3.8,.55,1.6,0xd8b24a); w.rotation.z=-k*0.55;
+    eagle.add(at(w,k*2.2,-0.7,0)); });
+  eagle.rotation.z=Math.PI;                       // l'aigle la tête en bas : humiliation
+  g.add(at(eagle,-2.1,2.6,0));
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(7,5),
+    new THREE.MeshLambertMaterial({color:0x9c1c17,side:THREE.DoubleSide}));
+  flag.name='vflag'; g.add(at(flag,3.6,22,0));
+  [-1,1].forEach(k=>{ const sp=box(.5,22,.5,0x8a7a5a); sp.rotation.z=k*0.5;
+    g.add(at(sp,k*7,10,-2)); });
+  g.add(at(cyl(2.4,2.6,2.2,0x9aa3ab,8),5.5,1.1,4));   // un casque abandonné
+  const wr=new THREE.Mesh(new THREE.TorusGeometry(3.4,.5,5,14),mat(0x4f9128));
+  wr.rotation.x=Math.PI/2; g.add(at(wr,0,0.6,0));
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
+/* ---------- LA FÊTE ----------
+   Vingt-quatre éclats réutilisés en boucle : une gerbe part toutes les 0,6 s,
+   monte, s'ouvre et retombe. On ne crée jamais rien pendant l'animation —
+   c'est ce qui permet d'avoir un feu d'artifice sans perdre une image. */
+function vicRig(scene){
+  const grp=new THREE.Group();
+  const parts=[];
+  const GC=[0xffc61a,0x33b268,0x4a8de8,0xf58220,0xe5383b,0xffffff];
+  for(let i=0;i<30;i++){
+    const m=new THREE.Mesh(new THREE.IcosahedronGeometry(2.2,0),
+      new THREE.MeshBasicMaterial({color:GC[i%GC.length],transparent:true,opacity:0}));
+    m.visible=false; grp.add(m); parts.push({m,live:0,x:0,y:0,z:0,vx:0,vy:0,vz:0,t:0});
+  }
+  scene.add(grp);
+  return {grp, parts, next:0, t:0, burst:0};
+}
+function vicBurst(V){
+  const free=V.parts.filter(q=>!q.live);
+  if(free.length<10) return;
+  const a=Math.random()*Math.PI*2, r=Math.random()*62;
+  const x=Math.cos(a)*r, z=Math.sin(a)*r, y=44+Math.random()*26;
+  free.slice(0,10).forEach((q,i)=>{
+    // une sphère, pas un anneau : la gerbe s'ouvre dans toutes les directions
+    const th=i/10*Math.PI*2+Math.random(), ph=Math.acos(2*Math.random()-1), sp=17+Math.random()*11;
+    q.live=1; q.t=0; q.x=x; q.y=y; q.z=z;
+    q.vx=Math.sin(ph)*Math.cos(th)*sp; q.vz=Math.sin(ph)*Math.sin(th)*sp;
+    q.vy=Math.cos(ph)*sp*0.8+8;
+    q.m.visible=true; q.m.material.opacity=1;
+  });
+}
+function vicTick(dt,tt,scene){
+  const V=V3.vic; if(!V) return;
+  V.t+=dt;
+  if(V.flag) V.flag.rotation.y=Math.sin(tt*1.6)*0.4;
+  if(V.left>0){
+    V.left-=dt;
+    V.burst-=dt;
+    if(V.burst<=0){ V.burst=0.55+Math.random()*0.45; vicBurst(V); if(SFX.pop) SFX.pop(); }
+  }
+  for(const q of V.parts){
+    if(!q.live) continue;
+    q.t+=dt; q.vy-=34*dt;
+    q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt;
+    q.m.position.set(q.x,q.y,q.z);
+    q.m.material.opacity=Math.max(0,1-q.t/1.5);
+    q.m.scale.setScalar(1-q.t*0.3);
+    if(q.t>1.5||q.y<2){ q.live=0; q.m.visible=false; }
+  }
+}
+function vicStop(scene){
+  const V=V3.vic; if(!V) return;
+  if(scene&&V.grp) scene.remove(V.grp);
+  V3.vic=null;
+}
+/* on relance la fête à la demande — un village libre a le droit de recommencer */
+function vicParty(){
+  if(!victorious()) return;
+  V3.vicUntil=Date.now()+16000;
+  if(V3.vic) V3.vic.burst=0;
+  confetti(280); if(SFX.win) SFX.win();
+  toast('🎉 '+t('Le village fête sa liberté !','The village celebrates its freedom!'));
+}
 /* ---------- machine de siège romaine ----------
    Un onagre : châssis, bras armé d'une pierre, treuil. Le bras se rearme et
    claque à chaque tir — c'est ce mouvement qu'on voit de loin. */
@@ -6654,6 +6785,13 @@ function buildVillage(scene){
                  v:0, step:0, waveT:0, turnT:2, speaking:false, clash:0 };
     scene.add(p); walkers.push(p);
   }
+  /* Le trophée fait partie du village, pas de la bataille : il est là à chaque
+     retour, longtemps après que la fumée soit retombée. */
+  V3.vic=null;
+  if(victorious()){
+    const tr=trophy(); tr.position.set(-14,0,10); scene.add(tr);
+    V3.trophy=tr;
+  }else V3.trophy=null;
   built_spots=spots;
   rebuildSolids();
   settleArmy();
@@ -7217,6 +7355,14 @@ function v3dInit(){
     // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
     boars.forEach(b2=>{ boarRoam(b2,dt,tt); });
+    /* la fête : elle s'arme au premier rendu qui suit la victoire, puis vit sa
+       vie pendant une quinzaine de secondes */
+    if(victorious()&&!V3.raid&&!V3.vic&&(V3.vicUntil||0)>Date.now()){
+      V3.vic=vicRig(scene); V3.vic.burst=0;
+      V3.vic.flag=V3.trophy&&V3.trophy.children.find(o=>o.name==='vflag');
+    }
+    if(V3.vic) V3.vic.left=Math.max(0,((V3.vicUntil||0)-Date.now())/1000);
+    if(V3.vic) vicTick(dt,tt,scene);
     /* La porte : grande ouverte pendant la bataille, refermée après. On ne la
        claque pas — elle pivote, et on l'entend d'ici. */
     if(V3.gateLeaves&&V3.gateLeaves.length){
@@ -7232,6 +7378,15 @@ function v3dInit(){
     if(V3.perc<=0){ V3.perc=0.35; perceiveAll(built.walkers,now); }
     built.walkers.forEach(p=>{
       const u=p.userData, ar=u.arms;
+      /* Pendant la fête, personne ne travaille : on saute sur place, les bras
+         en l'air, tourné vers l'aigle renversé. */
+      if(V3.vic&&V3.vic.left>0){
+        p.position.y=Math.abs(Math.sin(tt*6+u.id*1.7))*3.2;
+        p.rotation.y+=dt*(1.4+(u.id%3)*0.5);
+        if(ar){ const w=Math.sin(tt*9+u.id)*0.4;
+          ar[0].rotation.x=-2.5+w; ar[1].rotation.x=-2.5-w; }
+        return;
+      }
       u.timer-=dt;
       // anti-blocage : vraiment coincé (aucun progrès pendant ~9 s), on vise ailleurs
       if(u.state==='walk'){
@@ -8014,6 +8169,36 @@ function torchVillage(scene){
   scene.background=new THREE.Color(0x5a3a2c);
 }
 /* le mémorial, tant que le village est en ruines */
+/* ---------- CE QUE LA VICTOIRE CHANGE PARTOUT ----------
+   Briser la légion n'est pas une ligne de plus dans la chronique : c'est l'état
+   permanent du jeu. Toute l'interface le porte — logo lauré, halo doré, et ce
+   pavé que l'on retrouve sur chaque écran où l'on préparait la bataille. */
+function victorious(){ return S.finalDone==='won'; }
+function vicSkin(){
+  try{ document.body.classList.toggle('vic', victorious()); }catch(e){}
+}
+function vicHtml(){
+  if(!victorious()) return '';
+  const W=S.finalWin||{};
+  const st=[];
+  if(W.rome) st.push('🏛️ '+t(W.rome+' Romains défaits',W.rome+' Romans beaten'));
+  if(W.secs) st.push('⏱️ '+t(Math.floor(W.secs/60)+' min '+(W.secs%60)+' s de bataille',
+                             Math.floor(W.secs/60)+' min '+(W.secs%60)+' s of battle'));
+  if(W.fallen) st.push('🕯️ '+t(W.fallen+' tombé'+(W.fallen>1?'s':''),W.fallen+' fallen'));
+  if(W.razed) st.push('🔥 '+t(W.razed+' bâtiment'+(W.razed>1?'s':'')+' perdu'+(W.razed>1?'s':''),
+                              W.razed+' building'+(W.razed>1?'s':'')+' lost'));
+  if(!st.length) st.push('🏛️ '+t('La légion est brisée','The legion is broken'));
+  return '<div class="vicban">'
+   +'<div class="vicwreath">🌿<span class="rbtitle" style="flex:1">'
+   +t('LE VILLAGE EST LIBRE','THE VILLAGE IS FREE')+'</span>🌿</div>'
+   +'<p class="small">'
+   +t('L\'aigle de César est planté à l\'envers sur la place. Plus rien ne t\'empêche '
+      +'de bâtir, de récolter et de réviser — il ne reste qu\'un examen à passer.',
+      'Caesar\'s eagle is planted upside down on the square. Nothing stops you building, '
+      +'harvesting or revising any more — there is only a test left to pass.')+'</p>'
+   +'<div class="vicstat">'+st.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>'
+   +'</div>';
+}
 function ruinsHtml(){
   if(!S.burned) return '';
   const d=(S.dead||[]);
@@ -8932,7 +9117,16 @@ function finalEnd(win){
     (S.people||[]).forEach(r=>nudgeMood(r,1));
     chron('🏆 '+t('LA LÉGION A ÉTÉ BRISÉE. Le village est libre.','THE LEGION WAS BROKEN. The village is free.'),
           '🏆 THE LEGION WAS BROKEN. The village is free.');
+    S.finalWin={rome:legionForce().total, secs:Math.round((R&&R.t)||0),
+                fallen:fallen.n, razed:razed.n, kills:(R&&R.kills)||0, day:todayStr()};
+    /* La fête commence dans la scène 3D dès que la bataille disparaît, et le
+       confetti tombe en trois salves plutôt qu'une : une victoire pareille ne
+       se solde pas en une seconde. */
+    V3.vicUntil=Date.now()+18000;
     SFX.win(); confetti(320);
+    setTimeout(()=>{ try{ confetti(220); }catch(e){} },900);
+    setTimeout(()=>{ try{ confetti(160); SFX.win&&SFX.win(); }catch(e){} },1900);
+    try{ vicSkin(); }catch(e){}
     showOverlay('🏆', t('Le village est sauvé','The village is saved'),
       (fallen.n||razed.n
         ? t('La légion est brisée. Le village tient debout — de justesse.',
@@ -8945,7 +9139,10 @@ function finalEnd(win){
         : t('La légion est brisée. Pas une hutte n\'a brûlé, pas un habitant n\'est tombé.',
             'The legion is broken. Not one hut burned, not one villager fell.'))
       +'<br><br>'+t('<b>+600 🪙</b>, <b>+400 XP</b> et 40 de chaque ressource. Va décrocher ce permis.',
-                    '<b>+600 🪙</b>, <b>+400 XP</b> and 40 of every resource. Now go and get that licence.'));
+                    '<b>+600 🪙</b>, <b>+400 XP</b> and 40 of every resource. Now go and get that licence.')
+      +'<br><br><b style="color:var(--bus)">🌿 '
+      +t('L\'aigle de César est planté à l\'envers sur la place du village.',
+         'Caesar\'s eagle is planted upside down on the village square.')+'</b>', 'ovwin');
   }else{
     S.finalDone='lost';
     fireSettle(R,V3.scene);
@@ -8966,6 +9163,7 @@ function finalEnd(win){
   clearTimeout(V3.raidT);
   V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?1800:2600);
 }
+function vicClean(){ try{ vicStop(V3.scene); }catch(e){} }
 function raidAbort(){ if(V3.raid) fireSettle(V3.raid,V3.scene);
   V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; V3.wallDown=0; }
 function raidBtnHtml(){
@@ -8994,10 +9192,9 @@ function raidBtnHtml(){
      +'<button class="btn btn-stop" style="justify-content:center" onclick="G.raidAsk()">🔥 '
      +t('LES AFFRONTER','FACE THEM')+'</button></div>';
   }
-  if(S.finalDone==='won') return '<div class="raidbox" style="border-color:var(--exit);background:#0d2016">'
-    +'<div class="rbtitle" style="color:var(--exit)">🏆 '+t('LA LÉGION A ÉTÉ BRISÉE','THE LEGION WAS BROKEN')+'</div>'
-    +'<p class="small" style="margin:6px 0 0">'+t('Le village a tenu le jour J. Il n\'y a plus rien à craindre de Rome.',
-      'The village held on the day. There is nothing left to fear from Rome.')+'</p></div>';
+  if(S.finalDone==='won') return vicHtml()
+    +'<button class="btn btn-bus" style="justify-content:center;margin-bottom:12px" onclick="G.vicParty()">🎉 '
+    +t('REFAIRE LA FÊTE','CELEBRATE AGAIN')+'</button>';
   const F=romanForce(), ready=raidReady(), r=S.raid||{};
   return '<div class="raidbox">'
    +'<div class="rbtitle">🏛️ '+t('CÉSAR À L\'HORIZON','CAESAR ON THE HORIZON')+'</div>'
@@ -9056,6 +9253,7 @@ function scrVillage(){
   let v='<div class="backrow"><button class="backbtn" onclick="G.go(\'home\')">'+t('← QG','← HQ')+'</button><div class="scrtitle">'+t('Village Gaulois','Gaulish Village')+'</div></div>'
    +cdHtml()
    +v3dHost()
+   +vicHtml()
    +ruinsHtml()
    +finalWarnHtml()
    +vTabBar()
@@ -10888,7 +11086,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   setSound, setLang, toggleLang, setDate, setTime, resetAsk, resetAll, hideOverlay,
   v3dZoom, v3dReset, rotSel, armyOrder, setFormation, armyRecall, showBuilding,
   moveInTogether, settleCouples, nearestBuilding, claimQuest, buyTrade,
-  raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, giveOrder, guardBuilding, squadOrders,
+  raidAsk, raidStart, vicParty, setTab, finalAsk, doInstall, dismissInstall, setStance, giveOrder, guardBuilding, squadOrders,
   hudOpen, hudClose, hudRename, hudLeave, hudSquads, toggleSquad,
   grantLeave, rejoinArmy, renameVillager, renameFrom, tapPerson, tapBuilding, toggleNight, hudMove,
   hardReload, repairSave,
