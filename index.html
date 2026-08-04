@@ -1789,6 +1789,12 @@ const defaults=()=>({
   vpos:{},                 // id -> [x,z] : placement libre par le joueur
   stack:{},                // id -> nombre d'exemplaires (huttes)
   people:[],               // habitants nommés et persistants
+  /* Le registre de tout ce qui est DÉJÀ arrivé : sans lui dans les valeurs par
+     défaut, load() effaçait la clé au rechargement et le village revivait les
+     mêmes journées à l'infini. */
+  told:[],                 // empreintes des péripéties déjà racontées
+  lastWhat:[],             // les faits racontés ces derniers jours, pour varier
+  lovers:{},               // couple -> {at, seen} : de quoi varier les scènes
   arenaWins:0,
   daily:{date:'', ok:0, rewarded:false},
   dayStreak:0, lastGoalDate:'',
@@ -2048,7 +2054,230 @@ Object.assign(XEN,{
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function touchDaily(){
   const t=todayStr();
-  if(S.daily.date!==t){ S.daily={date:t, ok:0, rewarded:false}; }
+  if(S.daily.date!==t){ S.daily={date:t, ok:0, rewarded:false}; dayTurns(); }
+}
+/* ============================================================
+   LES PÉRIPÉTIES DU JOUR
+   ------------------------------------------------------------
+   Sans ça, la chronique ne bougeait que quand le joueur faisait quelque chose :
+   deux amitiés, une naissance, puis plus rien pendant dix jours — les mêmes
+   dix lignes chaque matin. Le village vit maintenant sa propre journée. Chaque
+   péripétie ne peut arriver QU'UNE FOIS (chron() tient le registre), donc un
+   jour ne ressemble jamais au précédent, et les jours d'avant restent lisibles
+   sans jamais revenir.
+   ============================================================ */
+function dayTurns(){
+  if(!S.village||!S.village.length) return 0;
+  const P=(S.people||[]).filter(x=>!isChild(x));
+  if(!P.length) return 0;
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const has=id=>nOwned(id)>0;
+  const who=()=>pick(P), kid=()=>{ const k=(S.people||[]).filter(isChild); return k.length?pick(k):null; };
+  const SE=season();
+  /* Chaque entrée : une condition, et la phrase. On les tire au sort, on garde
+     les premières qui n'ont jamais été racontées. */
+  const POOL=[
+   // -- la saison
+   [()=>SE.k==='printemps', ()=>['🌸 Les vergers ont fleuri d\'un coup, tout le village sent le miel.',
+                                 '🌸 The orchards blossomed all at once; the whole village smells of honey.']],
+   [()=>SE.k==='ete',       ()=>['☀️ Journée écrasante : on a travaillé à l\'aube et dormi à midi.',
+                                 '☀️ A scorching day: work at dawn, sleep at noon.']],
+   [()=>SE.k==='automne',   ()=>['🍂 Le vent a couché les blés ; tout le monde est allé les relever.',
+                                 '🍂 The wind flattened the wheat; everyone went out to lift it back up.']],
+   [()=>SE.k==='hiver',     ()=>['❄️ Le gel a pris les seaux dans la nuit. On a cassé la glace à la hache.',
+                                 '❄️ Frost took the buckets overnight. They broke the ice with an axe.']],
+   // -- les bêtes et la forêt
+   [()=>1, ()=>{const r=who(); return ['🐺 Des loups ont hurlé toute la nuit. '+nameOf(r)+' n\'a pas fermé l\'œil.',
+                                       '🐺 Wolves howled all night. '+nameOf(r)+' did not sleep a wink.'];}],
+   [()=>has('chasseur'), ()=>{const r=who(); return ['🐗 '+nameOf(r)+' a rapporté un sanglier si gros qu\'il a fallu s\'y mettre à trois.',
+                                       '🐗 '+nameOf(r)+' brought back a boar so big it took three of them to carry it.'];}],
+   [()=>has('poule'), ()=>['🦊 Un renard est entré au poulailler. Il en est ressorti plus vite qu\'il n\'est entré.',
+                           '🦊 A fox got into the henhouse. It came out faster than it went in.']],
+   [()=>1, ()=>['🦌 Un cerf est venu boire au bord du village, sans peur de personne.',
+                '🦌 A stag came to drink at the edge of the village, afraid of no one.']],
+   // -- le travail
+   [()=>has('forge'), ()=>{const r=who(); return ['⚒️ '+nameOf(r)+' a forgé une lame si fine qu\'elle coupe un cheveu en deux.',
+                                       '⚒️ '+nameOf(r)+' forged a blade so fine it splits a hair.'];}],
+   [()=>has('puits'), ()=>['🪣 La corde du puits a cassé. Le seau est toujours au fond.',
+                           '🪣 The well rope snapped. The bucket is still down there.']],
+   [()=>has('ble'), ()=>['🌾 On a battu le grain toute la journée ; il y en a plein les cheveux de tout le monde.',
+                         '🌾 They threshed grain all day; everyone has chaff in their hair.']],
+   [()=>has('bucheron'), ()=>{const r=who(); return ['🪵 Un chêne est tombé du mauvais côté. '+nameOf(r)+' a sauté juste à temps.',
+                                       '🪵 An oak fell the wrong way. '+nameOf(r)+' jumped just in time.'];}],
+   [()=>has('taverne'), ()=>['🍺 Tournée générale à la taverne : personne ne sait plus qui a payé.',
+                             '🍺 A round for the house at the tavern: nobody remembers who paid.']],
+   [()=>has('chaudron'), ()=>['⚗️ Le chaudron a débordé. La mousse verte a mis trois jours à partir.',
+                              '⚗️ The cauldron boiled over. The green foam took three days to shift.']],
+   // -- les gens
+   [()=>P.length>2, ()=>{const a=who(); let b=who(); if(b===a) b=P[(P.indexOf(a)+1)%P.length];
+     return ['🎣 '+nameOf(a)+' et '+nameOf(b)+' ont pêché jusqu\'à la nuit. Deux poissons, beaucoup de mensonges.',
+             '🎣 '+nameOf(a)+' and '+nameOf(b)+' fished until dark. Two fish, plenty of tall tales.'];}],
+   [()=>!!kid(), ()=>{const k=kid(); return ['🐸 '+nameOf(k)+' a lâché une grenouille dans la marmite commune.',
+                                             '🐸 '+nameOf(k)+' dropped a frog into the communal pot.'];}],
+   [()=>!!kid(), ()=>{const k=kid(); return ['🪁 '+nameOf(k)+' a passé la journée à courir après le vent, et l\'a presque attrapé.',
+                                             '🪁 '+nameOf(k)+' spent the day chasing the wind, and nearly caught it.'];}],
+   [()=>1, ()=>{const r=who(); return ['💤 '+nameOf(r)+' s\'est endormi debout, appuyé sur son outil.',
+                                       '💤 '+nameOf(r)+' fell asleep standing up, leaning on a tool.'];}],
+   [()=>1, ()=>{const r=who(); return ['🎵 '+nameOf(r)+' chante faux, mais chante fort, et personne n\'ose le dire.',
+                                       '🎵 '+nameOf(r)+' sings badly and loudly, and nobody dares say so.'];}],
+   [()=>1, ()=>{const r=who(); return ['🍲 '+nameOf(r)+' a inventé une recette. On n\'en reparlera pas.',
+                                       '🍲 '+nameOf(r)+' invented a recipe. It will not be mentioned again.'];}],
+   [()=>1, ()=>{const r=who(); return ['🧵 '+nameOf(r)+' a recousu la tunique de la moitié du village.',
+                                       '🧵 '+nameOf(r)+' mended half the village\'s tunics.'];}],
+   // -- le village et le monde
+   [()=>has('menhir'), ()=>['🪨 On a redressé le menhir d\'un demi-pouce. Tout le monde jure qu\'il penchait.',
+                            '🪨 They straightened the menhir by half an inch. Everyone swears it was leaning.']],
+   [()=>has('barde'), ()=>['🎶 Le barde s\'est détaché. On l\'a rattaché.',
+                           '🎶 The bard got loose. They tied him up again.']],
+   [()=>has('chien'), ()=>['🐶 Le chien a rapporté une sandale romaine. Personne ne sait où il l\'a trouvée.',
+                           '🐶 The dog brought back a Roman sandal. Nobody knows where it found it.']],
+   [()=>has('palissade')||has('muraille'), ()=>['🛠️ Un pieu du rempart était pourri. On l\'a remplacé avant que quelqu\'un ne s\'appuie dessus.',
+                                                '🛠️ A rampart post had rotted. They replaced it before anyone leaned on it.']],
+   [()=>has('tour'), ()=>['🗼 Le guetteur a crié « les Romains ! ». C\'était un troupeau de moutons.',
+                          '🗼 The watchman cried "Romans!". It was a flock of sheep.']],
+   [()=>armyPower()>20, ()=>['⚔️ Manœuvres au petit matin. Les boucliers ont claqué jusqu\'au déjeuner.',
+                             '⚔️ Drill at first light. Shields clattered until lunch.']],
+   [()=>1, ()=>['🚶 Un voyageur est passé, a bu, a raconté trois nouvelles et deux mensonges, puis a repris la route.',
+                '🚶 A traveller passed through, drank, told three pieces of news and two lies, then went on his way.']],
+   [()=>1, ()=>['⛈️ L\'orage a éclaté au-dessus du village. On a compté les secondes entre l\'éclair et le tonnerre.',
+                '⛈️ A storm broke over the village. They counted the seconds between flash and thunder.']],
+   [()=>1, ()=>['🌫️ Une brume à couper au couteau. On s\'est appelés d\'un bout à l\'autre pour ne pas se perdre.',
+                '🌫️ Fog thick enough to cut. They called to each other so as not to get lost.']],
+   [()=>1, ()=>['🌈 Un arc-en-ciel s\'est posé pile sur le village. Le druide y a vu un présage ; il n\'a pas dit lequel.',
+                '🌈 A rainbow landed square on the village. The druid saw an omen in it; he did not say which.']]
+  ];
+  // deux à quatre péripéties par jour, jamais deux fois la même dans une vie
+  const want=2+Math.floor(Math.random()*3);
+  const idx=POOL.map((_,i)=>i);
+  for(let i=idx.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const x=idx[i]; idx[i]=idx[j]; idx[j]=x; }
+  let told=0;
+  for(const i of idx){
+    if(told>=want) break;
+    const e=POOL[i];
+    let ok=false; try{ ok=!!e[0](); }catch(err){ ok=false; }
+    if(!ok) continue;
+    let line=null; try{ line=e[1](); }catch(err){ line=null; }
+    if(!line) continue;
+    if(chron(line[0],line[1])) told++;
+  }
+  /* Trente péripéties écrites à la main, c'est dix jours. Après quoi le village
+     n'avait plus rien à raconter. On complète donc avec des scènes composées :
+     un habitant × un petit fait × un moment de la journée. Chaque combinaison
+     est unique, il y en a des milliers, et le registre les tient à l'œil. */
+  for(let guard=0; told<want && guard<40; guard++){
+    const line=dayFiller(P);
+    if(line&&chron(line[0],line[1],{key:line[2]})) told++;
+  }
+  if(told) save();
+  return told;
+}
+const DAY_WHEN=[
+ ['Au petit matin, ','First thing this morning, '],
+ ['Avant la soupe, ','Before the soup, '],
+ ['En plein midi, ','At high noon, '],
+ ['Au retour des champs, ','Coming back from the fields, '],
+ ['À la veillée, ','At the evening gathering, '],
+ ['Sous la pluie, ','In the rain, '],
+ ['Pendant que les autres travaillaient, ','While the others worked, '],
+ ['Sans prévenir personne, ','Without telling a soul, ']
+];
+const DAY_WHAT=[
+ ['a perdu son couteau et l\'a retrouvé dans sa botte.','lost a knife and found it in a boot.'],
+ ['s\'est disputé avec une oie. L\'oie a gagné.','argued with a goose. The goose won.'],
+ ['a réparé le toit de son voisin sans qu\'on lui demande.','mended a neighbour\'s roof unasked.'],
+ ['a juré d\'arrêter la cervoise. Jusqu\'à ce soir.','swore off ale. Until this evening.'],
+ ['a compté les pierres du chemin, et s\'est trompé deux fois.','counted the stones on the path, and lost count twice.'],
+ ['a raconté la même histoire pour la troisième fois.','told the same story for the third time.'],
+ ['a taillé un sifflet dans un bout de sureau.','carved a whistle out of an elder branch.'],
+ ['s\'est fait piquer par une abeille et l\'a très mal pris.','was stung by a bee and took it very badly.'],
+ ['a trouvé un champignon gros comme une tête.','found a mushroom the size of a head.'],
+ ['a rangé son atelier. Personne n\'y retrouve plus rien.','tidied the workshop. Nobody can find anything now.'],
+ ['a promis d\'apprendre à nager. On verra bien.','promised to learn to swim. We shall see.'],
+ ['a marché dans la boue jusqu\'aux genoux, en chantant.','waded knee-deep through mud, singing.'],
+ ['a offert son déjeuner au chien, puis l\'a regretté.','gave lunch to the dog, then regretted it.'],
+ ['a repeint sa porte d\'un bleu que personne n\'approuve.','painted a door a blue nobody approves of.'],
+ ['s\'est cogné le pied contre le même seau qu\'hier.','stubbed a toe on the same bucket as yesterday.'],
+ ['a rêvé de Rome et s\'est réveillé de mauvaise humeur.','dreamt of Rome and woke up in a foul mood.'],
+ ['a suivi un papillon beaucoup trop longtemps.','followed a butterfly for far too long.'],
+ ['a décidé que demain, tout serait différent.','decided that tomorrow everything would be different.'],
+ ['a fait cuire quelque chose que personne n\'a osé goûter.','cooked something nobody dared taste.'],
+ ['a gagné un pari idiot et n\'arrête pas d\'en parler.','won a silly bet and will not stop mentioning it.'],
+ ['a passé la matinée à chercher ses sandales. Il les avait aux pieds.','spent the morning looking for a pair of sandals. They were on those feet.'],
+ ['a voulu apprivoiser un corbeau. Le corbeau a d\'autres projets.','tried to tame a crow. The crow has other plans.'],
+ ['s\'est fait une entorse en évitant une flaque.','twisted an ankle avoiding a puddle.'],
+ ['a compté ses économies trois fois, avec trois résultats.','counted their savings three times, and got three answers.'],
+ ['a décrété que le vent venait du mauvais côté.','declared the wind was coming from the wrong direction.'],
+ ['a taillé une flûte qui ne joue qu\'une note.','carved a flute that plays exactly one note.'],
+ ['a laissé brûler la galette en regardant les nuages.','let the flatbread burn while watching the clouds.'],
+ ['a rapporté une pierre bleue qu\'il refuse de montrer.','brought back a blue stone and refuses to show it.'],
+ ['a passé une heure à convaincre une chèvre. Sans succès.','spent an hour reasoning with a goat. Without success.'],
+ ['s\'est réveillé persuadé d\'être ailleurs.','woke up convinced of being somewhere else.'],
+ ['a réinventé le nœud de corde. C\'était déjà le bon.','reinvented the rope knot. It was already the right one.'],
+ ['a fait le tour du village à reculons, pour voir.','walked round the village backwards, just to see.'],
+ ['a déclaré qu\'il pleuvrait. Il a plu. Il en parle encore.','announced it would rain. It rained. It is still being mentioned.'],
+ ['a rangé le bois par taille, puis par couleur.','stacked the firewood by size, then by colour.']
+];
+/* Deuxième axe : deux habitants ensemble. Le nombre de couples possibles croît
+   comme le carré de la population — c'est ce qui empêche un petit village de
+   n'avoir plus rien à raconter au bout d'un mois. */
+const DAY_DUO=[
+ ['ont échangé leurs outils par erreur et ne s\'en sont pas aperçus.','swapped tools by mistake and never noticed.'],
+ ['se sont lancés un défi de lancer de caillou. Match nul.','challenged each other to throw stones. It was a draw.'],
+ ['ont porté une poutre à eux deux, en se disputant tout le long.','carried a beam between them, bickering the whole way.'],
+ ['ont partagé une galette en trois. Le chien a eu la plus grosse part.','shared a flatbread three ways. The dog got the biggest piece.'],
+ ['se sont perdus dans le bois et sont rentrés par le côté opposé.','got lost in the woods and came back from the opposite side.'],
+ ['ont refait le mur du poulailler. Il tient. Pour l\'instant.','rebuilt the henhouse wall. It holds. For now.'],
+ ['ont parié sur la couleur du ciel demain matin.','bet on the colour of tomorrow\'s sky.'],
+ ['ont chanté à deux voix. On a compté trois voix.','sang a duet. Three voices were counted.'],
+ ['se sont raconté la même histoire, chacun sa version.','told each other the same story, each their own version.'],
+ ['ont creusé un trou sans se rappeler pourquoi.','dug a hole and forgot why.'],
+ ['ont essayé de déplacer un rocher. Le rocher est resté.','tried to shift a boulder. The boulder stayed.'],
+ ['ont fabriqué un piège à sanglier qui a attrapé une botte.','built a boar trap that caught a boot.'],
+ ['ont veillé tard à parler de rien du tout.','sat up late talking about nothing at all.'],
+ ['se sont donné rendez-vous et sont arrivés chacun un jour trop tôt.','arranged to meet and each turned up a day early.']
+];
+function dayDuo(P){
+  if(!P||P.length<2) return null;
+  const pairs=[];
+  for(let a=0;a<DAY_DUO.length;a++)
+    for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++) pairs.push([a,i,j]);
+  for(let i=pairs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const x=pairs[i]; pairs[i]=pairs[j]; pairs[j]=x; }
+  for(const [a,i,j] of pairs){
+    const n1=nameOf(P[i]), n2=nameOf(P[j]), W=DAY_DUO[a];
+    const key='🌿 '+n1+'+'+n2+' '+W[0];
+    if(chronTold(key)) continue;
+    const w=DAY_WHEN[Math.floor(Math.random()*DAY_WHEN.length)];
+    return ['🌿 '+w[0]+n1+' et '+n2+' '+W[0], '🌿 '+w[1]+n1+' and '+n2+' '+W[1], key];
+  }
+  return null;
+}
+/* Le moment de la journée n'est qu'un habillage : ce qui doit être neuf, c'est
+   QUI fait QUOI. Sans ça, on lisait quatre fois « Vercingétorix a décidé que
+   demain tout serait différent », à quatre heures différentes — ce qui est
+   exactement ce qu'on cherchait à éviter. On refuse donc un couple déjà servi,
+   et on écarte les faits racontés ces derniers jours. */
+function dayFiller(P){
+  if(!P||!P.length) return null;
+  // une fois sur deux, une scène à deux : c'est là qu'est la vraie réserve
+  if(P.length>1&&Math.random()<0.5){ const d=dayDuo(P); if(d) return d; }
+  S.lastWhat=S.lastWhat||[];
+  const pairs=[];
+  for(let a=0;a<DAY_WHAT.length;a++){
+    if(S.lastWhat.indexOf(a)>=0) continue;              // trop récent
+    for(let q=0;q<P.length;q++) pairs.push([a,q]);
+  }
+  // le répertoire proche est épuisé : on rouvre tout plutôt que de ne rien dire
+  if(!pairs.length){ for(let a=0;a<DAY_WHAT.length;a++) for(let q=0;q<P.length;q++) pairs.push([a,q]); }
+  for(let i=pairs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const x=pairs[i]; pairs[i]=pairs[j]; pairs[j]=x; }
+  for(const [a,q] of pairs){
+    const r=P[q], n=nameOf(r), W=DAY_WHAT[a];
+    // l'empreinte ignore l'heure : le même fait pour la même personne, jamais deux fois
+    if(chronTold('🌿 '+n+' '+W[0])) continue;
+    const w=DAY_WHEN[Math.floor(Math.random()*DAY_WHEN.length)];
+    S.lastWhat.unshift(a); if(S.lastWhat.length>8) S.lastWhat.length=8;
+    return ['🌿 '+w[0]+n+' '+W[0], '🌿 '+w[1]+n+' '+W[1], '🌿 '+n+' '+W[0]];
+  }
+  return dayDuo(P);              // le solo est épuisé : reste la vie à deux
 }
 
 /* ---------- niveaux ---------- */
@@ -2285,7 +2514,7 @@ function collectProduction(){
   const lost=capRes();
   if(lost>3) chron('🐀 '+t(Math.round(lost)+' de réserves perdues faute de grenier.',
                            Math.round(lost)+' of stores lost for want of a granary.'),
-                   '🐀 '+Math.round(lost)+' of stores lost for want of a granary.');
+                   '🐀 '+Math.round(lost)+' of stores lost for want of a granary.', {daily:1});
   // on apprend en faisant : chaque heure passée à l'ouvrage compte
   (S.people||[]).forEach(r=>{ if(!isChild(r)&&!isSoldier(r)) gainSkill(r,hours); });
   save();
@@ -2409,7 +2638,7 @@ function caravanSell(k){
   S.res[k]-=CARAVAN_LOT; gainCoins(gain); SFX.win();
   chron('🛒 '+t('Le marchand emporte '+CARAVAN_LOT+' '+RES_IC[k]+' contre '+gain+' 🪙.',
                 'The pedlar takes '+CARAVAN_LOT+' '+RES_IC[k]+' for '+gain+' 🪙.'),
-        '🛒 The pedlar takes '+CARAVAN_LOT+' '+RES_IC[k]+' for '+gain+' 🪙.');
+        '🛒 The pedlar takes '+CARAVAN_LOT+' '+RES_IC[k]+' for '+gain+' 🪙.', {repeat:1});
   save(); refreshVillage();
   toast('🛒 +'+gain+' 🪙');
   return true;
@@ -2427,7 +2656,7 @@ function caravanBuy(k){
   SFX.win();
   chron('🛒 '+t('Le village achète '+CARAVAN_LOT+' '+RES_IC[k]+' pour '+cost+' 🪙.',
                 'The village buys '+CARAVAN_LOT+' '+RES_IC[k]+' for '+cost+' 🪙.'),
-        '🛒 The village buys '+CARAVAN_LOT+' '+RES_IC[k]+' for '+cost+' 🪙.');
+        '🛒 The village buys '+CARAVAN_LOT+' '+RES_IC[k]+' for '+cost+' 🪙.', {repeat:1});
   save(); refreshVillage();
   toast('🛒 +'+CARAVAN_LOT+' '+RES_IC[k]);
   return true;
@@ -2498,7 +2727,7 @@ function buyTrade(id){
     S.feast=(S.feast||0)+1;
     (S.people||[]).forEach(r=>nudgeMood(r,0.25));
     chron('🐗 '+t('Un festin de sanglier a réuni tout le village.','A boar feast brought the whole village together.'),
-          '🐗 A boar feast brought the whole village together.');
+          '🐗 A boar feast brought the whole village together.', {daily:1});
     toast('🐗 '+t('Festin ! Le village est ravi — <b>prochaine série ×1,5</b>.',
                   'Feast! The village is delighted — <b>next session ×1.5</b>.'));
   }else{
@@ -4355,10 +4584,39 @@ function syncPeople(){
   save(); return S.people;
 }
 /* chroniques du village : amours, amitiés, disputes */
-function chron(fr,en){
-  S.events=S.events||[];
+/* ============================================================
+   LA CHRONIQUE NE SE RÉPÈTE PAS
+   ------------------------------------------------------------
+   Une péripétie qui a déjà eu lieu ne revient jamais. On garde l'empreinte de
+   tout ce qui a été raconté depuis le premier jour — une empreinte courte, pas
+   la phrase entière, pour ne pas gonfler la sauvegarde — et chron() refuse un
+   doublon. Trois régimes :
+     (rien)      une fois pour toutes : amitiés, amours, naissances, morts…
+     {daily:1}   une fois par jour : le marchand, la récolte gâtée…
+     {repeat:1}  à chaque fois : les grands moments qu'on veut toujours lire.
+   ============================================================ */
+function hash32(str){
+  let h=0x811c9dc5;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193); }
+  return (h>>>0).toString(36);
+}
+function chronKey(fr,opt){
+  const base=String((opt&&opt.key)||fr).replace(/\s+/g,' ').trim().toLowerCase();
+  return hash32((opt&&opt.daily?todayStr()+'|':'')+base);
+}
+function chronTold(fr,opt){ return ((S.told||[]).indexOf(chronKey(fr,opt))>=0); }
+function chron(fr,en,opt){
+  S.events=S.events||[]; S.told=S.told||[];
+  if(!(opt&&opt.repeat)){
+    const k=chronKey(fr,opt);
+    if(S.told.indexOf(k)>=0) return false;      // déjà vécu : on ne le rejoue pas
+    S.told.push(k);
+    if(S.told.length>600) S.told.splice(0,S.told.length-600);
+  }
   S.events.unshift({t:Date.now(),fr,en});
-  if(S.events.length>24) S.events.length=24;
+  if(S.events.length>40) S.events.length=40;
+  V3.saveSoon=1;
+  return true;
 }
 /* évolution d'une relation après une discussion */
 function relate(A,B){
@@ -4672,19 +4930,19 @@ function villageReact(kind,val){
   if(kind==='exam'){
     if(val>=0.9){ P.forEach(r=>nudgeMood(r,0.22));
       chron('🎉 '+t('Le village a fêté ton score écrasant à l\'examen blanc.','The village celebrated your crushing mock-exam score.'),
-            '🎉 The village celebrated your crushing mock-exam score.'); }
+            '🎉 The village celebrated your crushing mock-exam score.', {daily:1}); }
     else if(val>=0.8){ P.forEach(r=>nudgeMood(r,0.12));
       chron('🍺 '+t('Ton examen blanc réussi a valu une tournée générale.','Your passed mock exam earned a round for everyone.'),
-            '🍺 Your passed mock exam earned a round for everyone.'); }
+            '🍺 Your passed mock exam earned a round for everyone.', {daily:1}); }
     else{ P.forEach(r=>nudgeMood(r,-0.1));
       chron('😟 '+t('Ton examen blanc raté a jeté un froid au village.','Your failed mock exam cast a chill over the village.'),
-            '😟 Your failed mock exam cast a chill over the village.'); }
+            '😟 Your failed mock exam cast a chill over the village.', {daily:1}); }
   }else if(kind==='run'){
     P.forEach(r=>nudgeMood(r,val>=3?0.09:val>=2?0.04:-0.05));
   }else if(kind==='boss'){
     P.forEach(r=>nudgeMood(r,0.15));
     chron('⚔️ '+t('Ta victoire a fait le tour du village.','Your victory went round the village.'),
-          '⚔️ Your victory went round the village.');
+          '⚔️ Your victory went round the village.', {daily:1});
   }
   V3.saveSoon=1;
 }
@@ -6232,8 +6490,7 @@ function engage(A,B,now,mode){
   if(out==='love'){
     nudgeMood(ra,0.2); nudgeMood(rb,0.2);
     tryBaby(ra,rb);
-    sayMeet(A,B,'💛 '+ra.name+t(' et ',' and ')+rb.name+t(' se retrouvent.',' meet up.'),
-                '💛 '+ra.name+' and '+rb.name+' meet up.');
+    coupleMoment(A,B,ra,rb);
   }else{
     nudgeMood(ra,out==='warm'?0.12:0.07); nudgeMood(rb,out==='warm'?0.12:0.07);
     // le grognon plombe son interlocuteur, le bavard le remonte
@@ -6249,6 +6506,53 @@ function engage(A,B,now,mode){
     const foll=lead===ua?ub:ua;
     foll.followUp={x:lead.home.x,z:lead.home.z};
   }
+}
+/* ============================================================
+   LES AMOUREUX NE SE « RETROUVENT » PAS TOUTES LES DIX SECONDES
+   ------------------------------------------------------------
+   Deux amoureux se croisent sans arrêt dans un village de cent pas de large :
+   la même phrase revenait dix fois par jour, tous les jours, et le couple
+   avait l'air de se redécouvrir à chaque tour de piste. Désormais chaque
+   couple a un délai entre deux moments, et chaque moment est tiré d'un
+   répertoire où rien ne ressort tant qu'il reste du neuf.
+   ============================================================ */
+const LOVE_GAP=7*6e4;            // au moins sept minutes entre deux scènes
+const LOVE_SAY=[
+ ['se retrouvent près du feu.','meet by the fire.'],
+ ['reviennent ensemble des champs.','come back from the fields together.'],
+ ['a cueilli des fleurs pour','picked flowers for'],
+ ['fait rire aux éclats','has in fits of laughter'],
+ ['partagent une écuelle de cervoise.','share a bowl of ale.'],
+ ['se disent des bêtises à l\'oreille.','whisper nonsense to each other.'],
+ ['ont filé derrière la grange.','slipped off behind the barn.'],
+ ['comptent les étoiles depuis le rempart.','count stars from the rampart.'],
+ ['se chamaillent pour rire.','squabble for the fun of it.'],
+ ['refont le monde sur un banc.','put the world to rights on a bench.'],
+ ['a rapporté un caillou en forme de cœur à','brought a heart-shaped pebble to'],
+ ['dansent, très mal, sur l\'air du barde.','dance, very badly, to the bard\'s tune.'],
+ ['se tiennent la main sans rien dire.','hold hands and say nothing.'],
+ ['se sont donné rendez-vous à la source.','arranged to meet at the spring.']
+];
+function coupleMoment(A,B,ra,rb){
+  const now=Date.now();
+  const pair=[ra.id,rb.id].sort().join('~');
+  S.lovers=S.lovers||{};
+  const st=S.lovers[pair]||(S.lovers[pair]={at:0,seen:[]});
+  if(now-st.at<LOVE_GAP) return;          // ils viennent de se voir : on n'en fait pas une affaire
+  // on pioche dans ce qu'ils n'ont pas encore vécu ; le répertoire épuisé, on repart à zéro
+  let pool=LOVE_SAY.map((_,i)=>i).filter(i=>st.seen.indexOf(i)<0);
+  if(!pool.length){ st.seen=[]; pool=LOVE_SAY.map((_,i)=>i); }
+  const i=pool[Math.floor(Math.random()*pool.length)];
+  st.seen.push(i); st.at=now;
+  const L=LOVE_SAY[i];
+  // deux tournures : « X et Y … » ou « X … Y »
+  const two=/^(a |fait )/.test(L[0]);
+  const fr=two ? '💛 '+ra.name+' '+L[0]+' '+rb.name+'.'
+               : '💛 '+ra.name+' et '+rb.name+' '+L[0];
+  const en=two ? '💛 '+ra.name+' '+L[1]+' '+rb.name+'.'
+               : '💛 '+ra.name+' and '+rb.name+' '+L[1];
+  sayMeet(A,B,fr,en);
+  V3.saveSoon=1;
 }
 function sayMeet(A,B,fr,en){
   const el=$('#v3dsay'); if(!el) return;
@@ -7927,7 +8231,7 @@ function raidEnd(win){
     gainXp(80);
     (S.people||[]).forEach(r=>nudgeMood(r,0.3));
     chron('⚔️ '+t('Les Romains ont été repoussés ! Le village a tenu.','The Romans were driven off! The village held.'),
-          '⚔️ The Romans were driven off! The village held.');
+          '⚔️ The Romans were driven off! The village held.', {daily:1});
     SFX.win(); confetti(180);
     showOverlay('🏆', t('Les Romains détalent !','The Romans are running!'),
       t('Ton village a tenu. Butin ramassé sur le champ de bataille : <b>+'+loot+' 🪙</b> et <b>+'+(6+F.n)+' ⚙️</b>.',
@@ -7950,7 +8254,7 @@ function raidEnd(win){
       S.res[k]=Math.max(0,(S.res[k]||0)-took[k]); });
     (S.people||[]).forEach(r=>nudgeMood(r,-0.3));
     chron('🏛️ '+t('Les Romains ont pillé le village. Il faudra s\'armer.','The Romans plundered the village. Time to arm up.'),
-          '🏛️ The Romans plundered the village. Time to arm up.');
+          '🏛️ The Romans plundered the village. Time to arm up.', {daily:1});
     SFX.ko();
     showOverlay('🏛️', t('Le village est pillé','The village is plundered'),
       t('Les légionnaires ont emporté <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.',
@@ -8505,10 +8809,16 @@ function chronHtml(){
   if(!ev.length) return '';
   let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">📜 '
    +t('CHRONIQUES DU VILLAGE','VILLAGE CHRONICLES')+'</div><div class="chron">';
-  ev.slice(0,10).forEach(e=>{
-    const dd=Math.floor((Date.now()-e.t)/864e5);
-    h+='<div class="chrl"><span>'+esc(t(e.fr,e.en))+'</span><i>'
-      +(dd?('il y a '+dd+' j'):t('aujourd\'hui','today'))+'</i></div>';
+  /* On date à la JOURNÉE, pas à l'écart de 24 h : une péripétie d'hier soir
+     lue ce matin doit dire « hier », pas « aujourd'hui ». */
+  const day=ms=>{ const d=new Date(ms); d.setHours(0,0,0,0); return d.getTime(); };
+  const today=day(Date.now());
+  ev.slice(0,12).forEach(e=>{
+    const dd=Math.round((today-day(e.t))/864e5);
+    const when=dd<=0?t('aujourd\'hui','today')
+              :dd===1?t('hier','yesterday')
+              :t('il y a '+dd+' j', dd+' d ago');
+    h+='<div class="chrl"><span>'+esc(t(e.fr,e.en))+'</span><i>'+esc(when)+'</i></div>';
   });
   return h+'</div></div>';
 }
