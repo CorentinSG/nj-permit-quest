@@ -1632,8 +1632,8 @@ const SHOP=[
 {id:'bucheron',ic:'🪓',n:'Cabane du bûcheron',ne:'Woodcutter\'s cabin',p:150,stack:true,rate:1.2,rc:{wood:8,iron:4},
  prod:{wood:2},d:'Son bûcheron abat des arbres : +2 🪵/h',de:'Its woodcutter fells trees: +2 🪵/h'},
 {id:'grenier',ic:'🏚️',n:'Grenier',ne:'Granary',p:190,stack:true,rate:1.3,rc:{wood:16},
- d:'+140 de réserves : sans lui, ce qui déborde pourrit',
- de:'+140 storage: without it, whatever overflows rots'},
+ d:'+140 de réserves, et un quart du grain sous clé quand on pille le village',
+ de:'+140 storage, and a quarter of the grain locked away when the village is sacked'},
 {id:'menhir',ic:'🗿',n:'Menhir',ne:'Menhir',p:120},
 {id:'sanglier',ic:'🐗',n:'Sangliers',ne:'Wild boars',p:130},
 {id:'palissade',ic:'🪵',n:'Palissade',ne:'Palisade',p:140,rc:{wood:22}},
@@ -1659,7 +1659,8 @@ const SHOP=[
  d:'4 guerriers casqués en patrouille — on peut en lever plusieurs',
  de:'4 helmeted warriors on patrol — you may raise several'},
 {id:'tour',ic:'🗼',n:'Tour de guet',ne:'Watchtower',p:380,cat:'army',req:'palissade',pw:15,rc:{wood:26,iron:10},
- d:'Voit venir les légions de loin',de:'Spots the legions from afar'},
+ d:'Voit venir les légions : la troupe a le temps de sortir se ranger devant la porte',
+ de:'Spots the legions coming: the men have time to form up outside the gate'},
 {id:'muraille',ic:'🧱',n:'Muraille de pierre',ne:'Stone rampart',p:450,cat:'army',req:'palissade',pw:25,rc:{wood:48,iron:18},
  d:'Remparts crénelés autour du village',de:'Crenellated ramparts around the village'},
 {id:'catapulte',ic:'🎪',n:'Catapulte',ne:'Catapult',p:520,cat:'army',req:'entrainement',pw:22,rc:{wood:30,iron:26},
@@ -2836,8 +2837,15 @@ function countdown(){
 function cdHtml(){
   const c=countdown(); if(!c) return '';
   const cell=(v,l)=>'<span class="cdc"><b>'+String(v).padStart(2,'0')+'</b><i>'+l+'</i></span>';
-  if(c.past) return '<div class="cdbox past"><div class="cdt">⚔️ '+t('L\'ATTAQUE A COMMENCÉ','THE ATTACK HAS BEGUN')+'</div>'
-    +'<p class="small" style="margin:6px 0 0">'+t('Le jour J est passé. Alors, ce permis ?','The day has come and gone. So, that permit?')+'</p></div>';
+  if(c.past) return '<div class="cdbox past"><div class="cdt">⚔️ '
+    +(S.finalDone?t('LE JOUR J EST PASSÉ','THE DAY HAS PASSED')
+                 :t('LA LÉGION T\'ATTEND','THE LEGION IS WAITING'))+'</div>'
+    +'<p class="small" style="margin:6px 0 0">'
+    +(S.finalDone?t('Alors, ce permis ?','So, that permit?')
+                 :t('Tu étais au MVC, pas devant l\'écran : la bataille n\'a pas eu lieu sans toi. '
+                    +'Va au village quand tu veux.',
+                    'You were at the MVC, not at the screen: the battle did not happen without you. '
+                    +'Go to the village whenever you like.'))+'</p></div>';
   const hot=c.d<=2;
   return '<div class="cdbox'+(hot?' hot':'')+'" id="cdlive">'
    +'<div class="cdt">🏛️ '+t('INVASION ROMAINE','ROMAN INVASION')+'</div>'
@@ -5653,7 +5661,7 @@ Object.assign(B3,{
     return g; },
   muraille(){ // rempart gaulois : rondins jointifs, ligatures, chemin de ronde, tours et porte
     const g=new THREE.Group(), R=152, N=30, step=Math.PI*2/N;
-    const segW=2*R*Math.sin(step/2)+2.4, H=19, GATE=0;
+    const segW=2*R*Math.sin(step/2)+2.4, H=19, GATE=8;   // 8e segment = plein sud
     const logMat=matT(0xffffff,TX.logs,2.2,1);
     for(let i=0;i<N;i++){
       const a=i*step, x=Math.cos(a)*R, z=Math.sin(a)*R;
@@ -5700,10 +5708,21 @@ Object.assign(B3,{
     });
     const lint=new THREE.Mesh(new THREE.BoxGeometry(26,3.4,6),mat(COL.woodDark));
     lint.castShadow=true; lint.position.set(gx,H-1,gz); lint.rotation.y=-(ga+Math.PI/2); g.add(lint);
+    /* Deux battants, montés sur GOND : le pivot est au montant, pas au milieu,
+       sinon la porte s'ouvrirait en traversant ses propres poteaux. Chacun est
+       un petit groupe qu'on fait tourner quand la troupe sort. */
     [-1,1].forEach(sd=>{
-      const dx=Math.cos(ga)*R-Math.sin(ga)*sd*5.2, dz=Math.sin(ga)*R+Math.cos(ga)*sd*5.2;
+      const hx=Math.cos(ga)*R-Math.sin(ga)*sd*10.4, hz=Math.sin(ga)*R+Math.cos(ga)*sd*10.4;
+      const hinge=new THREE.Group();
+      hinge.position.set(hx,0,hz); hinge.rotation.y=-(ga+Math.PI/2);
       const door=new THREE.Mesh(new THREE.BoxGeometry(10,H-3,2.4),matT(0xc8a86a,TX.wood,1,2));
-      door.castShadow=true; door.position.set(dx,(H-3)/2,dz); door.rotation.y=-(ga+Math.PI/2); g.add(door);
+      door.castShadow=true; door.position.set(sd*5.2,(H-3)/2,0);
+      // ferrures : deux bandes clouées en travers du battant
+      [-1,1].forEach(k=>{ const ir=box(10.4,1.2,3,0x6a6f76);
+        ir.position.set(sd*5.2,(H-3)/2+k*4.2,0); hinge.add(ir); });
+      hinge.add(door);
+      hinge.name='gateleaf'; hinge.userData.sd=sd; hinge.userData.a0=hinge.rotation.y;
+      g.add(hinge);
     });
     return g; },
   catapulte(){ const g=new THREE.Group();
@@ -6221,6 +6240,8 @@ function v3dInit(){
   const flame=scene.getObjectByName('flame'), flight=scene.getObjectByName('firelight');
   const wheat=[]; scene.traverse(o=>{ if(o.name==='wheat') wheat.push(o); });
   const hoppers=[]; scene.traverse(o=>{ if(o.name==='hopper') hoppers.push(o); });
+  V3.gateLeaves=[]; scene.traverse(o=>{ if(o.name==='gateleaf') V3.gateLeaves.push(o); });
+  V3.gateOpen=0;
   const sign=scene.getObjectByName('sign'), note=scene.getObjectByName('note'),
         potion=scene.getObjectByName('potion'), ember=scene.getObjectByName('ember');
 
@@ -6469,6 +6490,15 @@ function v3dInit(){
     if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
     // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
+    /* La porte : grande ouverte pendant la bataille, refermée après. On ne la
+       claque pas — elle pivote, et on l'entend d'ici. */
+    if(V3.gateLeaves&&V3.gateLeaves.length){
+      const want=(V3.raid||V3.raidPending)?1:0;
+      if(Math.abs((V3.gateOpen||0)-want)>0.002){
+        V3.gateOpen=(V3.gateOpen||0)+(want-(V3.gateOpen||0))*Math.min(1,dt*(want?1.6:3.2));
+        V3.gateLeaves.forEach(h=>{ h.rotation.y=h.userData.a0 - h.userData.sd*V3.gateOpen*1.35; });
+      }
+    }
     // ---- perception mutuelle (4 Hz : 16 habitants = 120 paires, négligeable)
     if(!V3.raid){
     V3.perc=(V3.perc||0)-dt;
@@ -6912,7 +6942,10 @@ function rebuildSolids(){
    désormais un anneau infranchissable, percé d'une seule porte — des DEUX
    côtés : qui est dedans reste dedans, qui est dehors reste dehors.
    ============================================================ */
-const WALLS={muraille:{r:152, gate:0, half:0.16}, palissade:{r:138, gate:1.691, half:0.15}};
+/* La porte regarde le sud : c'est par là que montent les légions, et une
+   sortie doit se faire FACE à l'ennemi, pas dans son dos. Le rempart a 30
+   segments, le 8e tombe pile au sud — la palissade y est déjà. */
+const WALLS={muraille:{r:152, gate:1.6755, half:0.16}, palissade:{r:138, gate:1.691, half:0.15}};
 function wallRing(){
   if(V3.wallDown) return null;              // la porte a cédé : plus rien n'arrête personne
   if(S.village&&S.village.indexOf('muraille')>=0) return WALLS.muraille;
@@ -6948,6 +6981,15 @@ function gatePoint(outside){
   const w=wallRing(); if(!w) return null;
   const r=w.r+(outside?20:-20);
   return [Math.cos(w.gate)*r, Math.sin(w.gate)*r];
+}
+/* Où la troupe se range une fois SORTIE. Franchir la porte ne suffit pas : sans
+   un point de ralliement franchement au large, tout le monde se battait dans
+   l'embrasure et le rempart ne servait à rien. Chacun a sa place sur la ligne,
+   sinon ils se marchent dessus. */
+function sortiePoint(i){
+  const w=wallRing(); if(!w) return null;
+  const r=w.r+40, a=w.gate, k=((i||0)%9)-4;
+  return [Math.cos(a)*r - Math.sin(a)*k*12, Math.sin(a)*r + Math.cos(a)*k*12];
 }
 /* renvoie le point libre le plus proche de (x,z) */
 function pushOutOfSolids(x,z,body){
@@ -7111,6 +7153,17 @@ function finalDue(){
   const c=countdown();
   return !!(c&&c.past&&!S.finalDone);
 }
+/* ---------- LA VEILLE D'ARMES ----------
+   L'examen tombe à 14 h : à cette heure-là on est au MVC de Bayonne, pas devant
+   son téléphone. L'assaut ne doit donc être ni manqué ni imposé. Deux garde-fous :
+   dans les 24 heures qui précèdent, on peut décider d'affronter la légion tout
+   de suite ; et si le moment passe sans nous, elle campe devant le village et
+   attend — rien n'est perdu, la bataille se joue au retour. */
+function finalEve(){
+  const c=countdown();
+  return !!(c&&!c.past&&!S.finalDone&&c.d===0);
+}
+function finalOpen(){ return finalDue()||finalEve(); }
 function legionForce(){ return {n:11, boss:2}; }   // une vraie légion, toujours la même
 function finalWarnHtml(){
   const c=countdown();
@@ -7132,7 +7185,15 @@ function finalWarnHtml(){
    +(pw>=70?t('Tu es en état de les recevoir.','You are in shape to meet them.')
            :t('C\'est trop peu. Camp militaire, escouade, chef de guerre : construis-les avant mardi.',
               'That is not enough. Military camp, warrior squad, warlord: build them before Tuesday.'))
-   +'</b></p></div>';
+   +'</b></p>'
+   +'<p class="small" style="margin:8px 0 0">'
+   +t('L\'examen est à '+esc(S.examTime||'14:00')+' : tu ne verras rien depuis la salle. '
+      +'Le dernier jour, tu pourras les affronter <b>quand tu veux</b> — avant de partir, ou au retour. '
+      +'La légion ne bouge pas sans toi.',
+      'The test is at '+esc(S.examTime||'14:00')+': you will see nothing from the room. '
+      +'On the last day you may face them <b>whenever you like</b> — before you go, or when you get back. '
+      +'The legion does not move without you.')
+   +'</p></div>';
 }
 /* le village en cendres : qui survit, ce qu'il reste debout */
 function burnVillage(){
@@ -7200,10 +7261,14 @@ function raidReady(){
   return S.raid.day!==todayStr();
 }
 function raidAsk(){
+  /* L'assaut du jour J n'est pas facultatif : il a lieu, prêt ou pas.
+     La VEILLE, en revanche, se choisit — et on ne choisit pas de sortir avec
+     des fourches. Un village sans défense est prévenu avant, pas après. */
   if(finalDue()) return finalAsk();
   if(!S.village.includes('guerriers')&&armyPower()<10){
     toast('⚔️ '+t('Ton village n\'a rien pour se défendre. Construis au moins une palissade.',
                   'Your village has nothing to defend itself with. Build at least a palisade.')); return; }
+  if(finalEve()) return finalAsk();
   if(!raidReady()){ toast('🏛️ '+t('César a déjà tenté sa chance aujourd\'hui.','Caesar has already tried his luck today.')); return; }
   const F=romanForce();
   const mine=(S.people||[]).filter(x=>!isChild(x)).length
@@ -7221,8 +7286,11 @@ function raidAsk(){
     +t('Pas aujourd\'hui','Not today')+'</button></div>');
 }
 function finalAsk(){
-  const F=legionForce(), pw=armyPower();
+  const F=legionForce(), pw=armyPower(), eve=!finalDue();
   showOverlay('🔥', t('L\'ASSAUT FINAL','THE FINAL ASSAULT'),
+    (eve?'<p class="small" style="margin:0 0 10px;color:var(--bus)"><b>'
+      +t('Veille d\'armes — tu n\'attends pas l\'heure de l\'examen pour les recevoir.',
+         'Eve of battle — you are not waiting for exam time to meet them.')+'</b></p>':'')+
     t('L\'heure est venue. <b>'+F.n+' légionnaires et '+F.boss+' centurions</b> sont devant le village.',
       'The hour has come. <b>'+F.n+' legionaries and '+F.boss+' centurions</b> stand before the village.')
     +'<br><br><b style="color:var(--stop)">'
@@ -7237,7 +7305,7 @@ function finalAsk(){
 }
 function raidStart(isFinal){
   if(isFinal){
-    if(!finalDue()) return;
+    if(!finalOpen()) return;
     clearTimeout(V3.raidT); V3.raidT=0;
     V3.raidPending=1; V3.pendFinal=1;
     render(); return;
@@ -7263,6 +7331,10 @@ function raidBuild(scene){
     if(x!=null) g.position.set(x,0,z);
     // de quel côté du mur il commence : il n'en changera qu'en passant la porte
     u.out=Math.hypot(g.position.x,g.position.z)>((wallRing()||{r:1e9}).r);
+    /* On ne se terre pas derrière les rondins : on ouvre la porte et on va les
+       recevoir dehors. Les enfants (atk 0) restent à l'abri, eux. */
+    u.sortie=(side==='gaul'&&F.atk>0&&!u.out)?1:0;
+    u.si=units.length;                     // sa place sur la ligne de bataille
     setBar(u); units.push(u); return u;
   };
   // --- les Gaulois : les marcheurs déjà présents changent de mission
@@ -7331,7 +7403,34 @@ function raidBuild(scene){
   const nb=F.boss===true?1:(F.boss||0);
   for(let i=0;i<nb;i++){ const g=legionary(i,true); scene.add(g);
     add(g,'rome','centurion',(i-(nb-1)/2)*20,205); }
+  /* ---------- L'ALARME ----------
+     Le cor sonne : on ne part pas de son champ ou de sa forge à l'autre bout du
+     village, on court au rempart. Sans ce rassemblement, les légions étaient à
+     la porte avant que le premier Gaulois l'ait atteinte, et la « sortie »
+     n'existait que sur le papier. On les range donc derrière la porte, prêts. */
+  const wr=wallRing();
+  if(wr){
+    const a=wr.gate, ca=Math.cos(a), sa=Math.sin(a);
+    let n=0;
+    units.forEach(u=>{ if(!u.sortie) return;
+      const row=Math.floor(n/5), col=(n%5)-2; n++;
+      const r=wr.r-26-row*13;
+      u.g.position.set(ca*r - sa*col*11, 0, sa*r + ca*col*11);
+      u.g.rotation.y=Math.atan2(ca,sa);
+      u.out=false;
+    });
+    /* La légion prend le temps de se former ; le village a le sien pour sortir.
+       Une tour de guet, c'est justement voir venir : elle achète cinq secondes
+       de plus, de quoi ranger toute la troupe dehors avant le choc. Jusqu'ici
+       elle n'était qu'un chiffre de puissance. */
+    const warn=5.5+(S.village.includes('tour')?5:0);
+    units.forEach(u=>{ if(u.side==='rome') u.wait=warn; });
+  }
   V3.raid={units, t:0, over:0, spark:[], final:fin};
+  if(wr&&units.some(u=>u.sortie)){
+    toast('📯 '+t('Le cor sonne — on ouvre la porte et on sort les recevoir !',
+                  'The horn sounds — the gate opens and the men march out to meet them!'));
+  }
   // quelques éclats réutilisés pour marquer les coups
   for(let i=0;i<5;i++){
     const sp=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,0),
@@ -7420,6 +7519,8 @@ function raidTick(dt,tt,scene){
       }
       continue;
     }
+    // la légion se met en ordre de bataille avant de marcher
+    if(u.wait&&R.t<u.wait){ u.g.position.y=0; continue; }
     // cible : on la garde tant qu'elle vit, on rescanne de temps en temps
     u.rescan-=dt;
     if(!u.tgt||u.tgt.dead||u.rescan<=0){
@@ -7434,6 +7535,39 @@ function raidTick(dt,tt,scene){
       u.tgt=best;
     }
     const ar=u.g.userData.arms||(u.g.children[0]&&u.g.children[0].userData.arms);
+    /* ---------- LA SORTIE ----------
+       Tant qu'il n'a pas passé la porte, un défenseur ne vise pas l'ennemi : il
+       vise l'embrasure, puis le point qui est juste dehors. Sans ça chacun
+       partait droit sur son Romain, butait contre les rondins et longeait le
+       mur au lieu de sortir. */
+    if(u.side==='gaul'&&u.sortie){
+      const w2=wallRing();
+      const near=u.tgt?Math.hypot(u.tgt.g.position.x-u.g.position.x,
+                                  u.tgt.g.position.z-u.g.position.z):1e9;
+      /* On ne renonce que pour de bon : plus de mur, la ligne atteinte, ou un
+         Romain à bout de lance. Abandonner dès qu'un ennemi paraissait à
+         portée de vue faisait de la sortie une mêlée sous le linteau. */
+      const rp=sortiePoint(u.si||0);
+      const atLine=u.out&&rp&&Math.hypot(u.g.position.x-rp[0],u.g.position.z-rp[1])<16;
+      if(!w2||atLine||near<15) u.sortie=0;
+      else{
+        const gp=u.out?rp:(atGate(u.g.position.x,u.g.position.z)?gatePoint(true):gatePoint(false));
+        const dx2=gp[0]-u.g.position.x, dz2=gp[1]-u.g.position.z, d2=Math.hypot(dx2,dz2)||1;
+        const st2=steerAround(u.g.position.x,u.g.position.z,dx2/d2,dz2/d2,4,d2,u.g.userData);
+        u.g.position.x+=st2[0]*u.sp*dt*1.15; u.g.position.z+=st2[1]*u.sp*dt*1.15;
+        const kc2=wallClamp(u.g.position.x,u.g.position.z,4,u.out);
+        if(kc2){ const cx=kc2[0]-u.g.position.x, cz=kc2[1]-u.g.position.z, cd=Math.hypot(cx,cz);
+          const m=Math.min(cd,Math.max(1.5,u.sp*dt));
+          if(cd>0.001){ u.g.position.x+=cx/cd*m; u.g.position.z+=cz/cd*m; } }
+        else if(gateDeep(u.g.position.x,u.g.position.z))
+          u.out=Math.hypot(u.g.position.x,u.g.position.z)>w2.r;
+        turnTo(u.g,gp[0],gp[1],dt,9);
+        u.g.position.y=Math.abs(Math.sin(tt*7+u.hpMax))*0.8;
+        if(ar){ const sw=Math.sin(tt*7+u.hpMax); ar[0].rotation.x=sw*0.5; ar[1].rotation.x=-sw*0.5; }
+        u.swing=0;
+        continue;
+      }
+    }
     // --- les enfants fuient vers le nord du village
     if(u.atk<=0){
       const fx=u.g.position.x*0.4, fz=-180;
@@ -7565,8 +7699,15 @@ function raidEnd(win){
   }else{
     S.raid.lost=(S.raid.lost||0)+1;
     S.res=S.res||{food:0,wood:0,iron:0};
+    /* Un grenier n'est pas qu'un compteur de stock : c'est une réserve fermée,
+       sous clé, que les pillards n'ouvrent pas en une heure. Chaque grenier
+       sauve un quart du grain. */
+    const silos=nOwned('grenier');
+    const shield=Math.min(0.8,silos*0.25);
     const took={};
-    ['food','wood','iron'].forEach(k=>{ took[k]=Math.floor((S.res[k]||0)*0.25);
+    ['food','wood','iron'].forEach(k=>{
+      const rate=0.25*(k==='food'?(1-shield):1);
+      took[k]=Math.floor((S.res[k]||0)*rate);
       S.res[k]=Math.max(0,(S.res[k]||0)-took[k]); });
     (S.people||[]).forEach(r=>nudgeMood(r,-0.3));
     chron('🏛️ '+t('Les Romains ont pillé le village. Il faudra s\'armer.','The Romans plundered the village. Time to arm up.'),
@@ -7575,6 +7716,9 @@ function raidEnd(win){
     showOverlay('🏛️', t('Le village est pillé','The village is plundered'),
       t('Les légionnaires ont emporté <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.',
         'The legionaries carried off <b>'+took.food+' 🌾, '+took.wood+' 🪵, '+took.iron+' ⚙️</b>.')
+      +(silos?'<br>🏚️ '+t('Le'+(silos>1?'s':'')+' grenier'+(silos>1?'s':'')+' '+(silos>1?'ont tenu':'a tenu')
+                          +' : '+Math.round(shield*100)+' % du grain était sous clé.',
+                          'The granar'+(silos>1?'ies':'y')+' held: '+Math.round(shield*100)+'% of the grain was locked away.'):'')
       +'<br><br>'+t('Personne n\'est mort — mais un camp militaire et une escouade de guerriers changeraient tout. Reviens demain, ils reviendront aussi.',
                     'Nobody died — but a military camp and a warrior squad would change everything. Come back tomorrow; so will they.')
       +aftermathHtml(AF));
@@ -7632,15 +7776,28 @@ function finalEnd(win){
 }
 function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; V3.wallDown=0; }
 function raidBtnHtml(){
-  if(finalDue()){
-    const F=legionForce();
+  if(finalOpen()){
+    const F=legionForce(), due=finalDue(), c=countdown();
     return '<div class="raidbox finalwarn">'
-     +'<div class="rbtitle">🔥 '+t('L\'ASSAUT FINAL EST LÀ','THE FINAL ASSAULT IS HERE')+'</div>'
+     +'<div class="rbtitle">🔥 '+t('L\'ASSAUT FINAL','THE FINAL ASSAULT')+' — '
+     +(due?t('LA LÉGION CAMPE DEVANT LE VILLAGE','THE LEGION IS CAMPED OUTSIDE')
+          :t('VEILLE D\'ARMES','EVE OF BATTLE'))+'</div>'
      +'<p class="small" style="margin:6px 0 8px">'
-     +t('<b>'+F.n+' légionnaires et '+F.boss+' centurions</b> sont devant la palissade. '
+     +t('<b>'+F.n+' légionnaires et '+F.boss+' centurions</b>. '
         +'Si tu perds, le village brûle et la plupart des habitants meurent — définitivement.',
-        '<b>'+F.n+' legionaries and '+F.boss+' centurions</b> are at the palisade. '
-        +'If you lose, the village burns and most of the villagers die — for good.')+'</p>'
+        '<b>'+F.n+' legionaries and '+F.boss+' centurions</b>. '
+        +'If you lose, the village burns and most of the villagers die — for good.')
+     +'<br>'+(due
+        ? t('L\'heure est passée et tu n\'étais pas là : ils t\'attendent. '
+            +'La bataille se joue quand <b>tu</b> le décides.',
+            'The hour came and you were elsewhere: they are waiting. '
+            +'The battle happens when <b>you</b> say so.')
+        : t('Tu passes ton permis dans <b>'+c.h+' h '+c.m+' min</b> — tu ne seras pas devant l\'écran. '
+            +'Tu peux sortir les recevoir <b>dès maintenant</b>, ou les laisser camper : '
+            +'ils t\'attendront aussi longtemps qu\'il faudra.',
+            'Your test is in <b>'+c.h+' h '+c.m+' min</b> — you will not be at the screen. '
+            +'You can march out and meet them <b>right now</b>, or let them camp: '
+            +'they will wait as long as it takes.'))+'</p>'
      +'<button class="btn btn-stop" style="justify-content:center" onclick="G.raidAsk()">🔥 '
      +t('LES AFFRONTER','FACE THEM')+'</button></div>';
   }
