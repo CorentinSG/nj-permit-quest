@@ -816,6 +816,76 @@ html,body{overflow-x:hidden}
 <script>
 'use strict';
 /* ============================================================
+   LE FILET DE SÉCURITÉ — posé AVANT tout le reste
+   ------------------------------------------------------------
+   Une exception au premier niveau du script (au démarrage, avant le premier
+   affichage) laissait une page entièrement noire : pas un mot, pas un bouton,
+   rien à faire à part désinstaller. C'est exactement ce qui est arrivé.
+   Ce bloc ne dépend de RIEN — ni du jeu, ni des traductions, ni même du fait
+   que le script ait pu se charger : il écoute les erreurs, et si l'écran est
+   resté vide, il peint lui-même de quoi comprendre et s'en sortir.
+   ============================================================ */
+(function(){
+  var painted=false;
+  function esc0(x){ return String(x).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function wipe(){
+    try{
+      var jobs=[];
+      if(window.caches&&caches.keys) jobs.push(caches.keys().then(function(ks){
+        return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+      if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){
+          return Promise.all(rs.map(function(r){ return r.unregister(); })); }));
+      var go=function(){ location.reload(); };
+      Promise.all(jobs).then(go,go); setTimeout(go,1500);
+    }catch(e){ location.reload(); }
+  }
+  function wipeAll(){ try{ localStorage.removeItem('route440_v1'); }catch(e){} wipe(); }
+  window.__r440wipe=wipe; window.__r440reset=wipeAll;
+  function paint(msg){
+    if(painted) return; 
+    var app=document.getElementById('app');
+    if(!app) return;
+    if(app.innerHTML && app.innerHTML.length>200) return;   // l'écran s'affiche : rien à faire
+    painted=true;
+    app.innerHTML=
+      '<div style="max-width:520px;margin:24px auto;padding:18px;border-radius:14px;'
+      +'border:3px solid #E0433F;background:#22100e;color:#F2E9DF;'
+      +'font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">'
+      +'<div style="font-size:15px;font-weight:700;color:#FFC61A;margin-bottom:8px">'
+      +'🛠️ ROUTE 440 n\'a pas pu démarrer</div>'
+      +'<p style="font-size:13.5px;line-height:1.5;margin:0 0 14px">'
+      +'Tes progrès sont enregistrés sur ce téléphone et ne sont pas perdus. '
+      +'Essaie dans cet ordre :</p>'
+      +'<button onclick="location.reload()" style="display:block;width:100%;margin:0 0 8px;padding:12px;'
+      +'border-radius:10px;border:2px solid #2F8FE0;background:#12243a;color:#CFE6FF;font-size:14px">'
+      +'🔄 Recharger</button>'
+      +'<button onclick="window.__r440wipe()" style="display:block;width:100%;margin:0 0 8px;padding:12px;'
+      +'border-radius:10px;border:2px solid #3FA860;background:#0d2016;color:#CFF3DC;font-size:14px">'
+      +'🧹 Vider le cache et recharger</button>'
+      +'<button onclick="if(confirm(\'Effacer la sauvegarde et repartir de zéro ?\'))window.__r440reset()" '
+      +'style="display:block;width:100%;margin:0 0 12px;padding:12px;'
+      +'border-radius:10px;border:2px solid #E0433F;background:#2a1210;color:#F6CFC8;font-size:14px">'
+      +'🗑️ Repartir de zéro (efface la sauvegarde)</button>'
+      +'<pre style="margin:0;padding:8px;border-radius:8px;background:#0b0f16;border:1px solid #24303f;'
+      +'color:#9fb0c4;font-size:10.5px;line-height:1.4;white-space:pre-wrap;'
+      +'overflow-wrap:anywhere;max-height:200px;overflow:auto">'+esc0(msg)+'</pre></div>';
+  }
+  window.__r440paint=paint;
+  window.addEventListener('error',function(e){
+    paint((e&&e.message?e.message:'erreur')+'\n'+((e&&e.filename)||'')+':'+((e&&e.lineno)||'')
+      +'\n'+(e&&e.error&&e.error.stack?String(e.error.stack).split('\n').slice(0,3).join('\n'):''));
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    paint('promesse rejetée : '+((e&&e.reason&&(e.reason.stack||e.reason.message))||e.reason||'?')); });
+  /* Dernier recours : si au bout de 4 secondes rien n'est affiché, on montre
+     quand même la porte de sortie. Couvre le cas où le script n'a jamais été
+     exécuté du tout (fichier tronqué, coupure réseau en plein chargement). */
+  setTimeout(function(){ paint('L\'écran est resté vide au démarrage.\n'
+    +'Cause probable : un fichier arrivé incomplet, gardé en cache.'); },4000);
+})();
+/* ============================================================
    ROUTE 440 — banque de contenu
    Questions en anglais (comme l'examen réel au MVC),
    explications en français. Convention : a[0] = bonne réponse
@@ -2067,7 +2137,11 @@ Object.assign(XEN,{
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function touchDaily(){
   const t=todayStr();
-  if(S.daily.date!==t){ S.daily={date:t, ok:0, rewarded:false}; dayTurns(); }
+  if(!S.daily||S.daily.date!==t){
+    S.daily={date:t, ok:0, rewarded:false};
+    // les péripéties du jour sont un agrément, pas une condition d'ouverture
+    try{ dayTurns(); }catch(e){}
+  }
 }
 /* ============================================================
    LES PÉRIPÉTIES DU JOUR
@@ -10714,18 +10788,24 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
-applyLang();
-touchDaily();
-(function(){ const pr=collectProduction();
+/* Le démarrage lui-même est faillible : chaque étape est isolée, pour qu'un
+   ennui dans la vie du village n'empêche pas le jeu de s'ouvrir. */
+try{ applyLang(); }catch(e){}
+try{ touchDaily(); }catch(e){}
+(function(){ let pr=null; try{ pr=collectProduction(); }catch(e){ return; }
   if(pr&&(pr.gained.food||pr.gained.wood)) setTimeout(()=>toast(
     t('🏹 Tes producteurs ont récolté <b>+'+pr.gained.food+' 🌾</b> et <b>+'+pr.gained.wood+' 🪵</b> en '+pr.hours+' h (le village a mangé '+pr.up+' 🌾).',
       '🏹 Your producers gathered <b>+'+pr.gained.food+' 🌾</b> and <b>+'+pr.gained.wood+' 🪵</b> in '+pr.hours+'h (the village ate '+pr.up+' 🌾).')),1500);
 })();
-(function(){ const g=collectTribute(); if(g) setTimeout(()=>toast(
+(function(){ let g=0; try{ g=collectTribute(); }catch(e){ return; } if(g) setTimeout(()=>toast(
   t('🪙 Le village prospère t\'a rapporté <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> pendant ton absence !',
     '🪙 Your thriving village earned you <b>+'+g+' sesterce'+(g>1?'s':'')+'</b> while you were away!')),700); })();
-save();
-render();
+try{ save(); }catch(e){}
+try{ render(); }
+catch(e){
+  /* Même render() a échoué : on peint le filet plutôt que de laisser du noir. */
+  try{ window.__r440paint&&window.__r440paint(String(e&&(e.stack||e.message)||e)); }catch(e2){}
+}
 
 </script>
 </body>
