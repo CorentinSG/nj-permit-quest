@@ -5254,9 +5254,17 @@ const B3={
     return g; },
   menhir(){ const g=new THREE.Group(); const m=box(7,22,6,COL.stone);
     m.position.y=11; m.rotation.z=0.06; m.rotation.y=0.4; g.add(m); return g; },
+  /* Deux sangliers qui n'étaient qu'un décor posé là. Ils fouillent maintenant
+     le sol où ça leur chante : chacun se choisit un but, y trotte, s'arrête
+     pour renifler, repart. Marqués 'boar' pour que la boucle les anime. */
   sanglier(){ const g=new THREE.Group();
-    const a=at(animal('boar'),0,0,0); a.name='walker'; a.userData.p=0; g.add(a);
-    const b=at(animal('boar'),9,0,5); b.scale.setScalar(.8); g.add(b); return g; },
+    [[0,0,1],[9,5,0.8]].forEach((q,i)=>{
+      const a=at(animal('boar'),q[0],0,q[1]);
+      a.scale.setScalar(q[2]); a.name='boar';
+      a.userData={p:i*1.7, tx:q[0], tz:q[1], wait:1+i*2, sp:8+i*3, home:[q[0],q[1]]};
+      g.add(a);
+    });
+    return g; },
   palissade(){ // pieux jointifs avec ligature : segments texturés + tour de ceinture
     const g=new THREE.Group(), R=138, N=26, step=Math.PI*2/N;
     const segW=2*R*Math.sin(step/2)+2;
@@ -6560,6 +6568,35 @@ function sayMeet(A,B,fr,en){
   el.classList.add('show');
   clearTimeout(V3.sayT); V3.sayT=setTimeout(()=>el.classList.remove('show'),3200);
 }
+/* ---------- LE SANGLIER VAGABOND ----------
+   Il trotte vers un point qu'il s'est choisi, s'arrête pour fouiller le sol,
+   grogne du groin, puis repart ailleurs. Tout se passe en coordonnées LOCALES
+   du groupe : on peut déplacer l'enclos, ils suivent. */
+function boarRoam(a,dt,tt){
+  const u=a.userData; if(!u) return;
+  const A=u.anchor||[0,0];
+  if(u.wait>0){                       // à l'arrêt : il fouille, le groin au sol
+    u.wait-=dt;
+    a.rotation.x=Math.sin(tt*6+u.p)*0.13-0.07;
+    a.position.y=Math.abs(Math.sin(tt*3+u.p))*0.25;
+    return;
+  }
+  a.rotation.x=0;
+  const dx=u.tx-a.position.x, dz=u.tz-a.position.z, d=Math.hypot(dx,dz);
+  if(d<2.5){                          // arrivé : nouvelle envie
+    u.wait=1.5+Math.random()*4;
+    const r=14+Math.random()*30, th=Math.random()*Math.PI*2;
+    u.tx=A[0]+Math.cos(th)*r; u.tz=A[1]+Math.sin(th)*r;
+    return;
+  }
+  const st=Math.min(d, u.sp*dt);
+  a.position.x+=dx/d*st; a.position.z+=dz/d*st;
+  const face=Math.atan2(dx,dz);
+  let df=face-a.rotation.y;
+  while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+  a.rotation.y+=df*Math.min(1,6*dt);
+  a.position.y=Math.abs(Math.sin(tt*9+u.p))*0.7;      // le trot
+}
 /* fumée : petites sphères qui montent en boucle */
 function makeSmoke(scene,g){
   const d=g.userData.smoke; if(!d) return [];
@@ -6635,6 +6672,10 @@ function v3dInit(){
   const wheat=[]; scene.traverse(o=>{ if(o.name==='wheat') wheat.push(o); });
   const hoppers=[]; scene.traverse(o=>{ if(o.name==='hopper') hoppers.push(o); });
   V3.gateLeaves=[]; scene.traverse(o=>{ if(o.name==='gateleaf') V3.gateLeaves.push(o); });
+  const boars=[]; scene.traverse(o=>{ if(o.name==='boar') boars.push(o); });
+  // leur point d'attache dans le monde : ils errent autour de leur enclos
+  boars.forEach(a=>{ const w=new THREE.Vector3(); a.getWorldPosition(w);
+    a.userData.anchor=[a.position.x,a.position.z]; });
   V3.gateOpen=0;
   const sign=scene.getObjectByName('sign'), note=scene.getObjectByName('note'),
         potion=scene.getObjectByName('potion'), ember=scene.getObjectByName('ember');
@@ -6884,6 +6925,7 @@ function v3dInit(){
     if(ember){ const s=0.7+Math.abs(Math.sin(tt*9))*0.7; ember.scale.setScalar(s); }
     // --- comportements des habitants : marche → travail (geste du métier) → discussion ---
     const dt=Math.min(0.05,(now-(V3.last||now))/1000); V3.last=now;
+    boars.forEach(b2=>{ boarRoam(b2,dt,tt); });
     /* La porte : grande ouverte pendant la bataille, refermée après. On ne la
        claque pas — elle pivote, et on l'entend d'ici. */
     if(V3.gateLeaves&&V3.gateLeaves.length){
@@ -7565,7 +7607,35 @@ function finalOpen(){ return finalDue()||finalEve(); }
 /* ---------- L'ORDRE DE BATAILLE DU JOUR J ----------
    Trois manipules en damier, deux ailes de cavalerie, deux onagres derrière.
    Toujours le même : ce n'est pas une rencontre, c'est un rendez-vous. */
-function legionForce(){ return {n:14, boss:3, horse:4, siege:2, total:23}; }
+/* ---------- LE SCÉNARIO DU JOUR J ----------
+   Un assaut où tout arrive en même temps se règle en quarante secondes. César
+   fait mieux que ça : il envoie ses manipules l'un après l'autre, garde sa
+   cavalerie pour le moment où la ligne fatigue, et lâche sa garde en dernier.
+   Cinq actes, cinq minutes, et le village ne sait jamais si c'est fini.
+   Les machines, elles, tirent du début à la fin. */
+const FINAL_ACTS=[
+ {at:0,   legion:5, boss:1, horse:0, siege:2,
+  fr:'⚔️ Le premier manipule s\'ébranle. Les enseignes montent du sud.',
+  en:'⚔️ The first maniple moves off. The standards come up from the south.'},
+ {at:55,  legion:4, boss:1, horse:2, siege:1,
+  fr:'🐎 Deuxième manipule, cavalerie sur les ailes ! Ils cherchent le flanc.',
+  en:'🐎 Second maniple, cavalry on the wings! They are looking for a flank.'},
+ {at:118, legion:5, boss:1, horse:2, siege:0,
+  fr:'🏛️ Une troisième colonne sort du bois. Ils ne s\'arrêteront pas.',
+  en:'🏛️ A third column comes out of the wood. They are not going to stop.'},
+ {at:184, legion:4, boss:1, horse:2, siege:0,
+  fr:'🔥 Les vétérans montent en ligne. C\'est maintenant que ça se joue.',
+  en:'🔥 The veterans come up into line. This is where it is decided.'},
+ {at:252, legion:4, boss:1, horse:2, siege:0,
+  fr:'👑 LA GARDE DE CÉSAR. Le dernier carré. Tenez !',
+  en:'👑 CAESAR\'S GUARD. The last square. Hold!'}
+];
+function legionForce(){
+  const T=FINAL_ACTS.reduce((a,w)=>({n:a.n+w.legion, boss:a.boss+w.boss,
+    horse:a.horse+w.horse, siege:a.siege+w.siege}),{n:0,boss:0,horse:0,siege:0});
+  T.total=T.n+T.boss+T.horse+T.siege; T.acts=FINAL_ACTS.length;
+  return T;
+}
 function finalWarnHtml(){
   const c=countdown();
   if(!c||S.finalDone) return '';
@@ -7729,12 +7799,21 @@ function raidBuild(scene){
     const u={g, side, kind, hp:F.hp, hpMax:F.hp, atk:F.atk, bar,
              cd:0.4+Math.random()*0.9, swing:0, tgt:null, rescan:0, dead:0, fall:0,
              sp:kind==='enfant'?11:(side==='rome'?8.5:9)+Math.random()*2};
+    /* Le jour J, ce ne sont pas les mêmes hommes : ce sont des vétérans des
+       guerres des Gaules. Ils frappent plus fort — c'est ce qui fait qu'un
+       village au complet en sort quand même endeuillé, sans qu'on ait besoin
+       d'en aligner cent. */
+    if(side==='rome'&&V3.pendFinalFlag) u.atk=Math.round(u.atk*1.0);
     if(x!=null) g.position.set(x,0,z);
     // de quel côté du mur il commence : il n'en changera qu'en passant la porte
     u.out=Math.hypot(g.position.x,g.position.z)>((wallRing()||{r:1e9}).r);
-    /* On ne se terre pas derrière les rondins : on ouvre la porte et on va les
-       recevoir dehors. Les enfants (atk 0) restent à l'abri, eux. */
-    u.sortie=(side==='gaul'&&F.atk>0&&!u.out)?1:0;
+    /* On ouvre la porte et on va les recevoir dehors — mais on n'envoie pas
+       les gens au bâton contre des vétérans en cuirasse. Sortent ceux qui
+       tiennent une arme ; les paysans et les enfants restent derrière le
+       rempart. Ils n'y sont pas en sécurité pour autant : une pierre qui passe
+       le mur ne demande pas le métier. */
+    u.sortie=(side==='gaul'&&F.atk>=7&&!u.out)?1:0;
+    u.hide=(side==='gaul'&&F.atk<7)?1:0;
     u.si=units.length;                     // sa place sur la ligne de bataille
     setBar(u); units.push(u); return u;
   };
@@ -7745,7 +7824,11 @@ function raidBuild(scene){
     w.userData.state='fight'; w.userData.talk=null; w.userData.timer=1e9;
     if(w.userData.badge) w.userData.badge.visible=false;
     if(w.userData.fx) w.userData.fx.visible=false;
-    add(w,'gaul',kind);
+    /* On attache l'habitant à son combattant : sans ça, seuls les soldats
+       pouvaient mourir pour de bon, et un paysan écrasé sous une pierre
+       revenait vaquer le lendemain comme si de rien n'était. */
+    const gu=add(w,'gaul',kind);
+    if(rec) gu.rec=rec;
   });
   // --- murs et entraînement : ils ne donnaient qu'un pourcentage à l'écran.
   // Ici ils rendent chaque défenseur réellement plus dur à abattre.
@@ -7755,6 +7838,11 @@ function raidBuild(scene){
               +(S.village.includes('camp')?0.15:0);
   if(fort>1) units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
     u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); } });
+  /* Le terrain d'entraînement ne faisait qu'épaissir les peaux. On s'y exerce
+     surtout à FRAPPER : il rend le coup plus sûr, et c'est ce qui distingue une
+     armée complète d'un village qui a juste bâti des murs. */
+  if(S.village.includes('entrainement'))
+    units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0) u.atk=Math.round(u.atk*1.34); });
   V3.fort=fort;
   // --- les guerriers de l'escouade quittent leur groupe pour se battre
   squadKeys().concat(['chefguerre']).forEach(key=>{
@@ -7793,35 +7881,10 @@ function raidBuild(scene){
   }
   // --- la colonne romaine, alignée au sud, hors du village
   const fin=!!V3.pendFinal; V3.pendFinal=0;
+  V3.pendFinalFlag=fin;
   const F=fin?legionForce():romanForce();
   if(fin){
-    /* Trois manipules serrés, en damier, comme on l'apprend à Rome. Chacun
-       avance d'un bloc : c'est ce qui rend la chose impressionnante, plus que
-       le nombre. */
-    const MAN=[[-46,206],[0,192],[46,206]];
-    for(let i=0;i<F.n;i++){
-      const m=i%3, k=Math.floor(i/3);
-      const row=Math.floor(k/3), col=k%3;
-      const g=legionary(i,false); scene.add(g);
-      const u=add(g,'rome','legion',MAN[m][0]+(col-1)*11,MAN[m][1]+row*13);
-      u.man=m;                                  // son manipule
-    }
-    // les centurions, un par manipule, en tête
-    for(let i=0;i<F.boss;i++){ const g=legionary(i,true); scene.add(g);
-      const u=add(g,'rome','centurion',MAN[i%3][0],MAN[i%3][1]-15); u.man=i%3; }
-    // la cavalerie déborde par les ailes : plus rapide, elle prend de large
-    for(let i=0;i<F.horse;i++){
-      const sd=i%2?1:-1, k=Math.floor(i/2);
-      const g=horseman(i); scene.add(g);
-      const u=add(g,'rome','cavalier',sd*(112+k*20),176+k*10);
-      u.sp=15.5; u.wing=sd; u.rider=1;
-    }
-    // et derrière, les machines : elles ne chargent pas, elles écrasent
-    for(let i=0;i<F.siege;i++){
-      const g=onager(); scene.add(g);
-      const u=add(g,'rome','baliste',(i-(F.siege-1)/2)*66,242);
-      u.siege=1; u.sp=0; u.cd=6+i*3.5; u.arm=g.userData.arm; u.rock=g.userData.rock;
-    }
+    V3.romeAdd=add;                     // la fabrique reste disponible pour les vagues
   }else{
     for(let i=0;i<F.n;i++){
       const g=legionary(i,false);
@@ -7857,7 +7920,8 @@ function raidBuild(scene){
     const warn=5.5+(S.village.includes('tour')?5:0);
     units.forEach(u=>{ if(u.side==='rome') u.wait=warn; });
   }
-  V3.raid={units, t:0, over:0, spark:[], final:fin, shots:[], dust:[], shake:0, slain:[]};
+  V3.raid={units, t:0, over:0, spark:[], final:fin, shots:[], dust:[], shake:0, slain:[],
+           acts:fin?0:undefined, fires:[], siegeN:0};
   if(fin){
     /* Boulets et gerbes de poussière : deux poignées d'objets réutilisés en
        boucle. Rien ne s'alloue pendant la bataille — c'est ce qui garde
@@ -7947,23 +8011,62 @@ function raidBanner(){
    la troupe. Le bras recule pendant le rearmement puis claque d'un coup — c'est
    le seul mouvement, et il se voit de l'autre bout du champ. */
 function siegeFire(u,R,scene){
-  const live=R.units.filter(x=>x.side==='gaul'&&!x.dead&&x.atk>0);
-  if(!live.length) return;
-  // on vise là où ils sont le plus serrés : une pierre bien placée en couche trois
-  let best=live[0], bn=-1;
-  live.forEach(a=>{ let n=0;
-    live.forEach(b=>{ if(Math.hypot(a.g.position.x-b.g.position.x,
-                                    a.g.position.z-b.g.position.z)<17) n++; });
-    if(n>bn){ bn=n; best=a; } });
   const sh=R.shots.find(x=>!x.live); if(!sh) return;
-  const spread=9;
+  let tx=null, tz=null;
+  /* Un onagre ne mitraille pas la piétaille : une pierre sur deux passe
+     par-dessus le rempart et tombe sur les toits. C'est le but d'un siège —
+     et c'est pour ça qu'une victoire laisse le village noirci. */
+  u.overshoot=!u.overshoot;
+  if(u.overshoot&&R.final){
+    /* Une machine qui tire par-dessus un mur ne voit pas ce qu'il y a derrière.
+       Elle touche les toits — et quelquefois ceux qui s'y abritent. C'est la
+       part la plus cruelle du jour J, et c'est celle qui doit exister : on ne
+       traverse pas un siège sans perdre quelqu'un. */
+    const hid=R.units.filter(x=>x.side==='gaul'&&!x.dead&&(x.hide||x.atk<=0));
+    if(hid.length&&Math.random()<0.5){
+      const h=hid[Math.floor(Math.random()*hid.length)];
+      tx=h.g.position.x+(Math.random()-0.5)*14;
+      tz=h.g.position.z+(Math.random()-0.5)*14;
+    }
+    const keys=tx!==null?[]:Object.keys(V3.place||{}).filter(k=>{
+      const base=String(k).split('#')[0];
+      return !NOCLIP[base]&&!NODRAG[base]&&V3.place[k];
+    });
+    if(keys.length){
+      const k=keys[Math.floor(Math.random()*keys.length)], g=V3.place[k];
+      tx=g.position.x+(Math.random()-0.5)*10;
+      tz=g.position.z+(Math.random()-0.5)*10;
+    }
+  }
+  if(tx===null){
+    const live=R.units.filter(x=>x.side==='gaul'&&!x.dead&&x.atk>0);
+    if(!live.length) return;
+    let best=live[0], bn=-1;
+    live.forEach(a=>{ let n=0;
+      live.forEach(b=>{ if(Math.hypot(a.g.position.x-b.g.position.x,
+                                      a.g.position.z-b.g.position.z)<17) n++; });
+      if(n>bn){ bn=n; best=a; } });
+    tx=best.g.position.x+(Math.random()-0.5)*9;
+    tz=best.g.position.z+(Math.random()-0.5)*9;
+  }
   sh.live=1; sh.t=0; sh.dur=1.5;
   sh.x0=u.g.position.x; sh.z0=u.g.position.z-14;
-  sh.x1=best.g.position.x+(Math.random()-0.5)*spread;
-  sh.z1=best.g.position.z+(Math.random()-0.5)*spread;
+  sh.x1=tx; sh.z1=tz;
   sh.m.visible=true; sh.m.position.set(sh.x0,10,sh.z0);
   u.armT=0.55;                                   // le bras claque
   SFX.hit&&SFX.hit();
+}
+/* quelle bâtisse la pierre a-t-elle touchée ? */
+function buildingHitAt(x,z){
+  let best=null, bd=1e9;
+  Object.keys(V3.place||{}).forEach(k=>{
+    const base=String(k).split('#')[0];
+    if(NOCLIP[base]||NODRAG[base]) return;            // ni murs ni escouades
+    const g=V3.place[k]; if(!g) return;
+    const d=Math.hypot(g.position.x-x,g.position.z-z);
+    if(d<footOf(k)+9&&d<bd){ bd=d; best=[k,g]; }
+  });
+  return best;
 }
 function siegeImpact(R,x,z){
   // la gerbe de poussière
@@ -7972,16 +8075,93 @@ function siegeImpact(R,x,z){
          d.material.opacity=0.85; d.userData.t=0.9; }
   R.shake=Math.max(R.shake,0.9);
   SFX.ko&&SFX.ko();
+  // le toit prend
+  const hit=buildingHitAt(x,z);
+  if(hit&&R.final&&V3.scene){
+    const f=fireSpawn(R,V3.scene,hit[0],hit[1]);
+    if(f){ toast('🔥 '+t('Le toit de ','The roof of ')+buildingLabel(hit[0])
+                 +t(' a pris feu !',' has caught fire!'));
+           R.shake=1.2; }
+  }
   // 26 unités de rayon : ce qui est dessous prend, gaulois comme romain
   R.units.forEach(u=>{
     if(u.dead) return;
     const dd=Math.hypot(u.g.position.x-x,u.g.position.z-z);
     if(dd>20) return;
-    const dmg=Math.round(24*(1-dd/20)*(u.side==='rome'?0.5:1));
+    /* Une pierre d'onagre pèse cent livres. Sur un homme sans armure elle ne
+       laisse rien ; sur un guerrier casqué elle entame, sans le coucher. C'est
+       elle — et pas l'usure de la mêlée — qui fait qu'un village même au
+       complet enterre du monde le jour J, sans pour autant perdre la bataille :
+       ceux qui tombent sont ceux qui n'auraient pas dû être là. */
+    const soft=(u.hpMax||1)<=55;
+    const dmg=Math.round((1-dd/20)*(soft?(u.hpMax*1.25):26)*(u.side==='rome'?0.5:1));
     if(dmg<=0) return;
     u.hp-=dmg; setBar(u);
     if(u.hp<=0) raidFell(u,R);
   });
+}
+/* ============================================================
+   LE FEU AUX TOITS
+   ------------------------------------------------------------
+   Une pierre de cent livres qui tombe sur une chaumière, ça ne fait pas rien :
+   le toit prend, la fumée monte, et si personne n'éteint, il n'en reste rien.
+   Même une victoire laisse le village noirci — c'est ce qui donne son prix au
+   jour J. Flammes et fumées sont recyclées : le feu ne coûte pas une image.
+   ============================================================ */
+function fireSpawn(R,scene,key,g){
+  R.fires=R.fires||[];
+  if(R.fires.some(f=>f.key===key)) return null;      // il brûle déjà
+  const fm=new THREE.MeshBasicMaterial({color:COL.fire});
+  const grp=new THREE.Group();
+  const flames=[];
+  for(let i=0;i<4;i++){
+    const f=new THREE.Mesh(new THREE.ConeGeometry(1.6+Math.random()*1.6,6+Math.random()*6,6),fm.clone());
+    f.position.set((Math.random()-0.5)*11, 5+Math.random()*7, (Math.random()-0.5)*11);
+    f.userData.p=Math.random()*6; grp.add(f); flames.push(f);
+  }
+  const puffs=[];
+  const sm=new THREE.MeshLambertMaterial({color:0x3a3632,transparent:true,opacity:0.6});
+  for(let i=0;i<4;i++){
+    const q=new THREE.Mesh(new THREE.IcosahedronGeometry(2.6,0),sm.clone());
+    q.userData.off=i/4; grp.add(q); puffs.push(q);
+  }
+  const light=new THREE.PointLight(0xff7a20,1.8,90); light.position.y=9; grp.add(light);
+  grp.position.set(g.position.x,0,g.position.z);
+  scene.add(grp);
+  const F={key, grp, flames, puffs, light, t:0, life:0, hp:1};
+  R.fires.push(F);
+  return F;
+}
+function fireTick(R,dt,tt){
+  const FS=R.fires; if(!FS||!FS.length) return;
+  for(const F of FS){
+    F.t+=dt;
+    F.flames.forEach((f,i)=>{
+      const k=0.7+Math.abs(Math.sin(tt*7+f.userData.p))*0.8;
+      f.scale.set(k,1+Math.sin(tt*9+i)*0.35,k);
+      f.rotation.y=tt*2.4+i;
+    });
+    F.puffs.forEach(q=>{
+      const k=((tt*0.32+q.userData.off)%1);
+      q.position.set(Math.sin(k*6+q.userData.off*9)*4, 8+k*40, Math.cos(k*5)*3);
+      q.scale.setScalar(0.8+k*3.4);
+      q.material.opacity=0.62*(1-k);
+    });
+    F.light.intensity=1.4+Math.sin(tt*13+F.t)*0.7;
+  }
+}
+/* ce que le feu a coûté : on éteint tout, on note ce qui est perdu */
+function fireSettle(R,scene){
+  const FS=(R&&R.fires)||[];
+  const burnt=[];
+  FS.forEach(F=>{
+    if(scene) scene.remove(F.grp);
+    /* Plus le toit a brûlé longtemps, moins il en reste. Au-delà d'une minute
+       de flammes, la bâtisse est perdue et il faudra la rebâtir. */
+    if(F.t>52) burnt.push(F.key);
+  });
+  if(R) R.fires=[];
+  return burnt;
 }
 /* un combattant tombe */
 function raidFell(u,R){
@@ -7990,6 +8170,54 @@ function raidFell(u,R){
      est mort, et son nom sera lu à la fin — c'est ce qui rend la jauge
      militaire autre chose qu'un chiffre. */
   if(R.final&&u.side==='gaul'&&u.rec&&R.slain.indexOf(u.rec)<0) R.slain.push(u.rec);
+}
+/* ---------- une vague monte en ligne ---------- */
+function romeWave(R,scene,w,n){
+  const add=V3.romeAdd; if(!add||!scene) return 0;
+  const MAN=[[-46,214],[0,200],[46,214]];
+  const off=n*3;
+  let made=0;
+  for(let i=0;i<(w.legion||0);i++){
+    const m=(i+n)%3, k=Math.floor(i/3);
+    const g=legionary(i+off,false); scene.add(g);
+    const u=add(g,'rome','legion',MAN[m][0]+((i%3)-1)*11,MAN[m][1]+k*13);
+    u.man=m; u.wave=n; made++;
+  }
+  for(let i=0;i<(w.boss||0);i++){
+    const g=legionary(i+off,true); scene.add(g);
+    const u=add(g,'rome','centurion',MAN[(i+n)%3][0],MAN[(i+n)%3][1]-15);
+    u.man=(i+n)%3; u.wave=n; made++;
+  }
+  for(let i=0;i<(w.horse||0);i++){
+    const sd=(i+n)%2?1:-1;
+    const g=horseman(i+off); scene.add(g);
+    const u=add(g,'rome','cavalier',sd*(118+i*18),182+i*10);
+    u.sp=15.5; u.wing=sd; u.rider=1; u.wave=n; made++;
+  }
+  for(let i=0;i<(w.siege||0);i++){
+    const g=onager(); scene.add(g);
+    const u=add(g,'rome','baliste',(R.siegeN||0)*62-31,246);
+    R.siegeN=(R.siegeN||0)+1;
+    u.siege=1; u.sp=0; u.cd=7+i*4; u.arm=g.userData.arm; u.rock=g.userData.rock;
+    made++;
+  }
+  // une vague fraîche prend le temps de se former, comme la première
+  R.units.forEach(u=>{ if(u.wave===n) u.wait=R.t+4.5; });
+  /* À chaque nouvel acte, le tir de barrage se règle et un toit part. On ne le
+     laisse pas au hasard : le joueur DOIT voir son village encaisser, même
+     quand il gagne. C'est le prix du jour J. */
+  if(n>=1&&scene){
+    const keys=Object.keys(V3.place||{}).filter(k=>{
+      const base=String(k).split('#')[0];
+      return !NOCLIP[base]&&!NODRAG[base]&&V3.place[k]&&!(R.fires||[]).some(f=>f.key===k);
+    });
+    if(keys.length){
+      const k=keys[Math.floor(Math.random()*keys.length)], g=V3.place[k];
+      siegeImpact(R,g.position.x,g.position.z);
+    }
+  }
+  if(made){ toast(t(w.fr,w.en)); SFX.ko&&SFX.ko(); raidBanner(); }
+  return made;
 }
 function siegeTick(R,dt,scene){
   // les boulets en vol : parabole, et rotation pour qu'on les suive
@@ -8021,13 +8249,23 @@ function raidTick(dt,tt,scene){
   /* Un siège ne dure pas éternellement : si la légion tourne autour des murs
      sans trouver la porte, elle finit par l'enfoncer. Sans ça, une muraille
      pouvait figer la bataille au lieu de la gagner. */
-  if(!V3.wallDown&&R.t>75&&wallRing()){
+  const breach=R.final?200:75;      // le jour J, la porte tient jusqu'au troisième acte
+  if(!V3.wallDown&&R.t>breach&&wallRing()){
     V3.wallDown=1;
     toast('🪓 '+t('La porte cède ! Ils sont dans le village.','The gate gives way! They are inside the village.'));
     SFX.ko();
   }
+  /* les actes se succèdent à l'heure dite : c'est ce qui fait durer, et ce qui
+     empêche de croire que c'est gagné */
+  if(R.final&&R.acts!==undefined){
+    while(R.acts<FINAL_ACTS.length&&R.t>=FINAL_ACTS[R.acts].at){
+      romeWave(R,scene,FINAL_ACTS[R.acts],R.acts);
+      R.acts++;
+    }
+  }
   const U=R.units;
   if(R.shots) siegeTick(R,dt,scene);
+  if(R.fires&&R.fires.length) fireTick(R,dt,tt);
   // éclats de coups
   (R.spark||[]).forEach(sp=>{ if(!sp.visible) return;
     sp.userData.t-=dt; sp.scale.setScalar(1+(0.22-sp.userData.t)*6);
@@ -8111,9 +8349,14 @@ function raidTick(dt,tt,scene){
         continue;
       }
     }
-    // --- les enfants fuient vers le nord du village
-    if(u.atk<=0){
-      const fx=u.g.position.x*0.4, fz=-180;
+    // --- les enfants et les paysans se replient au fond du village
+    if(u.atk<=0||u.hide){
+      /* On se met à l'abri DANS le village, au fond, à l'opposé de la porte —
+         pas en rase campagne au nord, où il ne tombe jamais rien. Derrière le
+         rempart on est plus tranquille ; on n'y est pas invulnérable. */
+      const w3=wallRing();
+      const a3=w3?w3.gate+Math.PI:-Math.PI/2, r3=w3?w3.r*0.42:60;
+      const fx=Math.cos(a3)*r3+(u.hpMax%7-3)*7, fz=Math.sin(a3)*r3+(u.hpMax%5-2)*7;
       const dx=fx-u.g.position.x, dz=fz-u.g.position.z, d=Math.hypot(dx,dz)||1;
       if(d>6){
         const st=steerAround(u.g.position.x,u.g.position.z,dx/d,dz/d,3,d,u.g.userData);
@@ -8190,8 +8433,18 @@ function raidTick(dt,tt,scene){
   // les barres regardent la caméra
   if(V3.cam) U.forEach(u=>{ if(u.bar&&u.bar.visible) u.bar.quaternion.copy(V3.cam.quaternion); });
   if(R.t>0.4&&!R.over){
-    if(!raidAlive('rome')) raidEnd(true);
+    /* Le jour J, un champ vide ne veut pas dire que c'est fini : la colonne
+       suivante n'est pas encore sortie du bois. On n'annonce la victoire que
+       lorsque le dernier acte est passé ET qu'il ne reste plus un Romain. */
+    const more=R.final&&R.acts!==undefined&&R.acts<FINAL_ACTS.length;
+    if(!raidAlive('rome')&&!more) raidEnd(true);
     else if(!raidAlive('gaul')) raidEnd(false);
+    else if(!raidAlive('rome')&&more&&!R.lull){
+      R.lull=1;
+      toast('🌫️ '+t('Un silence. Puis, au loin, des cornes romaines…',
+                     '🌫️ A silence. Then, far off, Roman horns…'));
+    }
+    if(raidAlive('rome')) R.lull=0;
   }
 }
 /* ---------- le bilan de la bataille ----------
@@ -8309,11 +8562,35 @@ function buryTheFallen(R){
         '🕯️ '+names.join(', ')+' fell defending the village.');
   return {names, n:names.length};
 }
+/* ce que les incendies ont emporté : on retire les bâtisses perdues */
+function razeBurnt(R){
+  const keys=fireSettle(R,V3.scene);
+  if(!keys.length) return {names:[],n:0};
+  const names=keys.map(k=>buildingLabel(k));
+  keys.forEach(k=>{
+    const base=String(k).split('#')[0];
+    const it=SHOP.find(x=>x.id===base);
+    if(it&&it.stack){
+      S.stack=S.stack||{};
+      S.stack[base]=Math.max(0,(S.stack[base]||1)-1);
+      if(!S.stack[base]) S.village=S.village.filter(x=>x!==base);
+    }else S.village=S.village.filter(x=>x!==base);
+    if(S.vpos) delete S.vpos[k];
+    if(S.vrot) delete S.vrot[k];
+    // qui y logeait se retrouve à la rue : syncPeople le relogera
+    (S.people||[]).forEach(r=>{ if(r.home===k) r.home='founder'; });
+  });
+  chron('🔥 '+t('Les catapultes ont réduit en cendres : ','Catapults burned to the ground: ')
+        +names.join(', ')+'.', '🔥 Catapults burned to the ground: '+names.join(', ')+'.', {repeat:1});
+  return {names, n:names.length};
+}
 function finalEnd(win){
   const R=V3.raid;
   if(win){
     S.finalDone='won';
     const fallen=buryTheFallen(R);
+    const razed=razeBurnt(R);
+    syncPeople();
     gainCoins(600); gainXp(400);
     S.res=S.res||{food:0,wood:0,iron:0};
     ['food','wood','iron'].forEach(k=>{ S.res[k]=(S.res[k]||0)+40; });
@@ -8322,16 +8599,21 @@ function finalEnd(win){
           '🏆 THE LEGION WAS BROKEN. The village is free.');
     SFX.win(); confetti(320);
     showOverlay('🏆', t('Le village est sauvé','The village is saved'),
-      (fallen.n
-        ? t('La légion est brisée — mais <b>'+fallen.n+' des tiens ne se relèveront pas</b>.',
-            'The legion is broken — but <b>'+fallen.n+' of your own will not get up again</b>.')
-          +'<br><i style="color:var(--dim)">🕯️ '+esc(fallen.names.join(', '))+'</i>'
+      (fallen.n||razed.n
+        ? t('La légion est brisée. Le village tient debout — de justesse.',
+            'The legion is broken. The village still stands — barely.')
+          +(fallen.n?'<br><b>'+fallen.n+t(' des tiens ne se relèveront pas.',' of your own will not get up again.')+'</b>'
+            +'<br><i style="color:var(--dim)">🕯️ '+esc(fallen.names.join(', '))+'</i>':'')
+          +(razed.n?'<br><b>🔥 '+razed.n+t(' bâtiment'+(razed.n>1?'s':'')+' réduit'+(razed.n>1?'s':'')+' en cendres.',
+                                            ' building'+(razed.n>1?'s':'')+' burned to the ground.')+'</b>'
+            +'<br><i style="color:var(--dim)">'+esc(razed.names.join(', '))+'</i>':'')
         : t('La légion est brisée. Pas une hutte n\'a brûlé, pas un habitant n\'est tombé.',
             'The legion is broken. Not one hut burned, not one villager fell.'))
       +'<br><br>'+t('<b>+600 🪙</b>, <b>+400 XP</b> et 40 de chaque ressource. Va décrocher ce permis.',
                     '<b>+600 🪙</b>, <b>+400 XP</b> and 40 of every resource. Now go and get that licence.'));
   }else{
     S.finalDone='lost';
+    fireSettle(R,V3.scene);
     const r=burnVillage();
     torchVillage(V3.scene);
     SFX.ko();
@@ -8347,9 +8629,10 @@ function finalEnd(win){
   checkBadges(); save();
   V3.raid=null; V3.raidCam=0; V3.wallDown=0;
   clearTimeout(V3.raidT);
-  V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?900:2600);
+  V3.raidT=setTimeout(()=>{ V3.raidT=0; if(CUR.screen==='village'&&!V3.raid) render(); },win?1800:2600);
 }
-function raidAbort(){ V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; V3.wallDown=0; }
+function raidAbort(){ if(V3.raid) fireSettle(V3.raid,V3.scene);
+  V3.raid=null; V3.raidPending=0; V3.pendFinal=0; V3.raidCam=0; V3.wallDown=0; }
 function raidBtnHtml(){
   if(finalOpen()){
     const F=legionForce(), due=finalDue(), c=countdown();
