@@ -397,6 +397,12 @@ html,body{overflow-x:hidden}
 .v3d-rot button:active{transform:translateY(1px)}
 /* sortir du mode déplacement depuis la vue : le bouton de l'onglet Bâtir n'est
    pas toujours à l'écran, et on se retrouvait coincé à traîner des maisons */
+.crashlog{margin-top:10px;padding:8px;border-radius:8px;background:#0b0f16;border:1px solid var(--edge);
+  color:#9fb0c4;font-size:10.5px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto}
+.v3dfail{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:16px;text-align:center;background:#101822;color:var(--dim);font-size:12.5px;z-index:6}
+.v3dfail b{color:var(--bus);font-size:13.5px}
+.v3dfail .btn{width:auto;padding:8px 14px}
 .siegebox{border-color:var(--stop);background:#22100e}
 .siegelist{display:flex;flex-direction:column;gap:6px;margin-top:9px}
 .siegelist>div{padding:8px 10px;border-radius:9px;font-size:12.5px;line-height:1.42;
@@ -3334,17 +3340,101 @@ function startCd(){
     box.querySelectorAll('.cdc b').forEach((b,i)=>{ b.textContent=String(v[i]).padStart(2,'0'); });
   },1000);
 }
+/* ============================================================
+   UN ÉCRAN BLANC N'EST PAS UNE RÉPONSE
+   ------------------------------------------------------------
+   Jusqu'ici, la moindre exception dans un écran laissait la page vide : rien à
+   lire, rien à toucher, aucune idée de ce qui s'est passé. Une sauvegarde d'une
+   version précédente, un cache à moitié à jour, et le joueur est devant du noir.
+   Désormais on rattrape, on AFFICHE ce qui a cassé, et on propose trois sorties :
+   recharger, vider le cache, ou réparer la sauvegarde (les progrès sont gardés).
+   ============================================================ */
+function crashScreen(err,where){
+  const msg=String((err&&(err.stack||err.message))||err||'?').split('\n').slice(0,3).join('\n');
+  return '<div class="screen"><div class="panel finalwarn">'
+   +'<div class="rbtitle">🛠️ '+t('QUELQUE CHOSE A CASSÉ','SOMETHING BROKE')+'</div>'
+   +'<p class="small" style="margin:8px 0">'
+   +t('L\'écran <b>'+esc(where||'?')+'</b> n\'a pas pu s\'afficher. Tes progrès sont intacts — '
+      +'essaie dans l\'ordre :','The <b>'+esc(where||'?')+'</b> screen could not be drawn. Your progress is '
+      +'safe — try these in order:')+'</p>'
+   +'<div class="menu">'
+   +'<button class="btn btn-bus" style="justify-content:center" onclick="location.reload()">🔄 '
+   +t('Recharger','Reload')+'</button>'
+   +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.hardReload()">🧹 '
+   +t('Vider le cache et recharger','Clear the cache and reload')+'</button>'
+   +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.repairSave()">🩹 '
+   +t('Réparer la sauvegarde','Repair the save')+'</button>'
+   +'<button class="btn btn-ghost" style="justify-content:center" onclick="G.go(\'home\')">🏠 '
+   +t('Retour au QG','Back to HQ')+'</button>'
+   +'</div>'
+   +'<pre class="crashlog">'+esc(msg)+'</pre></div></div>';
+}
+/* on jette le cache du service worker : le cas « moitié ancienne version » */
+function hardReload(){
+  const done=()=>location.reload(true);
+  try{
+    const jobs=[];
+    if(window.caches&&caches.keys) jobs.push(caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k)))));
+    if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)
+      jobs.push(navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))));
+    Promise.all(jobs).then(done,done);
+    setTimeout(done,1500);
+  }catch(e){ done(); }
+}
+/* on remet d'aplomb ce qui peut l'être sans rien perdre d'important */
+function repairSave(){
+  try{
+    const d=defaults();
+    Object.keys(d).forEach(k=>{
+      const ref=d[k], v=S[k];
+      if(v==null){ S[k]=ref; return; }
+      if(Array.isArray(ref)!==Array.isArray(v)||typeof ref!==typeof v) S[k]=ref;
+    });
+    S.res=Object.assign({food:0,wood:0,iron:0},S.res);
+    S.people=(S.people||[]).filter(r=>r&&r.id);
+    S.events=(S.events||[]).filter(e=>e&&e.t);
+    S.village=(S.village||[]).filter(x=>typeof x==='string'&&SHOP.some(i=>i.id===x));
+    V3.raid=null; V3.raidPending=0; V3.edit=false; V3.hud=null; V3.sel=null;
+    save();
+    toast('🩹 '+t('Sauvegarde réparée.','Save repaired.'));
+  }catch(e){}
+  setTimeout(()=>location.reload(),400);
+}
 function render(){
-  renderHud();
-  const app=$('#app');
+  const app=$('#app'); if(!app) return;
+  try{ renderHud(); }catch(e){}
   const fn={home:scrHome, worlds:scrWorlds, run:scrRun, boss:scrBoss, blitz:scrBlitz,
     exam:scrExam, examEnd:scrExamEnd, grimoire:scrGrimoire, exams:scrExams,
     village:scrVillage, hard:scrHard, nemesis:scrNemesis,
     badges:scrBadges, settings:scrSettings, stats:scrStats}[CUR.screen]||scrHome;
-  app.innerHTML='<div class="screen">'+fn()+'</div>';
+  try{
+    app.innerHTML='<div class="screen">'+fn()+'</div>';
+  }catch(e){
+    try{ app.innerHTML=crashScreen(e,CUR.screen); }catch(e2){
+      app.innerHTML='<div class="screen"><div class="panel"><p>Erreur. '
+        +'<button onclick="location.reload()">Recharger</button></p></div></div>';
+    }
+    return;
+  }
   if(CUR.screen==='blitz'&&CUR.phase==='play') startBlitzTimer();
-  if(CUR.screen==='village'){ v3dInit(); miniInit(); }
+  /* La vue 3D est la partie la plus fragile (WebGL, 600 ko de bibliothèque) :
+     si elle tombe, elle ne doit pas emporter l'écran avec elle. */
+  if(CUR.screen==='village'){
+    try{ v3dInit(); }catch(e){ v3dFail(e); }
+    try{ miniInit(); }catch(e){}
+  }
   if($('#cdlive')) startCd();
+}
+/* la vue 3D refuse de démarrer : on le dit, dans la boîte, avec une sortie */
+function v3dFail(err){
+  const host=document.getElementById('v3d'); if(!host) return;
+  const why=(typeof THREE==='undefined')
+    ? t('la bibliothèque 3D n\'a pas été chargée','the 3D library did not load')
+    : t('la carte graphique a refusé de démarrer','the graphics context refused to start');
+  host.innerHTML='<div class="v3dfail"><b>🗿 '+t('Le village ne s\'affiche pas','The village will not draw')+'</b>'
+   +'<span>'+why+'.</span>'
+   +'<button class="btn btn-bus" onclick="G.hardReload()">🧹 '+t('Vider le cache et recharger','Clear the cache and reload')+'</button>'
+   +'<button class="btn btn-ghost" onclick="location.reload()">🔄 '+t('Recharger','Reload')+'</button></div>';
 }
 
 /* la série en cours suit le joueur d'un écran à l'autre : on la lui rappelle */
@@ -6662,7 +6752,8 @@ function v3dHost(){
 }
 function v3dInit(){
   const host=$('#v3d'), cv=$('#v3dc');
-  if(!host||!cv||typeof THREE==='undefined') return;
+  if(!host||!cv) return;
+  if(typeof THREE==='undefined'){ v3dFail(); return; }
   // couleurs authorées en sRGB : sans ça, double conversion gamma = tout délavé
   THREE.ColorManagement.enabled=true;
   buildTextures();
@@ -10578,6 +10669,7 @@ const G={go, openWorld, startRun, answer, next, startBoss, bossAnswer, bossNext,
   raidAsk, raidStart, setTab, finalAsk, doInstall, dismissInstall, setStance, giveOrder, guardBuilding, squadOrders,
   hudOpen, hudClose, hudRename, hudLeave, hudSquads, toggleSquad,
   grantLeave, rejoinArmy, renameVillager, renameFrom, tapPerson, tapBuilding, toggleNight, hudMove,
+  hardReload, repairSave,
   caravanSell, caravanBuy, undoMove, placeDone};
 window.G=G;
 /* ---------- hors-ligne ----------

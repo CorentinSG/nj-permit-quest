@@ -8,7 +8,10 @@
        ne changent pas d'un jour à l'autre et pèsent 600 ko : inutile de les
        retélécharger à chaque ouverture.
 */
-const CACHE='route440-v1';
+/* Le nom du cache est une VERSION. On le change dès qu'un doute existe sur ce
+   qui a été mis de côté : l'ancien est effacé à l'activation, et le joueur
+   repart sur des fichiers propres. */
+const CACHE='route440-v2';
 const CORE=['./','./index.html','./three.min.js','./manifest.webmanifest',
             './icon-192.png','./icon-512.png','./icon-maskable.png','./apple-touch-icon.png'];
 
@@ -36,11 +39,18 @@ self.addEventListener('fetch',e=>{
     );
     return;
   }
+  /* Cache d'abord pour rester instantané, MAIS on revalide derrière : un
+     three.min.js à moitié téléchargé ne pouvait jamais se réparer tout seul, et
+     le village restait vide pour toujours. */
   e.respondWith(
-    caches.match(req).then(hit=>hit||fetch(req).then(r=>{
-      if(r&&r.status===200){ const copy=r.clone();
-        caches.open(CACHE).then(c=>c.put(req,copy)); }
-      return r;
-    }))
+    caches.match(req).then(hit=>{
+      const net=fetch(req).then(r=>{
+        if(r&&r.status===200){ const copy=r.clone();
+          caches.open(CACHE).then(c=>c.put(req,copy)); }
+        return r;
+      }).catch(()=>hit);
+      if(hit){ net.catch(()=>{}); return hit; }
+      return net;
+    })
   );
 });
