@@ -1696,9 +1696,14 @@ function resLabel(rc){
   const ic={food:'🌾',wood:'🪵',iron:'⚙️'};
   return Object.keys(rc).map(k=>rc[k]+' '+ic[k]).join(' ');
 }
-const ARMY_MAX=132;   // puissance totale si tout est acheté
+/* La jauge comptait une escouade quel qu'en soit le nombre : on pouvait la
+   remplir à 100 % avec quatre hommes sur le terrain et se faire écraser le jour
+   J. Elle compte maintenant chaque escouade levée — c'est elle qui doit prédire
+   l'issue de l'assaut, sinon elle ne sert à rien. */
+const SQUAD_MAX=3;    // au-delà, la jauge est pleine
+const ARMY_MAX=168;   // puissance totale : tout acheté, trois escouades
 function armyPower(){ return SHOP.filter(i=>i.cat==='army'&&S.village.includes(i.id))
-  .reduce((n,i)=>n+i.pw,0); }
+  .reduce((n,i)=>n+i.pw*(i.stack?Math.min(SQUAD_MAX,nOwned(i.id)):1),0); }
 function armyPct(){ return Math.min(100,Math.round(armyPower()/ARMY_MAX*100)); }
 
 /* ---------------- BADGES ---------------- */
@@ -2244,10 +2249,30 @@ function prodPerHour(){
 function upkeepPerHour(){ return Math.max(1,Math.round(popCount()*0.4*seasonMult('eat'))); }
 function foodBalance(){ return prodPerHour().food-upkeepPerHour(); }
 /* applique production et consommation depuis le dernier passage (12 h max) */
+/* ---------- LE SIÈGE ----------
+   À l'heure dite, la légion est devant les portes. On ne va pas moissonner le
+   blé sous le nez des centurions : tant que l'assaut n'a pas été livré, plus
+   rien n'entre — ni récolte, ni tribut, ni marchand. Le seul moyen de rouvrir
+   les champs, c'est de sortir et de gagner. */
+function underSiege(){ return finalDue(); }
+function siegeNote(){
+  return '<div class="panel" style="margin-bottom:12px;border-color:var(--stop);background:#22100e">'
+   +'<div class="eyebrow" style="color:var(--stop)">🏛️ '+t('LE VILLAGE EST ASSIÉGÉ','THE VILLAGE IS UNDER SIEGE')+'</div>'
+   +'<p class="small" style="margin:6px 0 0">'
+   +t('La légion campe devant les portes. <b>Plus rien n\'est récolté</b> : ni grain, ni bois, ni fer, '
+      +'ni tribut, et le marchand ne passe plus.<br>Les champs rouvriront quand tu auras livré bataille — '
+      +'et gagné.',
+      'The legion is camped at the gates. <b>Nothing is harvested</b>: no grain, no wood, no iron, '
+      +'no tribute, and the pedlar keeps away.<br>The fields reopen when you have given battle — '
+      +'and won.')+'</p></div>';
+}
 function collectProduction(){
   if(!S.village||!S.village.length) return null;
   const now=Date.now();
   if(!S.lastProd){ S.lastProd=now; save(); return null; }
+  /* On avance quand même l'horloge : au retour, on ne touche pas six heures de
+     récolte faites sous le siège. Rien n'a poussé, rien ne se rattrape. */
+  if(underSiege()){ S.lastProd=now; save(); return {sieged:true, hours:0}; }
   const hours=Math.min(12,Math.floor((now-S.lastProd)/36e5));
   if(hours<1) return null;
   S.lastProd+=hours*36e5;
@@ -2271,6 +2296,7 @@ function collectTribute(){
   if(!S.village||!S.village.length) return 0;
   const now=Date.now();
   if(!S.lastTribute){ S.lastTribute=now; save(); return 0; }
+  if(underSiege()){ S.lastTribute=now; save(); return 0; }
   if(!allNeedsMet()){ S.lastTribute=now; save(); return 0; }
   const hours=Math.floor((now-S.lastTribute)/36e5);
   if(hours<1) return 0;
@@ -2287,7 +2313,8 @@ function tributeIn(){          // minutes avant la prochaine pièce
 function needsHtml(){
   const pop=popCount(), met=allNeedsMet();
   const SE=season(), cap=storeCap();
-  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
+  let h=(underSiege()?siegeNote():'')
+   +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
    +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>'
    +seasonHtml()
    +'<div class="stock">'+NEEDS.map(n=>{
@@ -2372,7 +2399,9 @@ function caravanPrice(k,buy){
   return Math.max(1,Math.round(buy?p*1.35:p*0.75));       // sa marge
 }
 const CARAVAN_LOT=10;
-function caravanSell(k){                                   // le village vend au marchand
+function caravanSell(k){
+  if(underSiege()){ toast('🏛️ '+t('Les routes sont coupées : le marchand ne passe pas sous le siège.',
+                                   'The roads are cut: no pedlar gets through a siege.')); return false; }
   const c=caravanState(); if(!c.here) return false;
   if(((S.res&&S.res[k])||0)<CARAVAN_LOT){
     toast(t('Il n\'y a pas '+CARAVAN_LOT+' à vendre.','You do not have '+CARAVAN_LOT+' to sell.')); return false; }
@@ -2385,7 +2414,9 @@ function caravanSell(k){                                   // le village vend au
   toast('🛒 +'+gain+' 🪙');
   return true;
 }
-function caravanBuy(k){                                    // le village achète au marchand
+function caravanBuy(k){
+  if(underSiege()){ toast('🏛️ '+t('Les routes sont coupées : le marchand ne passe pas sous le siège.',
+                                   'The roads are cut: no pedlar gets through a siege.')); return false; }
   const c=caravanState(); if(!c.here) return false;
   const cost=caravanPrice(k,true)*CARAVAN_LOT;
   if((S.coins||0)<cost){ toast(t('Pas assez de sesterces.','Not enough sesterces.')); return false; }
@@ -5592,6 +5623,65 @@ function legionary(i,centurion){
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   return g;
 }
+/* ---------- cheval de guerre ----------
+   Quatre membres articulés, encolure et croupe : de loin, ce qu'il faut pour
+   qu'on voie un galop. Les jambes battent depuis raidTick. */
+function horse(){
+  const g=new THREE.Group();
+  const C=0x6b4a32, CD=0x4a3222;
+  g.add(at(box(5.4,5,12,C),0,8,0));                       // corps
+  g.add(at(box(4,4.4,4.6,C),0,10.6,-6.6));                // poitrail
+  const nk=box(3,7.6,3.2,C); nk.rotation.x=-0.5;
+  g.add(at(nk,0,12.6,-7.4));
+  g.add(at(box(2.8,3,5,C),0,15.8,-9.6));                  // tête
+  g.add(at(box(.9,2,.9,CD),-1,17.6,-8.6)); g.add(at(box(.9,2,.9,CD),1,17.6,-8.6));
+  const mane=new THREE.Mesh(new THREE.PlaneGeometry(1.2,7),
+    new THREE.MeshLambertMaterial({color:0x2a1c12,side:THREE.DoubleSide}));
+  mane.rotation.y=Math.PI/2; g.add(at(mane,0,15.4,-7.2));
+  const tail=box(1.2,6,1.2,0x2a1c12); tail.rotation.x=0.6; g.add(at(tail,0,8.4,6.4));
+  const legs=[];
+  [[-2.2,-4.4],[2.2,-4.4],[-2.2,4.4],[2.2,4.4]].forEach(q=>{
+    const l=new THREE.Group();
+    l.add(at(box(1.7,8,1.7,CD),0,-4,0));
+    l.position.set(q[0],5.6,q[1]); g.add(l); legs.push(l);
+  });
+  g.userData.legs=legs;
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
+function horseman(i){
+  const g=new THREE.Group();
+  const h=horse(); g.add(h); g.userData.legs=h.userData.legs;
+  const r=legionary(i,false); r.position.set(0,10.2,-1.4); r.scale.setScalar(0.92);
+  g.add(r); g.userData.sword=r.userData.sword;
+  // manteau au vent, pour qu'on voie la charge
+  const cape=new THREE.Mesh(new THREE.PlaneGeometry(6,9),
+    new THREE.MeshLambertMaterial({color:0x8a2018,side:THREE.DoubleSide}));
+  cape.name='cape'; g.add(at(cape,0,14,2.2));
+  return g;
+}
+/* ---------- machine de siège romaine ----------
+   Un onagre : châssis, bras armé d'une pierre, treuil. Le bras se rearme et
+   claque à chaque tir — c'est ce mouvement qu'on voit de loin. */
+function onager(){
+  const g=new THREE.Group();
+  g.add(at(box(11,2.6,17,0x6a4c2c),0,4,0));
+  [-1,1].forEach(k=>{ const w=cyl(3.6,3.6,1.4,0x4a3320,12); w.rotation.z=Math.PI/2;
+    g.add(at(w,k*6,3.6,5)); g.add(at(w.clone(),k*6,3.6,-5)); });
+  [-1,1].forEach(k=>{ const b=box(2,13,2,0x6a4c2c); b.rotation.x=0.3;
+    g.add(at(b,k*4,10,1)); });
+  g.add(at(box(10,1.6,1.6,0x4a3320),0,16,-0.8));           // linteau d'arrêt
+  const arm=new THREE.Group();
+  arm.add(at(box(2.2,2.2,19,0x8a6438),0,0,-7));
+  const rock=sph(3,0x77797e,0); rock.name='rock'; arm.add(at(rock,0,0,-16));
+  arm.position.set(0,11,3); arm.rotation.x=-1.15; arm.name='arm';
+  g.add(arm); g.userData.arm=arm; g.userData.rock=rock;
+  // deux servants
+  [-1,1].forEach(k=>{ const c=legionary(2,false); c.scale.setScalar(0.9);
+    g.add(at(c,k*8.5,0,7)); });
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
 Object.assign(B3,{
   camp(){ const g=new THREE.Group();
     [[-9,-4,1],[9,-3,.95],[0,7,1.05]].forEach((t,i)=>{
@@ -7097,7 +7187,11 @@ const FIGHT={
   guerrier: {hp:80,  atk:13, n:'Guerrier',          ne:'Warrior'},
   chef:     {hp:130, atk:18, n:'Chef de guerre',    ne:'Warlord'},
   legion:   {hp:65,  atk:11, n:'Légionnaire',       ne:'Legionary'},
-  centurion:{hp:140, atk:17, n:'Centurion',         ne:'Centurion'}
+  centurion:{hp:140, atk:17, n:'Centurion',         ne:'Centurion'},
+  /* Le jour J, César n'envoie pas une patrouille : de la cavalerie qui déborde
+     par les ailes, et des machines qui frappent avant même le contact. */
+  cavalier: {hp:150, atk:16, n:'Cavalier',           ne:'Cavalryman'},
+  baliste:  {hp:200, atk:0,  n:'Catapulte romaine',  ne:'Roman catapult'}
 };
 /* les métiers qui tiennent déjà un outil tranchant se défendent mieux */
 const ARMED_JOBS={chasse:1, bois:1, forge:1, druide:1, chef:1};
@@ -7164,7 +7258,10 @@ function finalEve(){
   return !!(c&&!c.past&&!S.finalDone&&c.d===0);
 }
 function finalOpen(){ return finalDue()||finalEve(); }
-function legionForce(){ return {n:11, boss:2}; }   // une vraie légion, toujours la même
+/* ---------- L'ORDRE DE BATAILLE DU JOUR J ----------
+   Trois manipules en damier, deux ailes de cavalerie, deux onagres derrière.
+   Toujours le même : ce n'est pas une rencontre, c'est un rendez-vous. */
+function legionForce(){ return {n:14, boss:3, horse:4, siege:2, total:23}; }
 function finalWarnHtml(){
   const c=countdown();
   if(!c||S.finalDone) return '';
@@ -7393,16 +7490,46 @@ function raidBuild(scene){
   // --- la colonne romaine, alignée au sud, hors du village
   const fin=!!V3.pendFinal; V3.pendFinal=0;
   const F=fin?legionForce():romanForce();
-  for(let i=0;i<F.n;i++){
-    const g=legionary(i,false);
-    const row=Math.floor(i/6), col=i%6;
-    const x=(col-2.5)*13, z=178+row*15;
-    scene.add(g);
-    add(g,'rome','legion',x,z);
+  if(fin){
+    /* Trois manipules serrés, en damier, comme on l'apprend à Rome. Chacun
+       avance d'un bloc : c'est ce qui rend la chose impressionnante, plus que
+       le nombre. */
+    const MAN=[[-46,206],[0,192],[46,206]];
+    for(let i=0;i<F.n;i++){
+      const m=i%3, k=Math.floor(i/3);
+      const row=Math.floor(k/3), col=k%3;
+      const g=legionary(i,false); scene.add(g);
+      const u=add(g,'rome','legion',MAN[m][0]+(col-1)*11,MAN[m][1]+row*13);
+      u.man=m;                                  // son manipule
+    }
+    // les centurions, un par manipule, en tête
+    for(let i=0;i<F.boss;i++){ const g=legionary(i,true); scene.add(g);
+      const u=add(g,'rome','centurion',MAN[i%3][0],MAN[i%3][1]-15); u.man=i%3; }
+    // la cavalerie déborde par les ailes : plus rapide, elle prend de large
+    for(let i=0;i<F.horse;i++){
+      const sd=i%2?1:-1, k=Math.floor(i/2);
+      const g=horseman(i); scene.add(g);
+      const u=add(g,'rome','cavalier',sd*(112+k*20),176+k*10);
+      u.sp=15.5; u.wing=sd; u.rider=1;
+    }
+    // et derrière, les machines : elles ne chargent pas, elles écrasent
+    for(let i=0;i<F.siege;i++){
+      const g=onager(); scene.add(g);
+      const u=add(g,'rome','baliste',(i-(F.siege-1)/2)*66,242);
+      u.siege=1; u.sp=0; u.cd=6+i*3.5; u.arm=g.userData.arm; u.rock=g.userData.rock;
+    }
+  }else{
+    for(let i=0;i<F.n;i++){
+      const g=legionary(i,false);
+      const row=Math.floor(i/6), col=i%6;
+      const x=(col-2.5)*13, z=178+row*15;
+      scene.add(g);
+      add(g,'rome','legion',x,z);
+    }
+    const nb=F.boss===true?1:(F.boss||0);
+    for(let i=0;i<nb;i++){ const g=legionary(i,true); scene.add(g);
+      add(g,'rome','centurion',(i-(nb-1)/2)*20,205); }
   }
-  const nb=F.boss===true?1:(F.boss||0);
-  for(let i=0;i<nb;i++){ const g=legionary(i,true); scene.add(g);
-    add(g,'rome','centurion',(i-(nb-1)/2)*20,205); }
   /* ---------- L'ALARME ----------
      Le cor sonne : on ne part pas de son champ ou de sa forge à l'autre bout du
      village, on court au rempart. Sans ce rassemblement, les légions étaient à
@@ -7426,7 +7553,21 @@ function raidBuild(scene){
     const warn=5.5+(S.village.includes('tour')?5:0);
     units.forEach(u=>{ if(u.side==='rome') u.wait=warn; });
   }
-  V3.raid={units, t:0, over:0, spark:[], final:fin};
+  V3.raid={units, t:0, over:0, spark:[], final:fin, shots:[], dust:[], shake:0, slain:[]};
+  if(fin){
+    /* Boulets et gerbes de poussière : deux poignées d'objets réutilisés en
+       boucle. Rien ne s'alloue pendant la bataille — c'est ce qui garde
+       l'image fluide quand trente hommes se battent à l'écran. */
+    for(let i=0;i<4;i++){
+      const b=new THREE.Mesh(new THREE.IcosahedronGeometry(3,0),mat(0x77797e));
+      b.visible=false; scene.add(b); V3.raid.shots.push({m:b,live:0});
+    }
+    for(let i=0;i<6;i++){
+      const d=new THREE.Mesh(new THREE.SphereGeometry(4,7,6),
+        new THREE.MeshBasicMaterial({color:0xcbbfa6,transparent:true,opacity:0}));
+      d.visible=false; scene.add(d); V3.raid.dust.push(d);
+    }
+  }
   if(wr&&units.some(u=>u.sortie)){
     toast('📯 '+t('Le cor sonne — on ouvre la porte et on sort les recevoir !',
                   'The horn sounds — the gate opens and the men march out to meet them!'));
@@ -7458,6 +7599,13 @@ function raidWatch(){
 /* la caméra glisse doucement vers le centre de la mêlée */
 function raidCamFollow(dt){
   if(!V3.raidCam||!V3.raid) return;
+  /* Une pierre de cent livres qui tombe, ça s'entend et ça se sent : la vue
+     encaisse le coup, puis se reprend. */
+  const sk=V3.raid.shake||0;
+  if(sk>0&&V3.cam){
+    V3.cam.position.x+=(Math.random()-0.5)*sk*7;
+    V3.cam.position.y+=(Math.random()-0.5)*sk*5;
+  }
   const U=V3.raid.units.filter(u=>!u.dead);
   if(!U.length) return;
   let gx=0,gz=0,gn=0, rx=0,rz=0,rn=0;
@@ -7490,6 +7638,78 @@ function raidBanner(){
    +'<div class="rblane"><i class="rbg" style="width:'+Math.round(gh/tot*100)+'%"></i>'
    +'<i class="rbr" style="width:'+Math.round(rh/tot*100)+'%"></i></div>';
 }
+/* ---------- LES MACHINES ----------
+   Un onagre ne charge pas : il arme, il lâche, et la pierre tombe au milieu de
+   la troupe. Le bras recule pendant le rearmement puis claque d'un coup — c'est
+   le seul mouvement, et il se voit de l'autre bout du champ. */
+function siegeFire(u,R,scene){
+  const live=R.units.filter(x=>x.side==='gaul'&&!x.dead&&x.atk>0);
+  if(!live.length) return;
+  // on vise là où ils sont le plus serrés : une pierre bien placée en couche trois
+  let best=live[0], bn=-1;
+  live.forEach(a=>{ let n=0;
+    live.forEach(b=>{ if(Math.hypot(a.g.position.x-b.g.position.x,
+                                    a.g.position.z-b.g.position.z)<17) n++; });
+    if(n>bn){ bn=n; best=a; } });
+  const sh=R.shots.find(x=>!x.live); if(!sh) return;
+  const spread=9;
+  sh.live=1; sh.t=0; sh.dur=1.5;
+  sh.x0=u.g.position.x; sh.z0=u.g.position.z-14;
+  sh.x1=best.g.position.x+(Math.random()-0.5)*spread;
+  sh.z1=best.g.position.z+(Math.random()-0.5)*spread;
+  sh.m.visible=true; sh.m.position.set(sh.x0,10,sh.z0);
+  u.armT=0.55;                                   // le bras claque
+  SFX.hit&&SFX.hit();
+}
+function siegeImpact(R,x,z){
+  // la gerbe de poussière
+  const d=R.dust.find(o=>!o.visible)||R.dust[0];
+  if(d){ d.visible=true; d.position.set(x,3,z); d.scale.setScalar(0.5);
+         d.material.opacity=0.85; d.userData.t=0.9; }
+  R.shake=Math.max(R.shake,0.9);
+  SFX.ko&&SFX.ko();
+  // 26 unités de rayon : ce qui est dessous prend, gaulois comme romain
+  R.units.forEach(u=>{
+    if(u.dead) return;
+    const dd=Math.hypot(u.g.position.x-x,u.g.position.z-z);
+    if(dd>20) return;
+    const dmg=Math.round(24*(1-dd/20)*(u.side==='rome'?0.5:1));
+    if(dmg<=0) return;
+    u.hp-=dmg; setBar(u);
+    if(u.hp<=0) raidFell(u,R);
+  });
+}
+/* un combattant tombe */
+function raidFell(u,R){
+  u.dead=1; u.hp=0; if(u.bar) u.bar.visible=false;
+  /* Le jour J, on ne se relève pas. Un Gaulois qui tombe pendant l'assaut final
+     est mort, et son nom sera lu à la fin — c'est ce qui rend la jauge
+     militaire autre chose qu'un chiffre. */
+  if(R.final&&u.side==='gaul'&&u.rec&&R.slain.indexOf(u.rec)<0) R.slain.push(u.rec);
+}
+function siegeTick(R,dt,scene){
+  // les boulets en vol : parabole, et rotation pour qu'on les suive
+  R.shots.forEach(sh=>{
+    if(!sh.live) return;
+    sh.t+=dt;
+    const k=Math.min(1,sh.t/sh.dur);
+    sh.m.position.x=sh.x0+(sh.x1-sh.x0)*k;
+    sh.m.position.z=sh.z0+(sh.z1-sh.z0)*k;
+    sh.m.position.y=10+Math.sin(k*Math.PI)*74;
+    sh.m.rotation.x+=dt*7; sh.m.rotation.z+=dt*5;
+    if(k>=1){ sh.live=0; sh.m.visible=false; siegeImpact(R,sh.x1,sh.z1); }
+  });
+  // la poussière retombe
+  R.dust.forEach(d=>{
+    if(!d.visible) return;
+    d.userData.t-=dt;
+    d.scale.setScalar(0.5+(0.9-d.userData.t)*4.2);
+    d.material.opacity=Math.max(0,d.userData.t/0.9*0.85);
+    if(d.userData.t<=0) d.visible=false;
+  });
+  // la secousse : la caméra encaisse le coup
+  if(R.shake>0) R.shake=Math.max(0,R.shake-dt*1.9);
+}
 /* une image de bataille */
 function raidTick(dt,tt,scene){
   const R=V3.raid; if(!R) return;
@@ -7503,6 +7723,7 @@ function raidTick(dt,tt,scene){
     SFX.ko();
   }
   const U=R.units;
+  if(R.shots) siegeTick(R,dt,scene);
   // éclats de coups
   (R.spark||[]).forEach(sp=>{ if(!sp.visible) return;
     sp.userData.t-=dt; sp.scale.setScalar(1+(0.22-sp.userData.t)*6);
@@ -7519,8 +7740,26 @@ function raidTick(dt,tt,scene){
       }
       continue;
     }
+    /* une machine ne marche pas : elle arme et elle tire, tant qu'elle vit */
+    if(u.siege){
+      if(u.armT>0){ u.armT-=dt;
+        if(u.arm) u.arm.rotation.x=-1.15+ (1-Math.max(0,u.armT)/0.55)*0; }
+      // bras : couché après le tir, relevé pendant le rearmement
+      const load=Math.max(0,Math.min(1,u.cd/9.5));
+      if(u.arm) u.arm.rotation.x=-1.15+(1-load)*1.55;
+      if(u.rock) u.rock.visible=u.cd>1.2;
+      u.cd-=dt;
+      if(u.cd<=0){ u.cd=9.5+Math.random()*3.5; siegeFire(u,R,scene); }
+      continue;
+    }
     // la légion se met en ordre de bataille avant de marcher
     if(u.wait&&R.t<u.wait){ u.g.position.y=0; continue; }
+    // le galop : les jambes battent, le manteau claque
+    if(u.rider&&u.g.userData.legs){
+      const ph=tt*11+u.hpMax;
+      u.g.userData.legs.forEach((l,li)=>{ l.rotation.x=Math.sin(ph+li*1.6)*0.75; });
+      u.g.position.y=Math.abs(Math.sin(ph*0.5))*1.4;
+    }
     // cible : on la garde tant qu'elle vit, on rescanne de temps en temps
     u.rescan-=dt;
     if(!u.tgt||u.tgt.dead||u.rescan<=0){
@@ -7628,7 +7867,7 @@ function raidTick(dt,tt,scene){
           T.hp-=dmg; setBar(T);
           raidSpark(T.g.position.x,T.g.position.z,7);
           if(T.hp<=0&&!T.dead){
-            T.dead=1; T.tgt=null;
+            raidFell(T,R); T.tgt=null;
             R.kills=(R.kills||0)+1;
             if(u.side==='gaul') u.kills=(u.kills||0)+1;   // ça se retrouve sur son grade
             raidBanner();
@@ -7740,9 +7979,37 @@ function aftermathHtml(AF){
   return '<br><br><span style="color:var(--dim)">'+bits.join('<br>')+'</span>';
 }
 /* l'issue du jour J : gloire, ou cendres */
+/* ---------- LES MORTS DU JOUR J ----------
+   Une victoire n'est pas gratuite. Ceux qui sont tombés pendant l'assaut final
+   ne se relèvent pas : on les retire du village, et on lit leurs noms. Bien
+   armé, on n'en perd aucun — c'est tout l'intérêt de la jauge. */
+function buryTheFallen(R){
+  const slain=(R&&R.slain)||[];
+  if(!slain.length) return {names:[],n:0};
+  const names=slain.map(r=>nameOf(r));
+  const ids=slain.map(r=>r.id);
+  // un orphelin change de toit, un veuf redevient libre
+  (S.people||[]).forEach(r=>{
+    if(r.love&&ids.indexOf(r.love)>=0){ r.love=null; r.loveAt=0; nudgeMood(r,-0.45); }
+    if(r.mentor&&ids.indexOf(r.mentor)>=0) r.mentor=null;
+    if(r.rival&&ids.indexOf(r.rival)>=0) r.rival=null;
+  });
+  S.people=(S.people||[]).filter(r=>ids.indexOf(r.id)<0);
+  // les enfants d'un mort restent : ils sont recueillis
+  (S.people||[]).forEach(r=>{ if(isChild(r)&&!(S.people||[]).some(a=>a.home===r.home&&!isChild(a))){
+    const foster=(S.people||[]).find(a=>!isChild(a)&&isDwelling(a.home)&&a.home!==r.home);
+    if(foster) r.home=foster.home; } });
+  (S.people||[]).forEach(r=>nudgeMood(r,-0.3));
+  chron('🕯️ '+names.join(', ')+t(' sont tombés en défendant le village.',
+                                  ' fell defending the village.'),
+        '🕯️ '+names.join(', ')+' fell defending the village.');
+  return {names, n:names.length};
+}
 function finalEnd(win){
+  const R=V3.raid;
   if(win){
     S.finalDone='won';
+    const fallen=buryTheFallen(R);
     gainCoins(600); gainXp(400);
     S.res=S.res||{food:0,wood:0,iron:0};
     ['food','wood','iron'].forEach(k=>{ S.res[k]=(S.res[k]||0)+40; });
@@ -7751,8 +8018,12 @@ function finalEnd(win){
           '🏆 THE LEGION WAS BROKEN. The village is free.');
     SFX.win(); confetti(320);
     showOverlay('🏆', t('Le village est sauvé','The village is saved'),
-      t('La légion est brisée. Pas une hutte n\'a brûlé, pas un habitant n\'est tombé.',
-        'The legion is broken. Not one hut burned, not one villager fell.')
+      (fallen.n
+        ? t('La légion est brisée — mais <b>'+fallen.n+' des tiens ne se relèveront pas</b>.',
+            'The legion is broken — but <b>'+fallen.n+' of your own will not get up again</b>.')
+          +'<br><i style="color:var(--dim)">🕯️ '+esc(fallen.names.join(', '))+'</i>'
+        : t('La légion est brisée. Pas une hutte n\'a brûlé, pas un habitant n\'est tombé.',
+            'The legion is broken. Not one hut burned, not one villager fell.'))
       +'<br><br>'+t('<b>+600 🪙</b>, <b>+400 XP</b> et 40 de chaque ressource. Va décrocher ce permis.',
                     '<b>+600 🪙</b>, <b>+400 XP</b> and 40 of every resource. Now go and get that licence.'));
   }else{
