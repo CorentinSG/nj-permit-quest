@@ -397,6 +397,12 @@ html,body{overflow-x:hidden}
 .v3d-rot button:active{transform:translateY(1px)}
 /* sortir du mode déplacement depuis la vue : le bouton de l'onglet Bâtir n'est
    pas toujours à l'écran, et on se retrouvait coincé à traîner des maisons */
+.siegebox{border-color:var(--stop);background:#22100e}
+.siegelist{display:flex;flex-direction:column;gap:6px;margin-top:9px}
+.siegelist>div{padding:8px 10px;border-radius:9px;font-size:12.5px;line-height:1.42;
+  border:2px solid var(--edge);background:#0e1520}
+.siegelist .sgo{border-color:var(--exit);color:#CFF3DC;background:#0d2016}
+.siegelist .sno{border-color:var(--stop);color:#F6CFC8;background:#2a1210}
 .v3d-done{position:absolute;left:8px;bottom:8px;transform:none;z-index:4;
   padding:9px 18px;border:2px solid var(--exit);border-radius:11px;background:#0B2416EE;
   color:#BFF3D2;font-family:var(--px);font-size:9px;letter-spacing:.5px;
@@ -1796,6 +1802,7 @@ const defaults=()=>({
   lastWhat:[],             // les faits racontés ces derniers jours, pour varier
   lovers:{},               // couple -> {at, seen} : de quoi varier les scènes
   arenaWins:0,
+  bseen:[],             // chiffres du Blitz servis récemment : on ne les repose pas tout de suite
   daily:{date:'', ok:0, rewarded:false},
   dayStreak:0, lastGoalDate:'',
   badges:{},           // badgeId -> timestamp
@@ -2485,15 +2492,28 @@ function foodBalance(){ return prodPerHour().food-upkeepPerHour(); }
    les champs, c'est de sortir et de gagner. */
 function underSiege(){ return finalDue(); }
 function siegeNote(){
-  return '<div class="panel" style="margin-bottom:12px;border-color:var(--stop);background:#22100e">'
-   +'<div class="eyebrow" style="color:var(--stop)">🏛️ '+t('LE VILLAGE EST ASSIÉGÉ','THE VILLAGE IS UNDER SIEGE')+'</div>'
-   +'<p class="small" style="margin:6px 0 0">'
-   +t('La légion campe devant les portes. <b>Plus rien n\'est récolté</b> : ni grain, ni bois, ni fer, '
-      +'ni tribut, et le marchand ne passe plus.<br>Les champs rouvriront quand tu auras livré bataille — '
-      +'et gagné.',
-      'The legion is camped at the gates. <b>Nothing is harvested</b>: no grain, no wood, no iron, '
-      +'no tribute, and the pedlar keeps away.<br>The fields reopen when you have given battle — '
-      +'and won.')+'</p></div>';
+  return '<div class="panel siegebox" style="margin-bottom:12px">'
+   +'<div class="rbtitle">🏛️ '+t('LE VILLAGE EST ASSIÉGÉ','THE VILLAGE IS UNDER SIEGE')+'</div>'
+   +'<p class="small" style="margin:8px 0 0">'
+   +t('L\'heure de l\'examen est passée : la légion campe devant les portes.',
+      'The hour of the test has passed: the legion is camped at the gates.')+'</p>'
+   +'<div class="siegelist">'
+   +'<div class="sgo">✅ '+t('<b>Tu peux lancer l\'assaut quand tu veux.</b> Rien ne se déclenche sans toi : '
+                            +'la légion attendra le temps qu\'il faudra.',
+                            '<b>You can launch the assault whenever you like.</b> Nothing starts without you: '
+                            +'the legion will wait as long as it takes.')+'</div>'
+   +'<div class="sno">⛔ '+t('<b>Tu ne peux plus rien préparer.</b> Aucune récolte (grain, bois, fer), '
+                            +'aucun tribut, aucun marchand, <b>et plus aucune construction</b> : '
+                            +'ni bâtiment, ni escouade, ni rempart.',
+                            '<b>You can no longer prepare anything.</b> No harvest (grain, wood, iron), '
+                            +'no tribute, no pedlar, <b>and no more building</b>: '
+                            +'no huts, no squads, no ramparts.')+'</div>'
+   +'</div>'
+   +'<p class="small" style="margin:8px 0 0"><b>'
+   +t('Le village restera exactement dans cet état jusqu\'à la bataille. Le seul moyen de rouvrir '
+      +'les champs et les chantiers, c\'est de sortir, et de gagner.',
+      'The village stays exactly as it is until the battle. The only way to reopen the fields and the '
+      +'workshops is to march out, and win.')+'</b></p></div>';
 }
 function collectProduction(){
   if(!S.village||!S.village.length) return null;
@@ -2542,8 +2562,7 @@ function tributeIn(){          // minutes avant la prochaine pièce
 function needsHtml(){
   const pop=popCount(), met=allNeedsMet();
   const SE=season(), cap=storeCap();
-  let h=(underSiege()?siegeNote():'')
-   +'<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
+  let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">🏺 '
    +t('BESOINS DU VILLAGE','VILLAGE NEEDS')+' · '+pop+' '+t('habitants','villagers')+'</div>'
    +seasonHtml()
    +'<div class="stock">'+NEEDS.map(n=>{
@@ -5284,10 +5303,17 @@ const B3={
     const e=new THREE.Mesh(new THREE.IcosahedronGeometry(1.8,0),new THREE.MeshBasicMaterial({color:0xff7a20}));
     e.name='ember'; g.add(at(e,-4,3,6));
     g.userData.smoke={x:5,y:11,z:-4,n:4}; return g; },
+  /* Le chien sautillait sur place. Il court maintenant partout dans le village
+     — plus loin et plus vite que les sangliers, et il s'arrête moins longtemps :
+     c'est un chien. */
   chien(){ const g=new THREE.Group();
-    g.add(at(sph(2,0xc99a5a,0),0,2.6,0)); g.add(at(sph(1.4,0xb98a4a,0),0,3.6,2));
-    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(p=>g.add(at(box(.7,1.8,.7,0xa87a3a),p[0],.9,p[1])));
-    g.name='hopper'; return g; },
+    const d=new THREE.Group();
+    d.add(at(sph(2,0xc99a5a,0),0,2.6,0)); d.add(at(sph(1.4,0xb98a4a,0),0,3.6,2));
+    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(q=>d.add(at(box(.7,1.8,.7,0xa87a3a),q[0],.9,q[1])));
+    const tail=box(.5,3,.5,0xb98a4a); tail.rotation.x=-0.7; d.add(at(tail,0,3.4,-2));
+    d.name='boar';                       // même moteur de flânerie que les sangliers
+    d.userData={p:0, tx:0, tz:0, wait:0.4, sp:19, dog:1};
+    g.add(d); return g; },
   barde(){ const g=new THREE.Group();
     g.add(at(cyl(1.4,1.8,13,COL.wood,6),0,6.5,0));
     const p=person(2); p.position.y=0; p.name='bardp'; g.add(p);
@@ -6584,8 +6610,9 @@ function boarRoam(a,dt,tt){
   a.rotation.x=0;
   const dx=u.tx-a.position.x, dz=u.tz-a.position.z, d=Math.hypot(dx,dz);
   if(d<2.5){                          // arrivé : nouvelle envie
-    u.wait=1.5+Math.random()*4;
-    const r=14+Math.random()*30, th=Math.random()*Math.PI*2;
+    u.wait=u.dog?(0.3+Math.random()*1.2):(1.5+Math.random()*4);
+    const far=u.dog?110:30, near=u.dog?25:14;
+    const r=near+Math.random()*far, th=Math.random()*Math.PI*2;
     u.tx=A[0]+Math.cos(th)*r; u.tz=A[1]+Math.sin(th)*r;
     return;
   }
@@ -6595,7 +6622,8 @@ function boarRoam(a,dt,tt){
   let df=face-a.rotation.y;
   while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
   a.rotation.y+=df*Math.min(1,6*dt);
-  a.position.y=Math.abs(Math.sin(tt*9+u.p))*0.7;      // le trot
+  a.position.y=Math.abs(Math.sin(tt*(u.dog?15:9)+u.p))*(u.dog?1.1:0.7);   // le trot
+  if(u.dog) a.rotation.z=Math.sin(tt*16)*0.09;                            // il frétille
 }
 /* fumée : petites sphères qui montent en boucle */
 function makeSmoke(scene,g){
@@ -8759,9 +8787,12 @@ function setTab(k){
 }
 function vTabBody(){
   const k=vTab();
-  if(k==='vie') return questHtml()+chronHtml()+peopleHtml()+needsHtml();
-  if(k==='def') return vDefenceHtml();
-  return vBuildHtml();
+  /* Le siège change TOUT : il doit se lire quel que soit l'onglet ouvert, et pas
+     seulement quand on descend jusqu'aux réserves. */
+  const sg=underSiege()?siegeNote():'';
+  if(k==='vie') return sg+questHtml()+chronHtml()+peopleHtml()+needsHtml();
+  if(k==='def') return sg+vDefenceHtml();
+  return sg+vBuildHtml();
 }
 function vDefenceHtml(){
   const owned=S.village, ap=armyPct(), pw=armyPower();
@@ -9841,6 +9872,13 @@ function toggleEdit(pid){
 function buy(id){
   if(V3.raid){ SFX.ko();
     toast('⚔️ '+t('Pas maintenant — la bataille fait rage !','Not now — the battle is raging!')); return; }
+  /* Sous le siège on ne bâtit pas : les charrois ne passent plus, les carrières
+     sont coupées, et personne ne monte une charpente sous les traits. Le village
+     est figé tel qu'il est le jour J — c'était tout l'intérêt de se préparer
+     AVANT. La seule sortie, c'est la bataille. */
+  if(underSiege()){ SFX.ko();
+    toast('🏛️ '+t('Le village est assiégé : on ne bâtit plus rien. Il faut livrer bataille.',
+                   'The village is under siege: nothing more gets built. You must give battle.')); return; }
   const it=SHOP.find(s=>s.id===id); if(!it) return;
   if(!it.stack&&S.village.includes(id)) return;
   if(it.req&&!S.village.includes(it.req)){
@@ -10068,10 +10106,86 @@ function nextDrill(){
   const c=CUR;
   if(c.di>=c.deck.length){ c.deck=blitzDeck(); c.di=0; }
   const d=c.deck[c.di].d;
-  c.opts=shuffle([d.a, ...d.o]);
+  c.opts=drillOpts(d);
+}
+/* ============================================================
+   LE BLITZ NE SERT PLUS DEUX FOIS LA MÊME PARTIE
+   ------------------------------------------------------------
+   Soixante-huit chiffres, tirés au hasard : au bout de trois parties on les
+   connaît par cœur, et l'ordre différent n'y change rien. Deux remèdes.
+
+   1. LES MAUVAISES RÉPONSES TOURNENT. Chaque chiffre a maintenant une famille
+      (des pieds, des points, des dollars…) et ses leurres sont piochés dans la
+      famille au moment de poser la question. La même question ne se présente
+      jamais avec le même carré de réponses — et il faut vraiment savoir le
+      chiffre, pas reconnaître la grille.
+
+   2. LE PAQUET SE SOUVIENT. On garde la trace de ce qui vient d'être servi
+      (les deux dernières parties) et on le met en fin de paquet ; ce qu'on rate
+      souvent, en revanche, remonte devant. Deux parties d'affilée ne
+      commencent donc jamais pareil.
+   ============================================================ */
+function drillFamily(a){
+  const v=String(a);
+  if(/^\d+(\.\d+)?\s?ft$/.test(v)||/\bft\b/.test(v)) return 'ft';
+  if(/mph/.test(v)) return 'mph';
+  if(/^\$/.test(v)) return 'money';
+  if(/point/.test(v)||/\bpts?\b/.test(v)) return 'pts';
+  if(/%/.test(v)) return 'pct';
+  if(/\ban(s)?\b|year|mois|month|jour|day|semaine|week|heure|hour|seconde|second/.test(v)) return 'time';
+  return 'other';
+}
+/* toutes les réponses connues, rangées par famille — calculé une seule fois */
+let DFAM=null;
+function drillFams(){
+  if(DFAM) return DFAM;
+  DFAM={};
+  DRILLS.forEach(d=>{
+    [d.a].concat(d.o||[]).forEach(v=>{
+      const f=drillFamily(v);
+      (DFAM[f]=DFAM[f]||[]).push(String(v));
+    });
+  });
+  Object.keys(DFAM).forEach(f=>{ DFAM[f]=[...new Set(DFAM[f])]; });
+  return DFAM;
+}
+function drillOpts(d){
+  const fams=drillFams(), f=drillFamily(d.a);
+  const own=(d.o||[]).map(String);
+  const pool=(fams[f]||[]).filter(v=>v!==String(d.a));
+  // deux leurres d'origine gardent la question juste, un troisième vient de la
+  // famille : assez pour que la grille change, pas assez pour qu'elle mente
+  const keep=shuffle(own.slice()).slice(0,2);
+  const extra=shuffle(pool.filter(v=>keep.indexOf(v)<0));
+  const opts=[String(d.a)].concat(keep);
+  for(const v of extra){ if(opts.length>=4) break; if(opts.indexOf(v)<0) opts.push(v); }
+  for(const v of shuffle(own)){ if(opts.length>=4) break; if(opts.indexOf(v)<0) opts.push(v); }
+  return shuffle(opts);
 }
 /* le paquet garde l'index d'origine de chaque drill, pour pouvoir le pister */
-function blitzDeck(){ return shuffle(DRILLS.map((d,i)=>({d,i}))); }
+function blitzDeck(){
+  S.bseen=Array.isArray(S.bseen)?S.bseen:[];
+  const seen=S.bseen;
+  const deck=shuffle(DRILLS.map((d,i)=>({d,i})));
+  const score=e=>{
+    const st=(S.qstat||{})[drillId(e.i)]||{};
+    const ko=st.ko||0, ok=st.ok||0;
+    let v=Math.random();                       // le hasard reste maître
+    if(seen.indexOf(e.i)>=0) v+=1.6;           // vu tout récemment : à la fin
+    if(ko>ok) v-=0.9;                          // raté plus souvent que réussi : devant
+    else if(ok>2&&!ko) v+=0.4;                 // parfaitement su : un peu plus loin
+    return v;
+  };
+  deck.sort((a,b)=>score(a)-score(b));
+  return deck;
+}
+/* ce qui vient d'être posé ne revient pas tout de suite */
+function blitzServed(i){
+  S.bseen=Array.isArray(S.bseen)?S.bseen:[];
+  S.bseen.push(i);
+  const cap=Math.max(12,Math.round(DRILLS.length*0.45));
+  if(S.bseen.length>cap) S.bseen.splice(0,S.bseen.length-cap);
+}
 function startBlitzTimer(){
   stopTimers();
   blitzTimer=setInterval(()=>{
@@ -10085,6 +10199,7 @@ function startBlitzTimer(){
 }
 function blitzAnswer(i,ev){
   const c=CUR, entry=c.deck[c.di], d=entry.d;
+  blitzServed(entry.i);
   const good=c.opts[i]===d.a;
   // un chiffre raté au Blitz compte comme n'importe quelle autre erreur :
   // il entre dans les statistiques et remonte donc dans la Bête Noire
