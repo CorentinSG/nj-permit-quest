@@ -6170,6 +6170,50 @@ function horseman(i){
   cape.name='cape'; g.add(at(cape,0,14,2.2));
   return g;
 }
+/* archer auxiliaire : tunique claire, arc, carquois dans le dos */
+function archerRom(i){
+  const g=new THREE.Group();
+  const p=person(3); g.add(p);
+  g.add(at(cyl(2.3,2.4,1.7,0xb08a4a,8),0,8.5,0));            // casque de cuir
+  const bw=new THREE.Mesh(new THREE.TorusGeometry(2.8,.24,5,10,Math.PI*1.25),mat(COL.wood));
+  bw.rotation.y=Math.PI/2; g.add(at(bw,-2.6,5,.4));
+  const qv=cyl(.9,.9,5,0x6b4a2a,6); qv.rotation.x=0.5; g.add(at(qv,1.8,6,-1.8));
+  [-1,0,1].forEach(k=>g.add(at(cyl(.16,.16,4.4,0xd8d0c0,4),1.8+k*0.5,8.6,-2)));
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
+/* prétorien : cuirasse noire, crête transversale, grand bouclier ovale */
+function praetorian(i){
+  const g=legionary(i,false);
+  g.scale.setScalar(1.14);
+  g.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&o.name!=='shield'){
+    const c=o.material.color; if(c.getHex()===0x9aa3ab){ o.material=o.material.clone();
+      o.material.color.setHex(0x3a3f47); } } });
+  const sh=g.children.find(o=>o.name==='shield');
+  if(sh&&sh.material){ sh.material=sh.material.clone(); sh.material.color.setHex(0x1d2733); }
+  const crest=new THREE.Mesh(new THREE.BoxGeometry(.8,1.6,5.2),mat(0x14181e));
+  g.add(at(crest,0,10.2,0));
+  const cape=new THREE.Mesh(new THREE.PlaneGeometry(6.4,8.6),
+    new THREE.MeshLambertMaterial({color:0x14181e,side:THREE.DoubleSide}));
+  g.add(at(cape,0,4.4,-2.7));
+  return g;
+}
+/* porte-enseigne : l'aigle au bout d'une hampe, qu'on voit de loin */
+function signifer(i){
+  const g=legionary(i,false);
+  const pole=box(.7,26,.7,COL.woodDark);
+  g.add(at(pole,3.4,13,-1));
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(6,4.4),
+    new THREE.MeshLambertMaterial({color:0x9c1c17,side:THREE.DoubleSide}));
+  flag.name='flag'; g.add(at(flag,6,20,-1));
+  const eagle=new THREE.Group();
+  eagle.add(at(sph(1.5,0xd8b24a,0),0,0,0));
+  [-1,1].forEach(k=>{ const w=box(3.4,.5,1.4,0xd8b24a); w.rotation.z=k*0.5;
+    eagle.add(at(w,k*2,0.6,0)); });
+  g.add(at(eagle,3.4,26.6,-1));
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  return g;
+}
 /* ---------- machine de siège romaine ----------
    Un onagre : châssis, bras armé d'une pierre, treuil. Le bras se rearme et
    claque à chaque tir — c'est ce mouvement qu'on voit de loin. */
@@ -7784,7 +7828,13 @@ const FIGHT={
   /* Le jour J, César n'envoie pas une patrouille : de la cavalerie qui déborde
      par les ailes, et des machines qui frappent avant même le contact. */
   cavalier: {hp:150, atk:16, n:'Cavalier',           ne:'Cavalryman'},
-  baliste:  {hp:200, atk:0,  n:'Catapulte romaine',  ne:'Roman catapult'}
+  baliste:  {hp:200, atk:0,  n:'Catapulte romaine',  ne:'Roman catapult'},
+  /* Le jour J, ce n'est plus une colonne : c'est une armée. Des archers qui
+     usent la ligne avant le contact, la garde prétorienne en dernier recours,
+     et un porte-enseigne dont la présence tient les rangs. */
+  archer:   {hp:44,  atk:6,  n:'Archer auxiliaire',  ne:'Auxiliary archer'},
+  pretorien:{hp:170, atk:18, n:'Prétorien',          ne:'Praetorian'},
+  signifer: {hp:110, atk:12, n:'Porte-enseigne',     ne:'Standard-bearer'}
 };
 /* les métiers qui tiennent déjà un outil tranchant se défendent mieux */
 const ARMED_JOBS={chasse:1, bois:1, forge:1, druide:1, chef:1};
@@ -7861,26 +7911,28 @@ function finalOpen(){ return finalDue()||finalEve(); }
    Cinq actes, cinq minutes, et le village ne sait jamais si c'est fini.
    Les machines, elles, tirent du début à la fin. */
 const FINAL_ACTS=[
- {at:0,   legion:5, boss:1, horse:0, siege:2,
-  fr:'⚔️ Le premier manipule s\'ébranle. Les enseignes montent du sud.',
-  en:'⚔️ The first maniple moves off. The standards come up from the south.'},
- {at:55,  legion:4, boss:1, horse:2, siege:1,
-  fr:'🐎 Deuxième manipule, cavalerie sur les ailes ! Ils cherchent le flanc.',
-  en:'🐎 Second maniple, cavalry on the wings! They are looking for a flank.'},
- {at:118, legion:5, boss:1, horse:2, siege:0,
-  fr:'🏛️ Une troisième colonne sort du bois. Ils ne s\'arrêteront pas.',
-  en:'🏛️ A third column comes out of the wood. They are not going to stop.'},
- {at:184, legion:4, boss:1, horse:2, siege:0,
-  fr:'🔥 Les vétérans montent en ligne. C\'est maintenant que ça se joue.',
-  en:'🔥 The veterans come up into line. This is where it is decided.'},
- {at:252, legion:4, boss:1, horse:2, siege:0,
-  fr:'👑 LA GARDE DE CÉSAR. Le dernier carré. Tenez !',
-  en:'👑 CAESAR\'S GUARD. The last square. Hold!'}
+ {at:0,   legion:9, boss:1, horse:0, siege:2, arch:4, sig:1, pret:0,
+  fr:'⚔️ La première cohorte s\'ébranle. Les aigles montent du sud.',
+  en:'⚔️ The first cohort moves off. The eagles come up from the south.'},
+ {at:50,  legion:9, boss:2, horse:4, siege:1, arch:4, sig:1, pret:0,
+  fr:'🐎 Deuxième cohorte, cavalerie sur les deux ailes ! Ils cherchent le flanc.',
+  en:'🐎 Second cohort, cavalry on both wings! They are looking for a flank.'},
+ {at:108, legion:9, boss:2, horse:4, siege:1, arch:5, sig:1, pret:0,
+  fr:'🏹 Les archers auxiliaires prennent position. Ça va pleuvoir.',
+  en:'🏹 The auxiliary archers take position. It is about to rain arrows.'},
+ {at:170, legion:9, boss:2, horse:5, siege:1, arch:5, sig:1, pret:3,
+  fr:'🔥 Les vétérans montent en ligne, prétoriens en soutien. Tenez !',
+  en:'🔥 The veterans come up into line, praetorians behind. Hold!'},
+ {at:236, legion:8, boss:3, horse:5, siege:0, arch:4, sig:1, pret:6,
+  fr:'👑 LA GARDE PRÉTORIENNE DE CÉSAR. Le dernier carré. C\'est maintenant.',
+  en:'👑 CAESAR\'S PRAETORIAN GUARD. The last square. This is it.'}
 ];
 function legionForce(){
   const T=FINAL_ACTS.reduce((a,w)=>({n:a.n+w.legion, boss:a.boss+w.boss,
-    horse:a.horse+w.horse, siege:a.siege+w.siege}),{n:0,boss:0,horse:0,siege:0});
-  T.total=T.n+T.boss+T.horse+T.siege; T.acts=FINAL_ACTS.length;
+    horse:a.horse+w.horse, siege:a.siege+w.siege,
+    arch:a.arch+(w.arch||0), sig:a.sig+(w.sig||0), pret:a.pret+(w.pret||0)}),
+    {n:0,boss:0,horse:0,siege:0,arch:0,sig:0,pret:0});
+  T.total=T.n+T.boss+T.horse+T.siege+T.arch+T.sig+T.pret; T.acts=FINAL_ACTS.length;
   return T;
 }
 function finalWarnHtml(){
@@ -8009,8 +8061,12 @@ function finalAsk(){
     (eve?'<p class="small" style="margin:0 0 10px;color:var(--bus)"><b>'
       +t('Veille d\'armes — tu n\'attends pas l\'heure de l\'examen pour les recevoir.',
          'Eve of battle — you are not waiting for exam time to meet them.')+'</b></p>':'')+
-    t('L\'heure est venue. <b>'+F.n+' légionnaires et '+F.boss+' centurions</b> sont devant le village.',
-      'The hour has come. <b>'+F.n+' legionaries and '+F.boss+' centurions</b> stand before the village.')
+    t('L\'heure est venue. <b>'+F.total+' Romains</b> sont devant le village : '
+      +F.n+' légionnaires, '+F.boss+' centurions, '+F.horse+' cavaliers, '+F.arch+' archers auxiliaires, '
+      +F.pret+' prétoriens et '+F.siege+' machines de siège — en '+F.acts+' cohortes successives.',
+      'The hour has come. <b>'+F.total+' Romans</b> stand before the village: '
+      +F.n+' legionaries, '+F.boss+' centurions, '+F.horse+' cavalry, '+F.arch+' auxiliary archers, '
+      +F.pret+' praetorians and '+F.siege+' siege engines — in '+F.acts+' successive cohorts.')
     +'<br><br><b style="color:var(--stop)">'
     +t('Si tu perds : le village brûle, et la plupart de tes habitants meurent. Définitivement.',
        'If you lose: the village burns, and most of your villagers die. For good.')+'</b>'
@@ -8125,6 +8181,17 @@ function raidBuild(scene){
       const u=add(w,'gaul','guerrier',bx+(i-1)*13,bz+16);
       if(fort>1){ u.hp=u.hpMax=Math.round(u.hpMax*fort); setBar(u); }
     }
+  }
+  /* LA JAUGE, ENFIN PAYÉE. Le jour J, César aligne plus de cent hommes : aucun
+     village ne tient ça avec des bras nus. Ce que vaut vraiment une jauge
+     militaire pleine, c'est ceci — des défenseurs d'un autre calibre. À moitié
+     remplie, elle ne donne rien et le village est submergé. */
+  if(V3.pendFinal){
+    const gg=Math.pow(Math.max(0,(armyPct()/100-0.35))/0.65,0.8);  // 0 à 35 %, 1 à 100 %
+    const bon=1+gg*1.18;
+    units.forEach(u=>{ if(u.side==='gaul'&&u.atk>0){
+      u.hp=u.hpMax=Math.round(u.hpMax*bon); u.atk=Math.round(u.atk*bon); setBar(u); } });
+    V3.gaugeBon=bon;
   }
   // --- la colonne romaine, alignée au sud, hors du village
   const fin=!!V3.pendFinal; V3.pendFinal=0;
@@ -8441,6 +8508,26 @@ function romeWave(R,scene,w,n){
     const u=add(g,'rome','cavalier',sd*(118+i*18),182+i*10);
     u.sp=15.5; u.wing=sd; u.rider=1; u.wave=n; made++;
   }
+  /* Les auxiliaires : une ligne lâche derrière les manipules. Ils ne chargent
+     pas, ils usent la ligne de loin — c'est ce qui rend la mêlée invivable. */
+  for(let i=0;i<(w.arch||0);i++){
+    const g=archerRom(i+off); scene.add(g);
+    const u=add(g,'rome','archer',((i%6)-2.5)*24,248+Math.floor(i/6)*12);
+    u.ranged=36; u.sp=11.5; u.wave=n; made++;
+  }
+  /* La garde : un carré compact, lent, qui arrive quand tout le reste a saigné. */
+  for(let i=0;i<(w.pret||0);i++){
+    const g=praetorian(i+off); scene.add(g);
+    const u=add(g,'rome','pretorien',((i%3)-1)*15,262+Math.floor(i/3)*14);
+    u.sp=12.5; u.wave=n; made++;
+  }
+  /* Le porte-enseigne : tant qu'il tient debout, la cohorte frappe plus fort. */
+  for(let i=0;i<(w.sig||0);i++){
+    const g=signifer(i+off); scene.add(g);
+    const u=add(g,'rome','signifer',MAN[(i+n)%3][0]+6,MAN[(i+n)%3][1]-24);
+    u.sp=12; u.wave=n; u.sig=1; made++;
+    R.units.forEach(o2=>{ if(o2.side==='rome'&&o2.wave===n&&!o2.siege&&!o2.sig) o2.atk*=1.12; });
+  }
   for(let i=0;i<(w.siege||0);i++){
     const g=onager(); scene.add(g);
     const u=add(g,'rome','baliste',(R.siegeN||0)*62-31,246);
@@ -8617,7 +8704,7 @@ function raidTick(dt,tt,scene){
     const T=u.tgt;
     const dx=T.g.position.x-u.g.position.x, dz=T.g.position.z-u.g.position.z;
     const d=Math.hypot(dx,dz)||1;
-    const reach=u.kind==='centurion'||u.kind==='chef'?13:11;
+    const reach=u.ranged||(u.kind==='centurion'||u.kind==='chef'?13:11);
     if(d>reach){                                   // on marche au contact
       /* Un mur sépare-t-il les deux ? Alors on ne charge pas les rondins : on
          se présente à la porte. C'est ce qui rend une muraille utile. */
@@ -8660,6 +8747,7 @@ function raidTick(dt,tt,scene){
           const dmg=u.atk*(0.75+Math.random()*0.5);
           T.hp-=dmg; setBar(T);
           raidSpark(T.g.position.x,T.g.position.z,7);
+          if(u.ranged) raidSpark(u.g.position.x,u.g.position.z,4);
           if(T.hp<=0&&!T.dead){
             raidFell(T,R); T.tgt=null;
             R.kills=(R.kills||0)+1;
@@ -9054,7 +9142,8 @@ function fortHtml(){
 /* qui encaisse quoi : la table des forces, consultable avant de sonner l'alarme */
 function fightGuideHtml(){
   const rows=[['guerrier','⚔️'],['chef','👑'],['garde','🛡️'],['outil','🪓'],['paysan','🧑‍🌾'],['enfant','🧒'],
-              ['legion','🏛️'],['centurion','🎖️']];
+              ['legion','🏛️'],['centurion','🎖️'],['archer','🏹'],['cavalier','🐎'],
+              ['signifer','🦅'],['pretorien','👑']];
   let h='<div class="panel" style="margin-bottom:12px"><div class="eyebrow">❤️ '
    +t('QUI ENCAISSE QUOI','WHO CAN TAKE A HIT')+'</div>'
    +'<p class="small" style="margin:0 0 8px">'
