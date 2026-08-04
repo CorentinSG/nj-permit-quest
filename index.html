@@ -2573,27 +2573,28 @@ function foodBalance(){ return prodPerHour().food-upkeepPerHour(); }
 function underSiege(){ return finalDue(); }
 function siegeNote(){
   return '<div class="panel siegebox" style="margin-bottom:12px">'
-   +'<div class="rbtitle">🏛️ '+t('LE VILLAGE EST ASSIÉGÉ','THE VILLAGE IS UNDER SIEGE')+'</div>'
+   +'<div class="rbtitle">🏛️ '+t('LES CHAMPS SONT COUPÉS','THE FIELDS ARE CUT OFF')+'</div>'
    +'<p class="small" style="margin:8px 0 0">'
    +t('L\'heure de l\'examen est passée : la légion campe devant les portes.',
       'The hour of the test has passed: the legion is camped at the gates.')+'</p>'
    +'<div class="siegelist">'
-   +'<div class="sgo">✅ '+t('<b>Tu peux lancer l\'assaut quand tu veux.</b> Rien ne se déclenche sans toi : '
-                            +'la légion attendra le temps qu\'il faudra.',
-                            '<b>You can launch the assault whenever you like.</b> Nothing starts without you: '
-                            +'the legion will wait as long as it takes.')+'</div>'
-   +'<div class="sno">⛔ '+t('<b>Tu ne peux plus rien préparer.</b> Aucune récolte (grain, bois, fer), '
-                            +'aucun tribut, aucun marchand, <b>et plus aucune construction</b> : '
-                            +'ni bâtiment, ni escouade, ni rempart.',
-                            '<b>You can no longer prepare anything.</b> No harvest (grain, wood, iron), '
-                            +'no tribute, no pedlar, <b>and no more building</b>: '
-                            +'no huts, no squads, no ramparts.')+'</div>'
+   +'<div class="sno">⛔ '+t('<b>Plus une seule ressource n\'entre.</b> Ni grain, ni bois, ni fer, '
+                            +'ni tribut, et le marchand ne passe plus. Tes réserves sont figées à ce '
+                            +'qu\'elles étaient.',
+                            '<b>Not one resource comes in.</b> No grain, no wood, no iron, no tribute, '
+                            +'and the pedlar keeps away. Your stores are frozen where they stood.')+'</div>'
+   +'<div class="sgo">✅ '+t('<b>Le village reste à toi.</b> Tu bâtis avec ce que tu as en réserve, tu '
+                            +'déplaces, tu commandes tes escouades — et tu lances l\'assaut quand tu '
+                            +'veux. Rien ne se déclenche sans toi.',
+                            '<b>The village is still yours.</b> Build with what is in store, move things '
+                            +'about, command your squads — and launch the assault whenever you like. '
+                            +'Nothing starts without you.')+'</div>'
    +'</div>'
    +'<p class="small" style="margin:8px 0 0"><b>'
-   +t('Le village restera exactement dans cet état jusqu\'à la bataille. Le seul moyen de rouvrir '
-      +'les champs et les chantiers, c\'est de sortir, et de gagner.',
-      'The village stays exactly as it is until the battle. The only way to reopen the fields and the '
-      +'workshops is to march out, and win.')+'</b></p></div>';
+   +t('Les champs rouvrent dès que tu as livré bataille. Et quoi qu\'il arrive ce jour-là, '
+      +'le village continue : on rebâtit, on repeuple, on recommence.',
+      'The fields reopen the moment you have given battle. And whatever happens that day, the village '
+      +'goes on: you rebuild, it fills up again, you carry on.')+'</b></p></div>';
 }
 function collectProduction(){
   if(!S.village||!S.village.length) return null;
@@ -2601,7 +2602,13 @@ function collectProduction(){
   if(!S.lastProd){ S.lastProd=now; save(); return null; }
   /* On avance quand même l'horloge : au retour, on ne touche pas six heures de
      récolte faites sous le siège. Rien n'a poussé, rien ne se rattrape. */
-  if(underSiege()){ S.lastProd=now; save(); return {sieged:true, hours:0}; }
+  /* IMPORTANT : on renvoie la MÊME FORME que d'habitude. Une version courte
+     ({sieged:true}) faisait planter le démarrage — l'appelant lisait
+     pr.gained.food sur un objet sans « gained », l'exception remontait au
+     premier niveau du script, et la page restait entièrement noire pour tous
+     ceux dont l'heure d'examen était passée. */
+  if(underSiege()){ S.lastProd=now; save();
+    return {sieged:true, hours:0, gained:{food:0,wood:0,iron:0}, up:0}; }
   const hours=Math.min(12,Math.floor((now-S.lastProd)/36e5));
   if(hours<1) return null;
   S.lastProd+=hours*36e5;
@@ -10037,13 +10044,10 @@ function toggleEdit(pid){
 function buy(id){
   if(V3.raid){ SFX.ko();
     toast('⚔️ '+t('Pas maintenant — la bataille fait rage !','Not now — the battle is raging!')); return; }
-  /* Sous le siège on ne bâtit pas : les charrois ne passent plus, les carrières
-     sont coupées, et personne ne monte une charpente sous les traits. Le village
-     est figé tel qu'il est le jour J — c'était tout l'intérêt de se préparer
-     AVANT. La seule sortie, c'est la bataille. */
-  if(underSiege()){ SFX.ko();
-    toast('🏛️ '+t('Le village est assiégé : on ne bâtit plus rien. Il faut livrer bataille.',
-                   'The village is under siege: nothing more gets built. You must give battle.')); return; }
+  /* Le siège ne fige plus le village. Ce qu'il coupe, ce sont les RESSOURCES :
+     rien n'entre tant qu'on n'est pas sorti se battre. Avec ce qu'on a déjà en
+     réserve, en revanche, on bâtit — et après la bataille, gagnée ou perdue, on
+     continue de jouer. Bloquer tout revenait à confisquer le jeu. */
   const it=SHOP.find(s=>s.id===id); if(!it) return;
   if(!it.stack&&S.village.includes(id)) return;
   if(it.req&&!S.village.includes(it.req)){
@@ -10793,7 +10797,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
 try{ applyLang(); }catch(e){}
 try{ touchDaily(); }catch(e){}
 (function(){ let pr=null; try{ pr=collectProduction(); }catch(e){ return; }
-  if(pr&&(pr.gained.food||pr.gained.wood)) setTimeout(()=>toast(
+  if(pr&&pr.gained&&(pr.gained.food||pr.gained.wood)) setTimeout(()=>toast(
     t('🏹 Tes producteurs ont récolté <b>+'+pr.gained.food+' 🌾</b> et <b>+'+pr.gained.wood+' 🪵</b> en '+pr.hours+' h (le village a mangé '+pr.up+' 🌾).',
       '🏹 Your producers gathered <b>+'+pr.gained.food+' 🌾</b> and <b>+'+pr.gained.wood+' 🪵</b> in '+pr.hours+'h (the village ate '+pr.up+' 🌾).')),1500);
 })();
